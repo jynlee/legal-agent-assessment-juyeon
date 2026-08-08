@@ -48,7 +48,10 @@ measurements.
 - Blocker log, including access and environment failures.
 - Completed, incomplete, and deliberately deferred work.
 - AWS use: embedding calls, generation calls, input/output tokens, OpenSearch
-  usage, rebuild count, and estimated cost.
+  usage, rebuild count, and estimated cost. Contributors share one IAM user, so
+  billing and CloudTrail cannot attribute any of this to you. It can only come
+  from instrumentation you write yourself, recorded from the first call onward,
+  and it cannot be reconstructed afterwards.
 - What you would do with one additional week.
 
 MZO must be able to rebuild the index and rerun the reported evaluation without

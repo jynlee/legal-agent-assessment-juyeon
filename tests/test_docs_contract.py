@@ -13,6 +13,7 @@ TRANSLATED_DOCS = {
     "DATASET.md": "DATASET.ko.md",
     "CONTRACT.md": "CONTRACT.ko.md",
     "SUBMISSION.md": "SUBMISSION.ko.md",
+    "OPENSEARCH_ACCESS.md": "OPENSEARCH_ACCESS.ko.md",
 }
 
 

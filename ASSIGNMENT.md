@@ -32,6 +32,11 @@ You own all of the following:
 - Generation: the Kit-verified Bedrock Claude Sonnet 4.6 model ID published in
   `.env.example`.
 - Ingest and query use the same embedding model, dimension, and preprocessing.
+- Shared AWS access: contributors share one IAM user, one OpenSearch domain,
+  and one Bedrock quota. Own the index namespace
+  `legal-kit-assessment-<contributor>-...` and stay inside it, sign every
+  managed-domain request with SigV4, and pace embedding sends against the
+  shared per-minute token quota. See `OPENSEARCH_ACCESS.md`.
 - Work duration: two weeks after the start conditions are satisfied.
 - Runtime boundary: one database-free, single-turn, stateless application
   service with typed, serializable input and output.
@@ -71,6 +76,9 @@ both the question and the assumption in the blocker log.
 - Importing Peitho, taking a Peitho DB session, or implementing Peitho auth,
   tenancy, persistence, DI, `ITool`, or deployment.
 - Committing credentials, real PII, restricted raw data, or generated datasets.
+- Reading, writing, or deleting an index outside your own contributor
+  namespace, and issuing cluster-wide or wildcard-destructive calls. The shared
+  credential makes such an action unattributable and unrecoverable.
 
 ## Acceptance boundary
 

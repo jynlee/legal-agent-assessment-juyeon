@@ -23,6 +23,7 @@
 | [DATASET.md](DATASET.md) | [DATASET.ko.md](DATASET.ko.md) | 릴리스 전달, 허용 변환, 계보(lineage) |
 | [CONTRACT.md](CONTRACT.md) | [CONTRACT.ko.md](CONTRACT.ko.md) | 이식 가능한 애플리케이션 서비스 경계 |
 | [SUBMISSION.md](SUBMISSION.md) | [SUBMISSION.ko.md](SUBMISSION.ko.md) | 제출에 필요한 증거 |
+| [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | 관리형 도메인 접근과 공유 자격증명 규칙 |
 | [AGENTS.md](AGENTS.md) | — | 코딩 에이전트용 지침 ([CLAUDE.md](CLAUDE.md)가 이 파일을 가리킵니다) |
 
 ## 시작하기
@@ -61,8 +62,7 @@ uv run pytest
 
 MZO는 데이터셋 릴리스, 모델 접근, smoke check가 준비되면 기여자 시작점을
 `assessment-v1` 같은 불변 태그로 고정합니다. 이후 정확히 그 태그의 tree로
-기여자별 private repo를 하나씩 생성합니다. 기여자들은 브랜치를 공유하지 않고
-서로의 작업을 볼 수 없습니다.
+기여자별 private repo를 하나씩 생성합니다. 기여자들은 브랜치를 공유하지 않습니다.
 
 각 기여자 repo의 초기 커밋에는 원본 태그와 commit을 기록합니다. 작업은 해당
 repo의 `master`에서 계속하며 feature branch와 PR은 선택 사항입니다. 최종 제출은
@@ -78,18 +78,17 @@ legal-agent-assessment-template @ assessment-v1
 
 태그 없이 움직이는 브랜치에서 기여자 repo를 만들지 않습니다.
 
-## 개발 시 유의점: 계층 C
+## 개발 시 유의점: 계층
 
-아래의 조용한 실패는 관련 없는 작업까지 무효로 만듭니다. 전체 파이프라인을 만들기
-전에 각 항목을 드러낼 수 있는 값싼 탐지기를 추가하십시오.
+아래의 조용한 실패는 관련 없는 작업까지 무효로 만듭니다. 작업에 참조하시기 바랍니다.
 
 | 실수 | 발견 시점 | 무효화되는 범위 |
 | --- | --- | --- |
 | 평가 쿼리·정답·관련성 라벨을 인덱스에 넣음 | MZO 재실행 | 모든 검색 지표 |
 | 출처에서 파생된 근사 복제 테스트를 실사용 품질로 제시 | 리뷰 | 검색 평가 리포트 전체 |
-| ingest와 query의 임베딩 또는 전처리가 어긋남 | 끝까지 발견 못 할 수 있음 | 모든 검색 결과 |
 | 청크 계보(lineage) 누락 | 인용 검증 시 | 모든 답변 — 출처를 붙일 수 없으면 `answered` 자체가 불가능 |
-| 시간·토큰·비용을 그때그때 기록하지 않음 | 제출 시점 | Work report — 사후 복원 불가 |
+| 시간·토큰·비용을 그때그때 기록하지 않음 | 제출 시점 | Work report — IAM 사용자를 공유하므로 귀속 자체가 불가능해 사후 복원 불가 |
+| 관리형 도메인에 서명(SigV4) 없이 개발 | 정책 정상화 또는 타 환경 재실행 | 모든 OpenSearch 호출 — 서명 없는 요청이 로컬에서도 현재 stg에서도 통과하므로 늦게 드러남 |
 
 최소 탐지 기준:
 
@@ -100,16 +99,12 @@ legal-agent-assessment-template @ assessment-v1
 - 필수 lineage 필드가 누락된 chunk 거부
 - 모든 Bedrock 호출 시 model ID, token, latency, 비용 입력값을 즉시 append-only 기록
 
-CI가 초록불이라는 사실만으로 위 조건이 충족됐다고 볼 수 없습니다.
 
 ## 질문하기
 
 **담당자: gyro (MZO).**
 
-정의되지 않은 부분이 있으면 질문하십시오. **질문은 당연하며 감점 요소가
-아닙니다.** 이 템플릿은 설계 결정을 의도적으로 비워 두었으므로, 무엇을 모르는지
-식별하고 정리하는 능력 자체가 검토 대상입니다. **좋은 질문 하나가 조용한 가정보다
-가치 있습니다.**
+정의되지 않은 부분이 있으면 자유롭게 질문 주셔도 괜찮습니다.
 
 좋은 질문은 다음을 담습니다.
 
@@ -118,8 +113,5 @@ CI가 초록불이라는 사실만으로 위 조건이 충족됐다고 볼 수 �
 3. 어느 해석을 택하느냐에 따라 결과가 어떻게 달라지는가
 4. 답이 오지 않으면 어떤 가정으로 진행할 것인가
 
-**답을 기다리며 멈추지 마십시오.** 제때 답이 올 수 없다면 명시한 가정으로
-진행하고, 질문과 가정을 모두 [SUBMISSION.md](SUBMISSION.md)가 요구하는 블로커
-로그에 기록하십시오.
 
 평가에 영향을 주는 베이스라인 변경은 모든 활성 기여자에게 동시에 공지됩니다.

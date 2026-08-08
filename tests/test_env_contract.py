@@ -38,5 +38,24 @@ def test_env_example_keeps_regions_aligned_and_a_versionable_index_prefix() -> N
     }
 
     assert values["AWS_REGION"] == values["BEDROCK_REGION"]
-    assert "OPENSEARCH_INDEX_PREFIX=legal-agent-assessment" in content
+    assert "OPENSEARCH_INDEX_PREFIX=legal-kit-assessment" in content
     assert "\nOPENSEARCH_INDEX=" not in content
+
+
+def test_index_prefix_stays_inside_the_shared_iam_namespace() -> None:
+    """The shared IAM policy allows `legal-kit-*` and implicitly denies the rest.
+
+    A prefix outside that namespace makes every signed request 403 against the
+    managed domain, and the failure only appears once a contributor leaves the
+    local container.
+    """
+
+    content = ENV_EXAMPLE.read_text(encoding="utf-8")
+
+    prefix = next(
+        line.split("=", maxsplit=1)[1]
+        for line in content.splitlines()
+        if line.startswith("OPENSEARCH_INDEX_PREFIX=")
+    )
+
+    assert prefix.startswith("legal-kit-"), prefix

@@ -24,6 +24,7 @@ frozen legal dataset
 | [DATASET.md](DATASET.md) | [DATASET.ko.md](DATASET.ko.md) | Release delivery, allowed transformations, lineage |
 | [CONTRACT.md](CONTRACT.md) | [CONTRACT.ko.md](CONTRACT.ko.md) | Portable application-service boundary |
 | [SUBMISSION.md](SUBMISSION.md) | [SUBMISSION.ko.md](SUBMISSION.ko.md) | Required evidence |
+| [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | Managed domain access and shared-credential rules |
 | [AGENTS.md](AGENTS.md) | — | Instructions for coding agents ([CLAUDE.md](CLAUDE.md) points here) |
 
 ## Start here
@@ -82,7 +83,7 @@ legal-agent-assessment-template @ assessment-v1
 
 Do not create contributor repositories from an untagged moving branch.
 
-## Development cautions: Tier C
+## Development cautions: Tier
 
 The following silent failures invalidate otherwise unrelated work. Add a cheap
 detector for each one before building the full pipeline.
@@ -91,9 +92,9 @@ detector for each one before building the full pipeline.
 | --- | --- | --- |
 | Indexing evaluation queries, expected answers, or relevance labels | MZO rerun | Every retrieval metric |
 | Presenting a source-derived near-copy test as real-user quality | Review | The entire retrieval evaluation report |
-| Ingest and query embedding or preprocessing diverge | Possibly never | Every retrieval result |
 | Missing chunk lineage | Citation check | Every answer — without provenance, `answered` is not reachable |
-| Time, tokens, and cost not recorded as you go | Submission | The work report; it cannot be reconstructed afterwards |
+| Time, tokens, and cost not recorded as you go | Submission | The work report; the shared IAM user makes it unattributable, so it cannot be reconstructed afterwards |
+| Developing against the managed domain without SigV4 | Policy tightening, or a rerun elsewhere | Every OpenSearch call — unsigned requests pass locally and on staging today |
 
 Minimum detectors:
 
@@ -113,10 +114,7 @@ A green CI run is not proof that these conditions hold.
 
 **Contact: gyro (MZO).**
 
-Ask when something is undefined. Questions are expected and are not penalized.
-This template deliberately leaves design decisions open, so identifying and
-framing what you do not know is part of the work being reviewed — a good
-question is worth more than a silent assumption.
+Ask when something is undefined.
 
 A useful question states:
 
@@ -125,9 +123,6 @@ A useful question states:
 3. how the outcome differs depending on which reading is chosen;
 4. which assumption you will proceed on if no answer arrives.
 
-Do not wait on an answer. If one cannot arrive in time, proceed on your stated
-assumption and record both the question and the assumption in the blocker log
-required by [SUBMISSION.md](SUBMISSION.md).
 
 Any baseline update that affects the assessment is published to all active
 contributors at the same time.
