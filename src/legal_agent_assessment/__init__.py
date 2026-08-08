@@ -25,6 +25,7 @@ from legal_agent_assessment.dataset import (
     SourceProvenance,
     SourceRecord,
     UsageDisposition,
+    default_corpus,
 )
 from legal_agent_assessment.dataset_validation import (
     EvaluationLeakError,
@@ -66,6 +67,7 @@ __all__ = [
     "UsageDisposition",
     "assert_supplied_by_manifest",
     "content_hash",
+    "default_corpus",
     "errors",
     "select_index_inputs",
     "summarize",

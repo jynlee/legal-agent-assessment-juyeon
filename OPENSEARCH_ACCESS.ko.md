@@ -1,6 +1,7 @@
 # 관리형 OpenSearch 접근
 
-> 한국어 번역본입니다. 원문은 [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md)입니다.
+> 한국어 번역본입니다. 정본은 [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md)이며, 두 본이
+> 어긋날 경우 영어 본문이 우선합니다.
 
 시작할 때는 필요 없습니다. 평소 개발은 `docker-compose.yml`의 로컬 컨테이너로
 충분하고, 인덱스는 언제든 다시 만들 수 있는 파생 데이터입니다. 관리형 도메인이

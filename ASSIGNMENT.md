@@ -31,7 +31,10 @@ You own all of the following:
 - Embedding: AWS Bedrock Cohere Embed v4, 1536 dimensions.
 - Generation: the Kit-verified Bedrock Claude Sonnet 4.6 model ID published in
   `.env.example`.
-- Ingest and query use the same embedding model, dimension, and preprocessing.
+- Ingest and query use the same embedding model, dimension, and text
+  normalization. Cohere Embed v4's `input_type` is not normalization: use
+  `search_document` for corpus text and `search_query` for queries. Sending
+  both sides the same `input_type` is a defect, not compliance with this rule.
 - Shared AWS access: contributors share one IAM user, one OpenSearch domain,
   and one Bedrock quota. Own the index namespace
   `legal-kit-assessment-<contributor>-...` and stay inside it, sign every
@@ -58,14 +61,7 @@ MZO does not prescribe:
 - test queries, relevance judgements, metrics, cutoffs, or pass bars;
 - prompts, answer composition, or internal framework.
 
-Ask when something blocks you, on any part of this assignment. Questions are
-expected and are not penalized. How you identify, scope, and phrase what you do
-not know is itself part of what MZO reviews, so a good question is worth more
-than a silent assumption. MZO answers directly, or publishes a small common
-schema or example to every active contributor at the same time. Private
-scaffolding that changes one contributor's assessment is not provided. If an
-answer cannot arrive in time, state your assumption, proceed on it, and record
-both the question and the assumption in the blocker log.
+Ask when something blocks you, on any part of this assignment.
 
 ## Prohibited work
 

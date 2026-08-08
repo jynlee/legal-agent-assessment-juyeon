@@ -15,11 +15,20 @@ Before implementation:
 4. Preserve raw supplied bytes; write derived artifacts to ignored directories.
 5. Report a mismatch immediately instead of repairing the release locally.
 
-The final release reflects MZO's approved dataset review. It supplies citable,
-domain-relevant law.go.kr cases and approved official guides. Duplicated law
-PDFs and AI Hub 452 are excluded. AI Hub 71874 is not retrieval evidence and may
-be used for evaluation only when MZO confirms that its restricted-use conditions
-are satisfied.
+The final release reflects MZO's approved dataset review. It supplies citable
+law.go.kr cases and approved official guides. Duplicated law PDFs and AI Hub 452
+are excluded. AI Hub 71874 is not retrieval evidence and may be used for
+evaluation only when MZO confirms that its restricted-use conditions are
+satisfied.
+
+Records whose subject matter sits away from this agent's questions are supplied
+but marked outside the default corpus. Including them is a record-selection
+decision you may make and explain.
+
+Some violation examples in the medical advertising guide are images rather than
+text. MZO supplies a separate OCR solution instead of transcribing them into the
+release; recovering that text is contributor work and its output is a derived
+artifact, not delivered evidence.
 
 Final counts are intentionally not duplicated in this template. The signed
 release manifest wins over examples, planning notes, and prose.

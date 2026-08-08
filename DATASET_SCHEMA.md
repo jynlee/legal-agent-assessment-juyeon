@@ -54,6 +54,7 @@ Every record carries these, regardless of kind:
 | `admission` | `exempt`, `licensed`, or `restricted` |
 | `attribution` | Required when `admission` is `licensed` |
 | `usage` | `index_eligible` or `evaluation_only` |
+| `inDefaultCorpus` | Whether the record is in MZO's baseline coverage |
 | `linkedLaws` | Target laws and this record's relationship to each |
 | `limitations` | Known gaps, stated rather than repaired |
 
@@ -64,6 +65,29 @@ record holding its full text; splitting it into citable units is chunking.
 not at all. Retaining the response bytes is a separate decision from recording
 where the text came from; a path without a hash would read as "artifact
 retained" while being uncheckable.
+
+### Permission and scope are different questions
+
+`usage` is a permission and a hard boundary. `evaluation_only` material must
+never reach an index, and nothing you decide changes that.
+
+`inDefaultCorpus` is scope. Some records are supplied deliberately while
+sitting outside MZO's baseline coverage: they surfaced through full-text search
+against the target laws and are citable and index-eligible, but their subject
+matter sits away from the questions this agent is built to answer. MZO's
+default is to leave them out.
+
+**You may include them.** Widening the corpus to supplied records outside the
+default is ordinary record selection, which [DATASET.md](DATASET.md) already
+lists as an allowed transformation, and the reason it is allowed is that the
+boundary is a judgement rather than a fact. Explain the decision either way.
+This is not "adding corpus data" — the prohibition in
+[ASSIGNMENT.md](ASSIGNMENT.md) is about material from outside the release.
+
+`default_corpus(records)` gives the baseline. `select_index_inputs(records)`
+governs what may be indexed at all, and it does not consult `inDefaultCorpus`.
+A record can be outside the default corpus and perfectly indexable; an
+`evaluation_only` record is neither.
 
 ### Judgement identity
 
@@ -184,9 +208,22 @@ splits on `\n` will see most judgements as one unbroken line.
 
 Guides are delivered as extracted PDF text and are not uniform: extraction
 quality depends on how each PDF was produced, and inter-word spacing survives
-in some and not others. A significant part of the violation examples in the
-medical advertising guide are images and do not appear in the text at all. The
-affected records state this in `limitations`.
+in some and not others.
+
+A significant part of the violation examples in the medical advertising guide
+are images and do not appear in the text at all. This matters more than a
+formatting gap: the concrete examples are why the guide was admitted, since
+they are what carries an abstract requirement across to a specific advertising
+phrase. The affected records state the gap in `limitations`.
+
+MZO supplies a separate OCR solution rather than transcribing the images into
+the release. Running it and deciding what to do with the result is yours.
+Recovering text from a supplied document is not adding corpus data, so it is
+permitted; the output is a derived artifact of your own making, so version it,
+keep it traceable to the record it came from, and describe the method and its
+error rate alongside your retrieval claims. Text you produced and text MZO
+delivered are not the same evidence, and a citation should not present them as
+though they were.
 
 MZO does not publish a chunk size, a chunking strategy, or retrieval results.
 Deciding those from the data is the assessment.
@@ -234,21 +271,28 @@ expected-answer text among indexed chunks. Checking whether query IDs intersect
 document IDs does not do this — they are different namespaces, and the check
 passes while the leakage remains.
 
+## Settled scope decisions
+
+- Records whose subject matter sits away from this agent's questions stay in
+  the release and are marked `inDefaultCorpus: false`. Including them is your
+  call, as described above.
+- No further law is being collected. The target law coverage is closed.
+- The guide images are not transcribed into the release. MZO supplies an OCR
+  solution; extraction is contributor work.
+
 ## Open items
 
-These are recorded here rather than resolved, and none of them changes the
-schema:
-
-- Corpus scope is not final. Whether records from domain-unrelated providers
-  remain in the release, and whether a further law is reinstated, are MZO
-  decisions. Counts are delegated to the manifest precisely so that settling
-  them does not change this contract.
 - The guides are approved but were not present in the candidate JSONL that this
   schema was measured against. `official_guide` is defined from the approved
   source documents themselves; the delivered records are expected to conform.
-- Whether the images in the medical advertising guide receive separate handling
-  is undecided. Until it is decided, the affected text is delivered as
-  extracted and the gap is stated in `limitations`.
+- Evaluation-only material enters the release only once MZO confirms that its
+  restricted-use conditions are satisfied, as [DATASET.md](DATASET.md) states.
+  The schema is ready for it either way: `restricted` admission with
+  `evaluation_only` usage cannot be constructed as index-eligible, and
+  `select_index_inputs` refuses it.
+
+Neither changes this contract. Counts are delegated to the manifest precisely
+so that settling them does not.
 
 Ask gyro when something here blocks you. State what is blocked, which readings
 are possible, how the outcome differs, and which assumption you will proceed

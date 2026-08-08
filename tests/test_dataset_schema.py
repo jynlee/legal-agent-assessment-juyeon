@@ -28,6 +28,7 @@ from legal_agent_assessment import (
     SourceRecord,
     UsageDisposition,
     content_hash,
+    default_corpus,
     errors,
     select_index_inputs,
     summarize,
@@ -236,6 +237,38 @@ class TestSourceRecord:
             guide(issued_on="2099-12-00")
 
 
+class TestDefaultCorpus:
+    """Baseline scope and index permission are different questions."""
+
+    def test_records_are_in_the_default_corpus_unless_stated_otherwise(self) -> None:
+        assert judgement().in_default_corpus is True
+        assert default_corpus([judgement(), guide()]) == (judgement(), guide())
+
+    def test_a_supplied_record_can_sit_outside_the_default_corpus(self) -> None:
+        outside = SourceRecord.model_validate(
+            judgement(document_id="precedent-000002").model_dump(by_alias=True, mode="json")
+            | {"inDefaultCorpus": False}
+        )
+
+        assert default_corpus([judgement(), outside]) == (judgement(),)
+
+    def test_sitting_outside_the_default_corpus_does_not_forbid_indexing(self) -> None:
+        """Widening the corpus is record selection, which the contributor owns."""
+
+        outside = SourceRecord.model_validate(
+            judgement().model_dump(by_alias=True, mode="json") | {"inDefaultCorpus": False}
+        )
+
+        assert select_index_inputs([outside]) == (outside,)
+
+    def test_evaluation_only_material_is_never_in_the_default_corpus(self) -> None:
+        with pytest.raises(ValidationError, match="not part of the default corpus"):
+            SourceRecord.model_validate(
+                guide().model_dump(by_alias=True, mode="json")
+                | {"usage": "evaluation_only", "inDefaultCorpus": True}
+            )
+
+
 class TestMissingValueConventions:
     """Three ways of saying "absent". Only the first one looks absent."""
 
@@ -419,7 +452,7 @@ class TestIndexInputBoundary:
     def test_evaluation_only_material_cannot_be_indexed(self) -> None:
         evaluation_only = SourceRecord.model_validate(
             guide().model_dump(by_alias=True, mode="json")
-            | {"usage": "evaluation_only", "admission": "restricted"}
+            | {"usage": "evaluation_only", "admission": "restricted", "inDefaultCorpus": False}
         )
 
         with pytest.raises(EvaluationLeakError, match="must never be indexed"):
@@ -429,7 +462,8 @@ class TestIndexInputBoundary:
         """A filtered pipeline keeps producing plausible numbers. A raised one stops."""
 
         evaluation_only = SourceRecord.model_validate(
-            guide().model_dump(by_alias=True, mode="json") | {"usage": "evaluation_only"}
+            guide().model_dump(by_alias=True, mode="json")
+            | {"usage": "evaluation_only", "inDefaultCorpus": False}
         )
 
         with pytest.raises(EvaluationLeakError) as caught:

@@ -212,6 +212,14 @@ class SourceRecord(DatasetModel):
     record with its full text; splitting it into citable units is chunking, and
     chunking is contributor-owned.
 
+    `usage` and `in_default_corpus` answer different questions. `usage` is a
+    permission and a hard boundary: `evaluation_only` material must never reach
+    an index, and nothing a contributor decides can change that.
+    `in_default_corpus` is MZO's baseline scope — records outside it were
+    supplied deliberately but are not part of the recommended coverage, and
+    including them is an ordinary record-selection decision that
+    [DATASET.md](../../DATASET.md) already allows, provided it is explained.
+
     `source_group_id` is split safety, not identity. The corpus registers some
     decisions twice under different serial numbers, with text that is identical
     or near-identical. Records that are the same underlying decision share a
@@ -232,6 +240,7 @@ class SourceRecord(DatasetModel):
     admission: SourceAdmission
     attribution: str | None = None
     usage: UsageDisposition
+    in_default_corpus: bool = True
     linked_laws: tuple[LawLinkage, ...] = ()
     limitations: tuple[str, ...] = ()
 
@@ -251,6 +260,8 @@ class SourceRecord(DatasetModel):
             and self.usage is not UsageDisposition.EVALUATION_ONLY
         ):
             raise ValueError("restricted material cannot be index-eligible")
+        if self.usage is UsageDisposition.EVALUATION_ONLY and self.in_default_corpus:
+            raise ValueError("evaluation-only material is not part of the default corpus")
         if self.admission is SourceAdmission.LICENSED and not self.attribution:
             raise ValueError("licensed material requires an attribution")
 
@@ -363,3 +374,14 @@ def coverage_total(entries: Iterable[CoverageEntry]) -> int:
     """Sum one coverage breakdown."""
 
     return sum(entry.record_count for entry in entries)
+
+
+def default_corpus(records: Iterable[SourceRecord]) -> tuple[SourceRecord, ...]:
+    """MZO's baseline coverage.
+
+    A starting point, not a boundary. Widening it to supplied records outside
+    the default is allowed and is expected to be explained; `select_index_inputs`
+    still governs what may be indexed at all.
+    """
+
+    return tuple(record for record in records if record.in_default_corpus)
