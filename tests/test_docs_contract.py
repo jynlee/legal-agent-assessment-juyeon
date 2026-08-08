@@ -11,6 +11,7 @@ TRANSLATED_DOCS = {
     "README.en.md": "README.md",
     "ASSIGNMENT.md": "ASSIGNMENT.ko.md",
     "DATASET.md": "DATASET.ko.md",
+    "DATASET_SCHEMA.md": "DATASET_SCHEMA.ko.md",
     "CONTRACT.md": "CONTRACT.ko.md",
     "SUBMISSION.md": "SUBMISSION.ko.md",
     "OPENSEARCH_ACCESS.md": "OPENSEARCH_ACCESS.ko.md",

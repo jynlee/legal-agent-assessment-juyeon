@@ -21,6 +21,7 @@
 | [README.en.md](README.en.md) | [README.md](README.md) | 이 문서 |
 | [ASSIGNMENT.md](ASSIGNMENT.md) | [ASSIGNMENT.ko.md](ASSIGNMENT.ko.md) | 목표, 고정 제약, 금지 사항 |
 | [DATASET.md](DATASET.md) | [DATASET.ko.md](DATASET.ko.md) | 릴리스 전달, 허용 변환, 계보(lineage) |
+| [DATASET_SCHEMA.md](DATASET_SCHEMA.md) | [DATASET_SCHEMA.ko.md](DATASET_SCHEMA.ko.md) | 전달 레코드의 형태, 결측 규약, 매니페스트, 검사 |
 | [CONTRACT.md](CONTRACT.md) | [CONTRACT.ko.md](CONTRACT.ko.md) | 이식 가능한 애플리케이션 서비스 경계 |
 | [SUBMISSION.md](SUBMISSION.md) | [SUBMISSION.ko.md](SUBMISSION.ko.md) | 제출에 필요한 증거 |
 | [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | 관리형 도메인 접근과 공유 자격증명 규칙 |

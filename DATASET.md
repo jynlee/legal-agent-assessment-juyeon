@@ -24,6 +24,12 @@ are satisfied.
 Final counts are intentionally not duplicated in this template. The signed
 release manifest wins over examples, planning notes, and prose.
 
+[DATASET_SCHEMA.md](DATASET_SCHEMA.md) describes the shape of one supplied
+record — identity, provenance, citation coordinates, usage disposition, the
+three ways absence is encoded — and the deterministic checks over a delivery.
+Read it before designing normalization or chunking; it carries no counts, so it
+does not compete with the manifest.
+
 ## Allowed transformations
 
 You may, with reproducible versioned code:

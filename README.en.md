@@ -22,6 +22,7 @@ frozen legal dataset
 | [README.en.md](README.en.md) | [README.md](README.md) | This file |
 | [ASSIGNMENT.md](ASSIGNMENT.md) | [ASSIGNMENT.ko.md](ASSIGNMENT.ko.md) | Objective, fixed constraints, prohibited work |
 | [DATASET.md](DATASET.md) | [DATASET.ko.md](DATASET.ko.md) | Release delivery, allowed transformations, lineage |
+| [DATASET_SCHEMA.md](DATASET_SCHEMA.md) | [DATASET_SCHEMA.ko.md](DATASET_SCHEMA.ko.md) | Supplied record shape, missing-value conventions, manifest, checks |
 | [CONTRACT.md](CONTRACT.md) | [CONTRACT.ko.md](CONTRACT.ko.md) | Portable application-service boundary |
 | [SUBMISSION.md](SUBMISSION.md) | [SUBMISSION.ko.md](SUBMISSION.ko.md) | Required evidence |
 | [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | Managed domain access and shared-credential rules |
