@@ -47,7 +47,7 @@ measurements.
 - Actual time by milestone.
 - Blocker log, including access and environment failures.
 - Completed, incomplete, and deliberately deferred work.
-- AWS use: embedding calls, model-tier calls, input/output tokens, OpenSearch
+- AWS use: embedding calls, generation calls, input/output tokens, OpenSearch
   usage, rebuild count, and estimated cost.
 - What you would do with one additional week.
 

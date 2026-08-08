@@ -1,30 +1,45 @@
-# General Legal Agent Assessment Template
+# General Legal Agent 평가 템플릿
 
-This private repository is the common starting point for independent two-week
-General Legal Agent implementations. Every contributor receives the same Git
-baseline and byte-identical frozen dataset release in a separate private
-repository.
+> 한국어 번역본입니다. 정본은 [README.en.md](README.en.md)입니다.
 
-The required vertical slice is:
+이 비공개 저장소는 2주짜리 General Legal Agent 구현을 각자 독립적으로 수행하기
+위한 공통 출발점입니다. 모든 기여자는 동일한 Git 베이스라인과, 별도 비공개
+저장소로 전달되는 바이트 단위로 동일한 동결 데이터셋 릴리스를 받습니다.
+
+요구되는 수직 슬라이스는 다음과 같습니다.
 
 ```text
-frozen legal dataset
--> reproducible OpenSearch index
--> measured retrieval pipeline
--> grounded Bedrock LLM answer
--> single-turn GeneralLegalAgent application service
+동결된 법률 데이터셋
+-> 재현 가능한 OpenSearch 인덱스
+-> 정량 측정된 검색 파이프라인
+-> 근거에 기반한 Bedrock LLM 답변
+-> 단일 턴 GeneralLegalAgent 애플리케이션 서비스
 ```
 
-Start here:
+## 문서
 
-1. Read [ASSIGNMENT.md](ASSIGNMENT.md).
-2. Verify the delivered dataset as described in [DATASET.md](DATASET.md).
-3. Preserve the portable boundary in [CONTRACT.md](CONTRACT.md).
-4. Plan the required evidence in [SUBMISSION.md](SUBMISSION.md).
-5. Configure the dedicated AWS CLI profile delivered through the approved
-   separate channel, then copy `.env.example` to `.env`. Never put access keys
-   in `.env`; AWS SDK credential providers resolve the named `AWS_PROFILE`.
-6. Run the local checks.
+**영어 문서가 정본입니다.** 한국어 파일은 사람이 읽기 위한 번역본이며, 두 본이
+어긋날 경우 영어 본문이 우선합니다.
+
+| 영어 (정본) | 한국어 | 내용 |
+| --- | --- | --- |
+| [README.en.md](README.en.md) | [README.md](README.md) | 이 문서 |
+| [ASSIGNMENT.md](ASSIGNMENT.md) | [ASSIGNMENT.ko.md](ASSIGNMENT.ko.md) | 목표, 고정 제약, 금지 사항 |
+| [DATASET.md](DATASET.md) | [DATASET.ko.md](DATASET.ko.md) | 릴리스 전달, 허용 변환, 계보(lineage) |
+| [CONTRACT.md](CONTRACT.md) | [CONTRACT.ko.md](CONTRACT.ko.md) | 이식 가능한 애플리케이션 서비스 경계 |
+| [SUBMISSION.md](SUBMISSION.md) | [SUBMISSION.ko.md](SUBMISSION.ko.md) | 제출에 필요한 증거 |
+| [AGENTS.md](AGENTS.md) | — | 코딩 에이전트용 지침 ([CLAUDE.md](CLAUDE.md)가 이 파일을 가리킵니다) |
+
+## 시작하기
+
+1. [ASSIGNMENT.md](ASSIGNMENT.md)를 읽습니다.
+2. [DATASET.md](DATASET.md)의 절차대로 전달받은 데이터셋을 검증합니다.
+3. [CONTRACT.md](CONTRACT.md)의 이식 가능한 경계를 보존합니다.
+4. [SUBMISSION.md](SUBMISSION.md)를 보고 필요한 증거 수집을 미리 계획합니다.
+5. 승인된 별도 채널로 전달받은 전용 AWS CLI 프로파일을 설정한 뒤, `.env.example`을
+   `.env`로 복사합니다. 액세스 키는 절대 `.env`에 넣지 않습니다. AWS SDK의
+   자격증명 공급자가 `AWS_PROFILE` 이름으로 해석합니다.
+6. 로컬 검사를 실행합니다.
 
 ```powershell
 uv sync
@@ -37,10 +52,72 @@ uv run mypy src
 uv run pytest
 ```
 
-This template fixes environment and integration boundaries, not retrieval
-design. It deliberately does not provide canonical chunks, an index mapping, a
-retrieval implementation, a test set, relevance labels, prompts, or pass bars.
+이 템플릿은 환경과 통합 경계를 고정할 뿐, 검색 설계를 고정하지 않습니다. 표준
+청크, 인덱스 매핑, 검색 구현, 테스트셋, 관련성 라벨, 프롬프트, 합격 기준선은
+**의도적으로 제공하지 않습니다.**
 
-Questions that require a baseline clarification must be raised before making an
-assumption that changes the contract. Any baseline update that affects the
-assessment is published to all active contributors at the same time.
+## 개발 시 유의점
+
+이 프로젝트에서 실수의 비용은 균일하지 않습니다. 세 계층으로 나뉩니다.
+
+- **계층 A — 대칭.** 타입 오류, lint 실패, 컨트랙트 위반. `mypy`와 `pytest`가
+  몇 초 안에 잡습니다. 실수의 비용은 고치는 시간과 같습니다.
+- **계층 B — 준대칭.** 부적절한 청크 크기, 미흡한 인덱스 매핑. 며칠 뒤 지표에서
+  드러나고 재색인이 필요하지만, 평가 코드와 프롬프트와 서비스 계층은 그대로
+  살아남습니다. 손해가 국소적입니다.
+- **계층 C — 비대칭.** 아래 다섯 가지입니다. **하나만 발생해도, 그 실수와 아무
+  관련 없는 작업까지 통째로 무효가 됩니다.**
+
+| 실수 | 발견 시점 | 무효화되는 범위 |
+| --- | --- | --- |
+| 평가 쿼리·정답·관련성 라벨을 인덱스에 넣음 | MZO 재실행 | **모든 검색 지표.** 코드와 설계는 멀쩡한데 숫자를 쓸 수 없음 |
+| 출처에서 파생된 근사 복제 테스트를 실사용 품질로 제시 | 리뷰 | 검색 평가 리포트 전체 |
+| ingest와 query의 임베딩 또는 전처리가 어긋남 | 끝까지 발견 못 할 수 있음 | 모든 검색 결과 |
+| 청크 계보(lineage) 누락 | 인용 검증 시 | 모든 답변 — 출처를 붙일 수 없으면 `answered` 자체가 불가능 |
+| 시간·토큰·비용을 그때그때 기록하지 않음 | 제출 시점 | Work report. **사후 복원 불가** |
+
+이들을 비대칭으로 만드는 성질이 셋 있습니다.
+
+1. **조용히 실패합니다.** 크래시도 예외도 없습니다. 더 나쁜 것은, 누출된 인덱스가
+   오히려 **더 좋은 점수를 낸다**는 점입니다. 실패 신호가 성공 신호와 구분되지
+   않습니다.
+2. **되돌리는 비용이 시간에 따라 발산합니다.** 1일차에 발견한 누출은 30분이지만,
+   12일차에 발견하면 재색인 + 재평가 + 리포트 재작성입니다. 기록하지 않은 시간과
+   비용은 어느 시점을 넘기면 **복원 자체가 불가능해집니다.**
+3. **국소적인 실수가 전역적인 손해를 냅니다.** 인덱싱 스크립트의 한 줄이 검색
+   리포트, 생성 리포트, 아키텍처 리포트를 동시에 무효화할 수 있습니다. 잃는
+   작업량은 잘못한 작업량에 비례하지 않습니다.
+
+**CI는 이 영역을 지켜주지 않습니다.** `ruff`, `mypy`, `pytest`가 다루는 것은 계층
+A입니다. 실격 사유는 전부 계층 C에 있고, 이 템플릿은 그중 어느 것도 탐지하지
+않습니다. **CI가 초록불이라는 사실은 제출물이 유효하다는 증거가 아닙니다.**
+
+각 항목에 대해 **1일차에** 값싼 탐지기를 만드십시오. 정교할 필요는 없습니다.
+조용한 실패를 시끄럽게 만들기만 하면 됩니다.
+
+- 평가 쿼리 ID 집합과 색인된 문서 ID 집합이 교집합을 갖지 않음을 검증하는 테스트
+- ingest 경로와 query 경로가 동일한 정규화 함수를 호출함을 보장하는 테스트
+- 청크 하나라도 필수 계보 필드가 비어 있으면 실패하는 assertion
+- 모든 Bedrock 호출을 감싸서 토큰과 지연 시간을 append-only 로그에 남기는 래퍼
+
+## 질문하기
+
+**담당자: gyro (MZO).**
+
+정의되지 않은 부분이 있으면 질문하십시오. **질문은 당연하며 감점 요소가
+아닙니다.** 이 템플릿은 설계 결정을 의도적으로 비워 두었으므로, 무엇을 모르는지
+식별하고 정리하는 능력 자체가 검토 대상입니다. **좋은 질문 하나가 조용한 가정보다
+가치 있습니다.**
+
+좋은 질문은 다음을 담습니다.
+
+1. 무엇이 막혔는가
+2. 어떤 해석들이 가능한가
+3. 어느 해석을 택하느냐에 따라 결과가 어떻게 달라지는가
+4. 답이 오지 않으면 어떤 가정으로 진행할 것인가
+
+**답을 기다리며 멈추지 마십시오.** 제때 답이 올 수 없다면 명시한 가정으로
+진행하고, 질문과 가정을 모두 [SUBMISSION.md](SUBMISSION.md)가 요구하는 블로커
+로그에 기록하십시오.
+
+평가에 영향을 주는 베이스라인 변경은 모든 활성 기여자에게 동시에 공지됩니다.

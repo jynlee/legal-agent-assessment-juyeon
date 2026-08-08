@@ -53,9 +53,14 @@ MZO does not prescribe:
 - test queries, relevance judgements, metrics, cutoffs, or pass bars;
 - prompts, answer composition, or internal framework.
 
-If test-set construction blocks progress, request help. MZO may then publish a
-small common schema or example to every active contributor. Private scaffolding
-that changes one contributor's assessment is not provided.
+Ask when something blocks you, on any part of this assignment. Questions are
+expected and are not penalized. How you identify, scope, and phrase what you do
+not know is itself part of what MZO reviews, so a good question is worth more
+than a silent assumption. MZO answers directly, or publishes a small common
+schema or example to every active contributor at the same time. Private
+scaffolding that changes one contributor's assessment is not provided. If an
+answer cannot arrive in time, state your assumption, proceed on it, and record
+both the question and the assumption in the blocker log.
 
 ## Prohibited work
 
