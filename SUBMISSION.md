@@ -53,4 +53,3 @@ measurements.
 
 MZO must be able to rebuild the index and rerun the reported evaluation without
 private machine state, IDE state, notebooks, or an unlisted external service.
-

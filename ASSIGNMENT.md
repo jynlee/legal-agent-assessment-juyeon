@@ -72,4 +72,3 @@ Contributor-reported metrics are evidence, not the official certification
 result. MZO rebuilds and reruns each submission from the frozen release. Only
 MZO-rerun results may be supplied to the external certification body. Delivery
 does not guarantee that one complete submission, or any component, is selected.
-

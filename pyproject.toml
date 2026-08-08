@@ -36,4 +36,3 @@ python_version = "3.12"
 strict = true
 packages = ["legal_agent_assessment"]
 mypy_path = "src"
-

@@ -49,4 +49,3 @@ identity. Derived artifacts record at least:
 - chunk identifier and ordinal;
 - content hash;
 - document kind and citation fields needed by the answer contract.
-

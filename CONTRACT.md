@@ -37,4 +37,3 @@ separately from consumer-safe text.
 You may add internal fields and models, but do not silently change the public
 contract. Propose a contract change with a compatibility explanation when the
 boundary cannot represent a necessary behavior.
-

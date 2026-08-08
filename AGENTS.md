@@ -14,4 +14,3 @@
   final architecture report.
 - Run `uv run ruff check .`, `uv run ruff format --check .`,
   `uv run mypy src`, and `uv run pytest` before submission.
-
