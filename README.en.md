@@ -1,7 +1,5 @@
 # General Legal Agent Assessment Template
 
-> English source. The Korean translation is [README.md](README.md).
-
 This private repository is the common starting point for independent two-week
 General Legal Agent implementations. Every contributor receives the same Git
 baseline and byte-identical frozen dataset release in a separate private
@@ -19,10 +17,7 @@ frozen legal dataset
 
 ## Documents
 
-English documents are authoritative. Korean files are translations for human
-readers; if the two disagree, the English text governs.
-
-| English (authoritative) | Korean | Contents |
+| English | Korean | Contents |
 | --- | --- | --- |
 | [README.en.md](README.en.md) | [README.md](README.md) | This file |
 | [ASSIGNMENT.md](ASSIGNMENT.md) | [ASSIGNMENT.ko.md](ASSIGNMENT.ko.md) | Objective, fixed constraints, prohibited work |
@@ -57,53 +52,62 @@ This template fixes environment and integration boundaries, not retrieval
 design. It deliberately does not provide canonical chunks, an index mapping, a
 retrieval implementation, a test set, relevance labels, prompts, or pass bars.
 
-## Development cautions
+## OpenSearch 3.5 baseline
 
-Mistakes in this project do not all cost the same. They fall into three tiers.
+This assessment replaces the legacy OpenSearch 2.17 baseline with **OpenSearch
+3.5**. Build local and managed indexes that are compatible with 3.5. Do not copy
+2.17 mappings or assumptions without revalidating them against 3.5.
 
-- **Tier A — symmetric.** Type errors, lint failures, contract violations.
-  `mypy` and `pytest` catch them in seconds. The cost of the mistake is the time
-  it takes to fix.
-- **Tier B — near-symmetric.** A poor chunk size or a weak index mapping. It
-  surfaces in your metrics days later and needs a reindex, but your evaluation
-  code, prompts, and service layer all survive. The loss is local.
-- **Tier C — asymmetric.** The five below. **Any one of them invalidates work
-  that has nothing to do with the mistake.**
+## Repository provisioning from a tag
+
+MZO freezes the contributor starting point as an immutable tag such as
+`assessment-v1` after the dataset release, model access, and smoke checks are
+ready. MZO then creates one separate private repository per contributor from the
+exact tagged tree. Contributors do not share branches or see one another's work.
+
+The contributor repository records the source tag and commit in its initial
+commit. Work continues on that repository's `master` branch; feature branches
+and pull requests are optional. The final submission is identified by one exact
+commit SHA. A later baseline correction receives a new tag and is distributed
+to every active contributor at the same time.
+
+MZO provisioning outline:
+
+```text
+legal-agent-assessment-template @ assessment-v1
+        |-- contributor-a private repository
+        |-- contributor-b private repository
+        `-- contributor-c private repository
+```
+
+Do not create contributor repositories from an untagged moving branch.
+
+## Development cautions: Tier C
+
+The following silent failures invalidate otherwise unrelated work. Add a cheap
+detector for each one before building the full pipeline.
 
 | Mistake | Found | What it invalidates |
 | --- | --- | --- |
-| Indexing evaluation queries, expected answers, or relevance labels | MZO rerun | **Every retrieval metric.** The code and design are fine; the numbers are unusable |
+| Indexing evaluation queries, expected answers, or relevance labels | MZO rerun | Every retrieval metric |
 | Presenting a source-derived near-copy test as real-user quality | Review | The entire retrieval evaluation report |
 | Ingest and query embedding or preprocessing diverge | Possibly never | Every retrieval result |
 | Missing chunk lineage | Citation check | Every answer — without provenance, `answered` is not reachable |
-| Time, tokens, and cost not recorded as you go | Submission | The work report. **Not reconstructable afterwards** |
+| Time, tokens, and cost not recorded as you go | Submission | The work report; it cannot be reconstructed afterwards |
 
-Three properties make these asymmetric:
+Minimum detectors:
 
-1. **They fail silently.** No crash, no exception. Worse, a leaked index scores
-   *better* — the failure signal is indistinguishable from the success signal.
-2. **The cost of undoing them grows without bound.** A leak found on day 1 is
-   thirty minutes. On day 12 it is a reindex, a re-evaluation, and a rewritten
-   report. Unrecorded time and cost eventually cannot be reconstructed at all.
-3. **A local mistake causes global loss.** One line in an indexing script can
-   invalidate the retrieval report, the generation report, and the architecture
-   report at once. The work you lose is not proportional to the work you got
-   wrong.
+- Reject every index input whose provenance/type is evaluation-only or whose
+  path comes from the evaluation artifact tree.
+- Verify that every indexed record belongs to the frozen corpus manifest, and
+  detect exact or near-duplicate query/expected-answer text in indexed chunks.
+- Make ingest and query call the same versioned normalization and embedding
+  configuration.
+- Reject any chunk missing required lineage fields.
+- Append tokens, latency, model ID, and cost inputs for every Bedrock call as the
+  call happens.
 
-**CI does not protect you here.** `ruff`, `mypy`, and `pytest` cover tier A.
-Every disqualifying condition is in tier C, and this template detects none of
-them. A green CI run is not evidence that a submission is valid.
-
-Build a cheap detector for each one on day one. They do not need to be good.
-They need to make a silent failure loud.
-
-- A test asserting that evaluation query IDs and indexed document IDs do not
-  intersect.
-- A test asserting that the ingest path and the query path call the same
-  normalization function.
-- An assertion that fails if any chunk is missing a required lineage field.
-- A wrapper around every Bedrock call that appends tokens and latency to an
-  append-only log.
+A green CI run is not proof that these conditions hold.
 
 ## Asking questions
 

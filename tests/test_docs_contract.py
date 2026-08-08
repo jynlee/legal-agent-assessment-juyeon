@@ -27,13 +27,22 @@ def test_every_english_document_has_a_non_empty_korean_translation(
         assert path.read_text(encoding="utf-8").strip(), f"{name} is empty"
 
 
-@pytest.mark.parametrize("translation", sorted(TRANSLATED_DOCS.values()))
-def test_every_translation_states_that_english_is_authoritative(translation: str) -> None:
-    """A reader must never mistake a translation for the governing text."""
+def test_readmes_do_not_claim_that_one_language_is_authoritative() -> None:
+    english = (ROOT / "README.en.md").read_text(encoding="utf-8")
+    korean = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    content = (ROOT / translation).read_text(encoding="utf-8")
+    assert "authoritative" not in english
+    assert "정본" not in korean
 
-    assert "정본" in content, f"{translation} does not name its authoritative source"
+
+def test_readmes_publish_the_opensearch_and_tagged_repo_baseline() -> None:
+    english = (ROOT / "README.en.md").read_text(encoding="utf-8")
+    korean = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    for content in (english, korean):
+        assert "OpenSearch 3.5" in content
+        assert "assessment-v1" in content
+        assert "private repo" in content
 
 
 def test_claude_md_points_at_agents_md_instead_of_copying_it() -> None:
