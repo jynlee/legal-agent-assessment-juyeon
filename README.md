@@ -21,8 +21,9 @@ Start here:
 2. Verify the delivered dataset as described in [DATASET.md](DATASET.md).
 3. Preserve the portable boundary in [CONTRACT.md](CONTRACT.md).
 4. Plan the required evidence in [SUBMISSION.md](SUBMISSION.md).
-5. Copy `.env.example` to `.env` and use credentials delivered through the
-   approved separate channel.
+5. Configure the dedicated AWS CLI profile delivered through the approved
+   separate channel, then copy `.env.example` to `.env`. Never put access keys
+   in `.env`; AWS SDK credential providers resolve the named `AWS_PROFILE`.
 6. Run the local checks.
 
 ```powershell
