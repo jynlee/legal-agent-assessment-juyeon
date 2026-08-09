@@ -9,18 +9,21 @@
 
 ## Release verification
 
-`verify_release.py` runs the deterministic checks from
+`verify_release.py` runs the deterministic record and coverage checks from
 [DATASET_SCHEMA.md](../DATASET_SCHEMA.md) over a delivered release. MZO runs it
-before delivery; run it yourself after verifying the checksums.
+before delivery; run it yourself after checking the archive checksum described
+in the release's `DELIVERY.md`.
 
 ```powershell
-uv run python scripts/verify_release.py --rag-dir <dir> `
-    --file judgements.jsonl --file guides.jsonl --manifest release-manifest.json
+uv run python scripts/verify_release.py --rag-dir data `
+    --file judgements.jsonl --manifest data/release-manifest.json
 ```
 
 It exits non-zero on an error and prints warnings with counts. Warnings
 describe the corpus — placeholder dates, duplicate decisions, body-only
-records — and are not failures.
+records — and are not failures. The current release contains decisions only;
+if a later manifest adds another record file, pass one `--file` argument for
+that file as well.
 
 ## MZO release build
 
@@ -35,7 +38,9 @@ how the corpus was built is visible rather than asserted.
 | `build_judgement_records.py` | `judgements.jsonl` from the collected precedent JSONL |
 | `build_release_manifest.py` | `release-manifest.json`, counting coverage from the records |
 
-Order: parse each guide, build both record files, write the manifest, verify.
+The guide commands below are retained for a later release if MZO obtains
+permission. They are not part of the current decisions-only release. Build the
+applicable record files, write the manifest, then verify.
 
 ```powershell
 uv run python scripts/parse_guide_pdf.py <guide.pdf> parsed/medical --pages 108

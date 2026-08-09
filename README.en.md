@@ -123,10 +123,11 @@ records rather than from anything typed in. Reading them is the fastest way to
 learn why a record looks the way it does. The guide tooling is kept alongside
 them for the release that adds guidance if permission arrives.
 
-**Verify first.** `scripts/verify_release.py` recomputes every content hash,
-checks the files and coverage against the manifest, and exits non-zero on an
-error. That is the check that matters, because the manifest is what MZO signs
-and what MZO reruns against.
+**Verify first.** Check the delivered archive's SHA-256 as its `DELIVERY.md`
+instructs. After extraction, `scripts/verify_release.py` recomputes every record
+content hash, checks record counts and coverage against the manifest, and exits
+non-zero on an error. These checks establish which frozen release you received
+and whether its records remain valid for MZO's rerun.
 
 Rebuilding is a cross-check, not a substitute. The record files are
 deterministic given the same inputs and the same declared timestamps:
