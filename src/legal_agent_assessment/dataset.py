@@ -307,10 +307,29 @@ class SourceRecord(DatasetModel):
         return self.usage is UsageDisposition.INDEX_ELIGIBLE
 
 
+class ReleaseFileKind(StrEnum):
+    """What a delivered file carries.
+
+    A release is not only record streams. The retained source artifacts that
+    `rawArtifactPath` points at are delivered too, and a delivery that shipped
+    them without listing them would look like an unlisted artifact to the
+    check DATASET.md asks for.
+    """
+
+    RECORDS = "records"
+    ARTIFACTS = "artifacts"
+
+
 class ReleaseFile(DatasetModel):
-    """One delivered file and the values that prove it arrived intact."""
+    """One delivered file and the values that prove it arrived intact.
+
+    `record_count` counts source records in a `records` file and contained
+    artifacts in an `artifacts` file. Only the former are release records, so
+    only the former are summed by `total_records`.
+    """
 
     path: str = Field(min_length=1)
+    kind: ReleaseFileKind = ReleaseFileKind.RECORDS
     sha256: str = Field(pattern=SHA256_PATTERN.pattern)
     byte_size: int = Field(ge=0)
     record_count: int = Field(ge=0)
@@ -388,9 +407,9 @@ class ReleaseManifest(DatasetModel):
         return self
 
     def total_records(self) -> int:
-        """Records the manifest claims across every delivered file."""
+        """Records the manifest claims across its record files."""
 
-        return sum(file.record_count for file in self.files)
+        return sum(file.record_count for file in self.files if file.kind is ReleaseFileKind.RECORDS)
 
 
 def coverage_total(entries: Iterable[CoverageEntry]) -> int:

@@ -25,6 +25,7 @@ from legal_agent_assessment.dataset import (
     DispositionNote,
     LicenceNote,
     ReleaseFile,
+    ReleaseFileKind,
     ReleaseManifest,
     SourceRecord,
 )
@@ -141,6 +142,24 @@ def read(path: pathlib.Path) -> tuple[list[SourceRecord], ReleaseFile]:
     )
 
 
+def describe_artifacts(path: pathlib.Path, contained: int) -> ReleaseFile:
+    """Describe a retained-artifact archive so it is not an unlisted file.
+
+    Records point at these bytes through `rawArtifactPath`. Delivering them
+    without listing them would trip the check DATASET.md asks contributors to
+    run; listing them as records would inflate the record count.
+    """
+
+    raw = path.read_bytes()
+    return ReleaseFile(
+        path=path.name,
+        kind=ReleaseFileKind.ARTIFACTS,
+        sha256="sha256:" + hashlib.sha256(raw).hexdigest(),
+        byte_size=len(raw),
+        record_count=contained,
+    )
+
+
 def coverage(values: collections.Counter[str]) -> tuple[CoverageEntry, ...]:
     """Turn counted values into manifest coverage entries."""
 
@@ -155,6 +174,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rag-dir", type=pathlib.Path, required=True)
     parser.add_argument("--file", action="append", required=True, dest="files")
+    parser.add_argument(
+        "--artifact-archive",
+        help="retained source artifacts referenced by rawArtifactPath, e.g. source-native.tar.gz",
+    )
     parser.add_argument("--dataset-version", required=True)
     parser.add_argument("--schema-version", default="source-record-v1")
     parser.add_argument("--delivery-id", required=True)
@@ -169,6 +192,16 @@ def main() -> None:
         records.extend(parsed)
         files.append(described)
         print(f"{name:20s} {len(parsed):5d} records  {described.byte_size:>12,} bytes")
+
+    if args.artifact_archive:
+        retained = {
+            record.provenance.raw_artifact_path
+            for record in records
+            if record.provenance.raw_artifact_path
+        }
+        archive = describe_artifacts(args.rag_dir / args.artifact_archive, len(retained))
+        files.append(archive)
+        print(f"{archive.path:20s} {len(retained):5d} artifacts {archive.byte_size:>11,} bytes")
 
     manifest = ReleaseManifest(
         dataset_version=args.dataset_version,

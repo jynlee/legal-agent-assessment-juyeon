@@ -448,6 +448,29 @@ class TestReleaseValidation:
             "'보건복지부'",
         }
 
+    def test_a_retained_artifact_archive_is_listed_without_counting_as_records(self) -> None:
+        """Shipping the artifacts unlisted would read as an unexpected file."""
+
+        base = manifest()
+        with_archive = ReleaseManifest.model_validate(
+            base.model_dump(by_alias=True, mode="json")
+            | {
+                "files": [
+                    *(f.model_dump(by_alias=True, mode="json") for f in base.files),
+                    {
+                        "path": "source-native.tar.gz",
+                        "kind": "artifacts",
+                        "sha256": "sha256:" + "b" * 64,
+                        "byteSize": 4096,
+                        "recordCount": 2,
+                    },
+                ]
+            }
+        )
+
+        assert with_archive.total_records() == 2, "artifacts are not release records"
+        assert errors(validate_release([judgement(), guide()], with_archive)) == ()
+
     def test_manifest_refuses_an_unknown_coverage_key(self) -> None:
         with pytest.raises(ValidationError, match="unknown keys"):
             manifest(kinds=(("statute", 2),))
