@@ -109,6 +109,23 @@ GUIDES: list[dict[str, Any]] = [
 ]
 
 
+def file_time(path: pathlib.Path) -> dt.datetime:
+    """Modification time of one file, as a whole-second UTC timestamp."""
+
+    return dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC).replace(microsecond=0)
+
+
+def moment(value: str | None) -> dt.datetime | None:
+    """Parse an explicit ISO-8601 timestamp, or return None to fall back."""
+
+    if value is None:
+        return None
+    parsed = dt.datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.UTC)
+    return parsed.astimezone(dt.UTC).replace(microsecond=0)
+
+
 def squash(value: str) -> str:
     """Drop whitespace and Markdown backslash escapes for comparison.
 
@@ -131,10 +148,17 @@ def front_matter(pdf: pathlib.Path, pages: int) -> tuple[str, int]:
     return head, len(reader.pages)
 
 
-def build(spec: dict[str, Any], parsed_dir: pathlib.Path, pdf_dir: pathlib.Path) -> SourceRecord:
+def build(
+    spec: dict[str, Any],
+    parsed_dir: pathlib.Path,
+    pdf_dir: pathlib.Path,
+    acquired_at: dt.datetime | None,
+    parsed_at: dt.datetime | None,
+) -> SourceRecord:
     """Assemble one guide record, refusing any fact the sources do not support."""
 
-    text = (parsed_dir / spec["parsed"]).read_text(encoding="utf-8")
+    parsed_path = parsed_dir / spec["parsed"]
+    text = parsed_path.read_text(encoding="utf-8")
     pdf = pdf_dir / spec["pdf"]
     identity: dict[str, Any] = spec["identity"]
 
@@ -171,7 +195,7 @@ def build(spec: dict[str, Any], parsed_dir: pathlib.Path, pdf_dir: pathlib.Path)
         )
     limitations.append("라이선스 근거는 발행기관 확인 전이며, 매니페스트가 최종 조건을 정한다")
 
-    acquired = dt.datetime.fromtimestamp(pdf.stat().st_mtime, dt.UTC).replace(microsecond=0)
+    acquired = acquired_at or file_time(pdf)
     return SourceRecord(
         document_id=spec["document_id"],
         document_kind=DocumentKind.OFFICIAL_GUIDE,
@@ -190,7 +214,7 @@ def build(spec: dict[str, Any], parsed_dir: pathlib.Path, pdf_dir: pathlib.Path)
                 engine="chandra",
                 model="balanced",
                 output_format="md",
-                performed_at=dt.datetime.now(dt.UTC).replace(microsecond=0),
+                performed_at=parsed_at or file_time(parsed_path),
                 settings=("useOcrToImage=true", "endpoint=/api/document/analyze"),
             ),
         ),
@@ -208,9 +232,16 @@ def main() -> None:
     parser.add_argument("--parsed", type=pathlib.Path, required=True)
     parser.add_argument("--pdf-dir", type=pathlib.Path, required=True)
     parser.add_argument("--out", type=pathlib.Path, required=True)
+    # Timestamps are inputs, not observations of the build machine. Supply them
+    # and the same sources produce byte-identical records anywhere; omit them
+    # and they fall back to file modification times, which copying destroys.
+    parser.add_argument("--acquired-at", help="ISO-8601 time the PDFs were received")
+    parser.add_argument("--parsed-at", help="ISO-8601 time the PDFs were parsed")
     args = parser.parse_args()
 
-    records = [build(spec, args.parsed, args.pdf_dir) for spec in GUIDES]
+    acquired_at = moment(args.acquired_at)
+    parsed_at = moment(args.parsed_at)
+    records = [build(spec, args.parsed, args.pdf_dir, acquired_at, parsed_at) for spec in GUIDES]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="\n") as handle:
         for record in records:

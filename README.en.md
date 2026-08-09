@@ -84,6 +84,32 @@ an answer that cites a decision without naming where the text came from is not
 a complete citation. Licence terms and attribution conditions are settled by
 the release manifest.
 
+### How the release was built, and how to check it
+
+The scripts that produced it are in [scripts/](scripts/) — the guides are
+parsed from their PDFs through a document API, the decisions are mapped from
+the collected JSONL, and the manifest counts its coverage from the records
+rather than from anything typed in. Reading them is the fastest way to learn
+why a record looks the way it does.
+
+**Verify first.** `scripts/verify_release.py` recomputes every content hash,
+checks the files and coverage against the manifest, and exits non-zero on an
+error. That is the check that matters, because the manifest is what MZO signs
+and what MZO reruns against.
+
+Rebuilding is a cross-check, not a substitute. The record files are
+deterministic given the same inputs and the same declared timestamps — pass
+`--acquired-at` and `--parsed-at` and you get byte-identical output — but the
+guide text comes from a hosted parser whose engine and model can change under
+you. That is why `provenance.extraction` records which parser produced the
+text: a later run that disagrees means the parser moved, not that the release
+is wrong. If a rebuild disagrees with the manifest, report it rather than
+adopting your own output.
+
+Access to the parsing and AWS services is delivered separately. Having it does
+not widen the corpus: the frozen release stays the measurement basis, and
+rebuilding it does not make a differently built one comparable.
+
 ## OpenSearch 3.5 baseline
 
 This assessment replaces the legacy OpenSearch 2.17 baseline with **OpenSearch

@@ -71,7 +71,23 @@ def group_ids(rows: list[dict[str, Any]]) -> dict[str, str]:
     }
 
 
-def build(row: dict[str, Any], group: str, native: pathlib.Path) -> SourceRecord:
+def moment(value: str | None) -> dt.datetime | None:
+    """Parse an explicit ISO-8601 timestamp, or return None to fall back."""
+
+    if value is None:
+        return None
+    parsed = dt.datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.UTC)
+    return parsed.astimezone(dt.UTC).replace(microsecond=0)
+
+
+def build(
+    row: dict[str, Any],
+    group: str,
+    native: pathlib.Path,
+    acquired_at: dt.datetime | None,
+) -> SourceRecord:
     """Assemble one judgement record from one collected row."""
 
     serial = row["판례일련번호"]
@@ -125,9 +141,8 @@ def build(row: dict[str, Any], group: str, native: pathlib.Path) -> SourceRecord
             publisher_statement=row["source"],
             source_url=SOURCE_URL.format(serial=serial),
             source_reference=f"국가법령정보 판례일련번호 {serial} ({row['사건번호']})",
-            acquired_at=dt.datetime.fromtimestamp(artifact.stat().st_mtime, dt.UTC).replace(
-                microsecond=0
-            ),
+            acquired_at=acquired_at
+            or dt.datetime.fromtimestamp(artifact.stat().st_mtime, dt.UTC).replace(microsecond=0),
             raw_artifact_path=f"source-native/{serial}.xml",
             raw_artifact_hash="sha256:" + hashlib.sha256(payload).hexdigest(),
         ),
@@ -151,12 +166,17 @@ def main() -> None:
     parser.add_argument("--source", default="precedents.jsonl")
     parser.add_argument("--native", default="source-native")
     parser.add_argument("--out", type=pathlib.Path, required=True)
+    # Supply this and the same sources produce byte-identical records on any
+    # machine; omit it and each record falls back to its artifact's
+    # modification time, which copying the tree destroys.
+    parser.add_argument("--acquired-at", help="ISO-8601 time the precedents were collected")
     args = parser.parse_args()
 
     rows = load(args.rag_dir / args.source)
     groups = group_ids(rows)
     native = args.rag_dir / args.native
-    records = [build(row, groups[row["판례일련번호"]], native) for row in rows]
+    acquired_at = moment(args.acquired_at)
+    records = [build(row, groups[row["판례일련번호"]], native, acquired_at) for row in rows]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="\n") as handle:
