@@ -13,6 +13,11 @@ dev = [
     "pytest>=8.4,<9",
     "ruff>=0.12,<0.13",
 ]
+# MZO release tooling only, so it stays out of the default sync. Install with
+# `uv sync --group release` to run scripts/build_guide_records.py.
+release = [
+    "pypdf>=5,<7",
+]
 
 [build-system]
 requires = ["hatchling"]
