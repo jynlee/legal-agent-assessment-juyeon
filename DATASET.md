@@ -55,10 +55,11 @@ Do not enlarge the legal evidence coverage on your own. The frozen release is
 the measurement basis, and a submission measured against a corpus only you hold
 cannot be rerun or compared.
 
-Investigating the raw sources is a different matter and is allowed. Every record
-carries its source URL, and [README.en.md](README.en.md) names where the corpus
-came from. If you conclude the coverage is wrong, explain it to gyro instead of
-collecting around it: the release can change. A separate report is not expected.
+Investigating the raw sources is a different matter and is allowed. Decisions
+carry a source URL, guides carry an official publication number, and
+[README.en.md](README.en.md) names where the corpus came from. If you conclude
+the coverage is wrong, explain it to gyro instead of collecting around it: the
+release can change. A separate report is not expected.
 Until the release changes, represent the limitation in evaluation and runtime
 behavior.
 

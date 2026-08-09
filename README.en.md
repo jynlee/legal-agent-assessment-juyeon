@@ -68,9 +68,10 @@ lets MZO's rerun reproduce your numbers, and what makes a difference between
 two contributors attributable to design rather than to who collected more.
 
 **Looking at the raw sources is allowed**, which is why they are named here.
-Every record also carries its own source URL, so you can check any decision
-against the original. The API is open, but its `OC` id is issued per developer,
-so query it directly only with an id you registered yourself.
+Every decision carries its own source URL, so you can check any one of them
+against the original, and the guides carry their official publication number.
+The API is open, but its `OC` id is issued per developer, so query it directly
+only with an id you registered yourself.
 
 If you conclude the coverage is wrong — something missing, or something
 included that does not belong — **explain it to gyro. Coverage can change.** A
