@@ -54,6 +54,35 @@ This template fixes environment and integration boundaries, not retrieval
 design. It deliberately does not provide canonical chunks, an index mapping, a
 retrieval implementation, a test set, relevance labels, prompts, or pass bars.
 
+## The dataset and where it comes from
+
+The corpus has two public origins. Court decisions come from the 법제처
+국가법령정보 OPEN API at law.go.kr, searched against four target laws — 의료법,
+표시·광고의 공정화에 관한 법률, 소비자기본법, and 안마사에 관한 규칙. Decisions
+whose full text that API does not publish were not collected. The official
+guides are government publications issued by 보건복지부 and 식품의약품안전처.
+
+MZO delivers this as a frozen release, and **the frozen release is the
+measurement basis**. Build and measure your submission from it. That is what
+lets MZO's rerun reproduce your numbers, and what makes a difference between
+two contributors attributable to design rather than to who collected more.
+
+**Looking at the raw sources is allowed**, which is why they are named here.
+Every record also carries its own source URL, so you can check any decision
+against the original. The API is open, but its `OC` id is issued per developer,
+so query it directly only with an id you registered yourself.
+
+If you conclude the coverage is wrong — something missing, or something
+included that does not belong — **explain it to gyro. Coverage can change.** A
+separate report is not expected; a clear explanation is enough. What is not
+useful is quietly collecting around the release, because then your reported
+numbers describe a corpus nobody else has.
+
+Every record carries the publisher statement its source requires. Surface it:
+an answer that cites a decision without naming where the text came from is not
+a complete citation. Licence terms and attribution conditions are settled by
+the release manifest.
+
 ## OpenSearch 3.5 baseline
 
 This assessment replaces the legacy OpenSearch 2.17 baseline with **OpenSearch

@@ -50,8 +50,23 @@ You may, with reproducible versioned code:
 - build local or managed indexes;
 - create test queries and relevance judgements that are never indexed.
 
-You may not enlarge the legal evidence coverage. If supplied evidence is
-insufficient, represent that limitation in evaluation and runtime behavior.
+Do not enlarge the legal evidence coverage on your own. The frozen release is
+the measurement basis, and a submission measured against a corpus only you hold
+cannot be rerun or compared.
+
+Investigating the raw sources is a different matter and is allowed. Every record
+carries its source URL, and [README.en.md](README.en.md) names where the corpus
+came from. If you conclude the coverage is wrong, explain it to gyro instead of
+collecting around it: the release can change. A separate report is not expected.
+Until the release changes, represent the limitation in evaluation and runtime
+behavior.
+
+## Attribution
+
+Every record carries the publisher statement its source requires, and the
+manifest is authoritative for licence terms and attribution conditions. An
+answer that quotes supplied text must make its origin visible; naming a case
+number is identification, not attribution.
 
 ## Required lineage
 
