@@ -50,7 +50,7 @@ Every record carries these, regardless of kind:
 | `text` | The supplied source text, as delivered |
 | `contentHash` | `sha256:<64 lowercase hex>` of `text` |
 | `identity` | Citation coordinates, discriminated by `documentKind` |
-| `provenance` | Provider, publisher statement, URL, reference, acquisition time, optional retained artifact |
+| `provenance` | Provider, publisher statement, URL, reference, acquisition time, text extraction, optional retained artifact |
 | `admission` | `exempt`, `licensed`, or `restricted` |
 | `attribution` | Required when `admission` is `licensed` |
 | `usage` | `index_eligible` or `evaluation_only` |
@@ -206,24 +206,29 @@ Paragraph structure is carried by literal `<br/>` markup, present in nearly
 every record. Newline characters are present in a minority. Anything that
 splits on `\n` will see most judgements as one unbroken line.
 
-Guides are delivered as extracted PDF text and are not uniform: extraction
-quality depends on how each PDF was produced, and inter-word spacing survives
-in some and not others.
+Guide text is Markdown produced by a document parser reading the PDF pages, not
+a PDF text layer. `provenance.extraction` names the tool, engine, model, and
+settings that produced it, because that tool is versioned software: upgrade it
+and the text moves, which moves `contentHash`. You do not need to run it — MZO
+runs it once and delivers the result, so every contributor holds the same guide
+bytes.
 
-A significant part of the violation examples in the medical advertising guide
-are images and do not appear in the text at all. This matters more than a
-formatting gap: the concrete examples are why the guide was admitted, since
-they are what carries an abstract requirement across to a specific advertising
-phrase. The affected records state the gap in `limitations`.
+What that gives you: headings survive as headings, tables arrive as Markdown
+tables rather than a flattened cell stream, page position is marked inline as
+`#### [PAGE_NUMBER]: N`, and running headers and page numbers are dropped
+instead of being interleaved with the body.
 
-MZO supplies a separate OCR solution rather than transcribing the images into
-the release. Running it and deciding what to do with the result is yours.
-Recovering text from a supplied document is not adding corpus data, so it is
-permitted; the output is a derived artifact of your own making, so version it,
-keep it traceable to the record it came from, and describe the method and its
-error rate alongside your retrieval claims. Text you produced and text MZO
-delivered are not the same evidence, and a citation should not present them as
-though they were.
+What it does not give you: **the advertisement screenshots are not text.** They
+arrive as Markdown image references such as `![](<hash>_img.jpg)` at the point
+where the visual sits. The surrounding table cells — advertising medium,
+treatment field, what the violation was — are text and are present; the
+screenshot of the advertisement itself is not, and asking the parser to OCR
+embedded images does not change that.
+
+Read the placeholders as a map rather than as noise. Each one marks a place
+where the guide showed evidence the corpus cannot quote, so a chunk containing
+one is describing a case whose exhibit is missing. The affected records state
+this in `limitations`.
 
 MZO does not publish a chunk size, a chunking strategy, or retrieval results.
 Deciding those from the data is the assessment.
@@ -277,8 +282,10 @@ passes while the leakage remains.
   the release and are marked `inDefaultCorpus: false`. Including them is your
   call, as described above.
 - No further law is being collected. The target law coverage is closed.
-- The guide images are not transcribed into the release. MZO supplies an OCR
-  solution; extraction is contributor work.
+- Guide text is parsed once by MZO and delivered with the release, so the guide
+  records are byte-identical for everyone. `provenance.extraction` records the
+  parser. The advertisement screenshots stay as image references; no OCR
+  recovers them.
 
 ## Open items
 

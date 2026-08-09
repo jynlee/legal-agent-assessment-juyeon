@@ -24,6 +24,7 @@ from legal_agent_assessment.dataset import (
     SourceAdmission,
     SourceProvenance,
     SourceRecord,
+    TextExtraction,
     UsageDisposition,
     default_corpus,
 )
@@ -64,6 +65,7 @@ __all__ = [
     "SourceAdmission",
     "SourceProvenance",
     "SourceRecord",
+    "TextExtraction",
     "UsageDisposition",
     "assert_supplied_by_manifest",
     "content_hash",

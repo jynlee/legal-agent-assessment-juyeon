@@ -25,10 +25,11 @@ Records whose subject matter sits away from this agent's questions are supplied
 but marked outside the default corpus. Including them is a record-selection
 decision you may make and explain.
 
-Some violation examples in the medical advertising guide are images rather than
-text. MZO supplies a separate OCR solution instead of transcribing them into the
-release; recovering that text is contributor work and its output is a derived
-artifact, not delivered evidence.
+Guide text is produced once by MZO with a document parser and delivered with the
+release, so guide records are byte-identical for everyone and the parser is
+recorded on each record. The advertisement screenshots inside the guides remain
+image references rather than text; no OCR recovers them, and the affected
+records say so.
 
 Final counts are intentionally not duplicated in this template. The signed
 release manifest wins over examples, planning notes, and prose.

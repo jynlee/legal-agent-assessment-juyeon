@@ -117,6 +117,25 @@ class LawLinkage(DatasetModel):
     strength: LinkageStrength
 
 
+class TextExtraction(DatasetModel):
+    """Which tool turned a source artifact into the supplied text.
+
+    Text that arrives from an API is the source's own bytes. Text recovered
+    from a PDF is a tool's reading of a page, and the tool is versioned
+    software whose output moves when it is upgraded — a different engine or
+    model produces different text, which produces a different `contentHash`.
+    Recording it is what makes the extraction reproducible rather than merely
+    asserted.
+    """
+
+    tool: str = Field(min_length=1)
+    engine: str | None = None
+    model: str | None = None
+    output_format: str | None = None
+    performed_at: datetime
+    settings: tuple[str, ...] = ()
+
+
 class SourceProvenance(DatasetModel):
     """Where the supplied text came from and what was retained."""
 
@@ -125,6 +144,7 @@ class SourceProvenance(DatasetModel):
     source_url: str | None = None
     source_reference: str = Field(min_length=1)
     acquired_at: datetime
+    extraction: TextExtraction | None = None
     raw_artifact_path: str | None = None
     raw_artifact_hash: str | None = None
 
@@ -262,6 +282,9 @@ class SourceRecord(DatasetModel):
             raise ValueError("restricted material cannot be index-eligible")
         if self.usage is UsageDisposition.EVALUATION_ONLY and self.in_default_corpus:
             raise ValueError("evaluation-only material is not part of the default corpus")
+
+        if self.document_kind is DocumentKind.OFFICIAL_GUIDE and self.provenance.extraction is None:
+            raise ValueError("guide text is a parser output and must record its extraction")
         if self.admission is SourceAdmission.LICENSED and not self.attribution:
             raise ValueError("licensed material requires an attribution")
 

@@ -26,6 +26,7 @@ from legal_agent_assessment import (
     SourceAdmission,
     SourceProvenance,
     SourceRecord,
+    TextExtraction,
     UsageDisposition,
     content_hash,
     default_corpus,
@@ -107,7 +108,17 @@ def guide(
         text=text,
         content_hash=content_hash(text),
         identity=GuideIdentity.model_validate(identity),
-        provenance=provenance(provider="보건복지부"),
+        provenance=provenance(
+            provider="보건복지부",
+            extraction=TextExtraction(
+                tool="MZO Noesis document-parsing API",
+                engine="chandra",
+                model="balanced",
+                output_format="md",
+                performed_at=ACQUIRED,
+                settings=("useOcrToImage=true",),
+            ),
+        ),
         admission=SourceAdmission.LICENSED,
         attribution="보건복지부",
         usage=UsageDisposition.INDEX_ELIGIBLE,
@@ -228,6 +239,28 @@ class TestSourceRecord:
         assert isinstance(cosmetics.identity, GuideIdentity)
         assert cosmetics.identity.official_number_scheme is GuideNumberScheme.GUIDANCE_DOCUMENT
         assert cosmetics.identity.legally_binding is False
+
+    def test_guide_text_must_name_the_parser_that_produced_it(self) -> None:
+        """A guide's text is a tool's reading of a page, not the source's bytes."""
+
+        wire = guide().model_dump(by_alias=True, mode="json")
+        wire["provenance"]["extraction"] = None
+
+        with pytest.raises(ValidationError, match="must record its extraction"):
+            SourceRecord.model_validate(wire)
+
+    def test_a_judgement_needs_no_extraction_record(self) -> None:
+        record = judgement()
+
+        assert record.provenance.extraction is None
+
+    def test_extraction_settings_survive_the_round_trip(self) -> None:
+        restored = SourceRecord.model_validate(guide().model_dump(by_alias=True, mode="json"))
+
+        extraction = restored.provenance.extraction
+        assert extraction is not None
+        assert extraction.engine == "chandra"
+        assert extraction.settings == ("useOcrToImage=true",)
 
     def test_a_guide_publication_date_keeps_the_precision_its_source_states(self) -> None:
         assert guide(issued_on="2099").identity.issued_on == "2099"
