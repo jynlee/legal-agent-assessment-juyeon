@@ -98,13 +98,27 @@ error. That is the check that matters, because the manifest is what MZO signs
 and what MZO reruns against.
 
 Rebuilding is a cross-check, not a substitute. The record files are
-deterministic given the same inputs and the same declared timestamps — pass
-`--acquired-at` and `--parsed-at` and you get byte-identical output — but the
-guide text comes from a hosted parser whose engine and model can change under
-you. That is why `provenance.extraction` records which parser produced the
-text: a later run that disagrees means the parser moved, not that the release
-is wrong. If a rebuild disagrees with the manifest, report it rather than
-adopting your own output.
+deterministic given the same inputs and the same declared timestamps:
+
+```powershell
+uv run python scripts/build_judgement_records.py --rag-dir <dir> `
+    --out judgements.jsonl --acquired-at 2026-08-08T14:42:00Z
+uv run python scripts/build_guide_records.py --parsed <parsed> --pdf-dir <pdfs> `
+    --out guides.jsonl --acquired-at 2026-08-08T14:42:00Z --parsed-at 2026-08-09T01:52:00Z
+```
+
+Those two timestamps are when MZO received the sources and when it parsed the
+guides. They are inputs rather than facts about your machine, and they have to
+be passed because a record carries them: leave them out and each build stamps
+its own clock and file times, producing records that differ from the release in
+nothing but when they were made. Pass the values above and the files hash to
+what the manifest declares.
+
+The guide text itself comes from a hosted parser whose engine and model can
+change under you. That is why `provenance.extraction` records which parser
+produced the text: a later run that disagrees means the parser moved, not that
+the release is wrong. If a rebuild disagrees with the manifest, report it
+rather than adopting your own output.
 
 Access to the parsing and AWS services is delivered separately. Having it does
 not widen the corpus: the frozen release stays the measurement basis, and
