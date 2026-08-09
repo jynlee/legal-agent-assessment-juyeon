@@ -96,21 +96,18 @@ decisions alone cannot answer, and answer those with
 
 MZO delivers this as a frozen release, and **the frozen release is the
 measurement basis**. Build and measure your submission from it. That is what
-lets MZO's rerun reproduce your numbers, and what makes a difference between
-two contributors attributable to design rather than to who collected more.
+lets MZO's rerun reproduce your numbers.
 
-**Looking at the raw sources is allowed**, which is why they are named here.
+**You may look at the raw sources**, which is why their origins are named here.
 Every record carries its own source URL, so you can check any decision against
 the original. The API is open, but its `OC` id is issued per developer, so
 query it directly only with an id you registered yourself.
 
 If you conclude the coverage is wrong — something missing, or something
-included that does not belong — **explain it to gyro. Coverage can change.** A
-separate report is not expected; a clear explanation is enough. What is not
-useful is quietly collecting around the release, because then your reported
-numbers describe a corpus nobody else has.
+included that does not belong — **tell gyro. Coverage can change.**
 
-Every record carries the publisher statement its source requires. Surface it:
+Every record carries the publisher statement its source requires. Include it
+in the answer:
 an answer that cites a decision without naming where the text came from is not
 a complete citation. Licence terms and attribution conditions are settled by
 the release manifest.
@@ -123,14 +120,12 @@ records rather than from anything typed in. Reading them is the fastest way to
 learn why a record looks the way it does. The guide tooling is kept alongside
 them for the release that adds guidance if permission arrives.
 
-**Verify first.** Check the delivered archive's SHA-256 as its `DELIVERY.md`
-instructs. After extraction, `scripts/verify_release.py` recomputes every record
-content hash, checks record counts and coverage against the manifest, and exits
-non-zero on an error. These checks establish which frozen release you received
-and whether its records remain valid for MZO's rerun.
-
-Rebuilding is a cross-check, not a substitute. The record files are
-deterministic given the same inputs and the same declared timestamps:
+**Please verify the release before starting work.** Check the delivered
+archive's SHA-256 as its `DELIVERY.md` instructs. After extraction,
+`scripts/verify_release.py` recomputes every record content hash, checks record
+counts and coverage against the manifest, and exits non-zero on an error. These
+checks establish which frozen release you received and whether its records
+remain valid for MZO's rerun.
 
 ```powershell
 uv run python scripts/build_judgement_records.py --rag-dir <dir> `
@@ -141,14 +136,9 @@ That timestamp is when MZO received the sources. It is an input rather than a
 fact about your machine, and it has to be passed because a record carries it:
 leave it out and each build stamps its own file times, producing records that
 differ from the release in nothing but when they were made. Pass the value
-above and the file hashes to what the manifest declares.
+above and the file hashes match what the manifest declares.
 
-If a rebuild disagrees with the manifest, report it rather than adopting your
-own output.
-
-Access to the parsing and AWS services is delivered separately. Having it does
-not widen the corpus: the frozen release stays the measurement basis, and
-rebuilding it does not make a differently built one comparable.
+Access to the parsing and AWS services is delivered separately.
 
 ## OpenSearch 3.5 baseline
 
