@@ -27,6 +27,30 @@
 | [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | 관리형 도메인 접근과 공유 자격증명 규칙 |
 | [AGENTS.md](AGENTS.md) | — | 코딩 에이전트용 지침 ([CLAUDE.md](CLAUDE.md)가 이 파일을 가리킵니다) |
 
+## 사전 요구사항
+
+도구 두 개면 되고, **둘 다 Python이 아닙니다.**
+
+**uv** 가 아래의 모든 명령을 실행합니다.
+[공식 설치 안내](https://docs.astral.sh/uv/getting-started/installation/)를 따르십시오.
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Python은 직접 설치하지 마십시오.** `pyproject.toml`이 인터프리터를 3.12로 고정하고
+있고, `uv sync`가 **시스템 Python이 무엇이든 상관없이** 그 버전을 내려받아 사용합니다.
+`python`이 3.10인 머신에서도 시스템 설치를 건드리지 않고 3.12로 돌아갑니다. sync 후
+`uv run python -V`로 확인하십시오.
+
+**Docker Desktop** 이 `docker compose up -d opensearch`가 띄우는 로컬 OpenSearch 3.5
+컨테이너를 제공합니다. 그 명령과 `smoke_opensearch.py` 실행 전에 **데몬이 떠 있어야
+합니다.**
+
 ## 시작하기
 
 1. [ASSIGNMENT.md](ASSIGNMENT.md)를 읽습니다.

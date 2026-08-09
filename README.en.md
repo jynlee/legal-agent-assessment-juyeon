@@ -28,6 +28,31 @@ frozen legal dataset
 | [OPENSEARCH_ACCESS.md](OPENSEARCH_ACCESS.md) | [OPENSEARCH_ACCESS.ko.md](OPENSEARCH_ACCESS.ko.md) | Managed domain access and shared-credential rules |
 | [AGENTS.md](AGENTS.md) | — | Instructions for coding agents ([CLAUDE.md](CLAUDE.md) points here) |
 
+## Prerequisites
+
+Two tools, and neither is Python.
+
+**uv** runs everything below. Install it from
+[the official instructions](https://docs.astral.sh/uv/getting-started/installation/):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Do not install Python yourself.** `pyproject.toml` pins the interpreter to
+3.12, and `uv sync` downloads and uses exactly that regardless of what your
+system Python is — a machine whose `python` is 3.10 runs this project on 3.12
+without touching the system install. Confirm with `uv run python -V` after
+syncing.
+
+**Docker Desktop** provides the local OpenSearch 3.5 container that
+`docker compose up -d opensearch` starts. The daemon has to be running before
+that command and before `smoke_opensearch.py`.
+
 ## Start here
 
 1. Read [ASSIGNMENT.md](ASSIGNMENT.md).
