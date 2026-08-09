@@ -16,20 +16,28 @@ Before implementation:
 5. Report a mismatch immediately instead of repairing the release locally.
 
 The final release reflects MZO's approved dataset review. It supplies citable
-law.go.kr cases and approved official guides. Duplicated law PDFs and AI Hub 452
-are excluded. AI Hub 71874 is not retrieval evidence and may be used for
-evaluation only when MZO confirms that its restricted-use conditions are
-satisfied.
+law.go.kr cases. Duplicated law PDFs and AI Hub 452 are excluded. AI Hub 71874
+is not retrieval evidence and may be used for evaluation only when MZO confirms
+that its restricted-use conditions are satisfied.
 
 Records whose subject matter sits away from this agent's questions are supplied
 but marked outside the default corpus. Including them is a record-selection
 decision you may make and explain.
 
-Guide text is produced once by MZO with a document parser and delivered with the
-release, so guide records are byte-identical for everyone and the parser is
-recorded on each record. The advertisement screenshots inside the guides remain
-image references rather than text; no OCR recovers them, and the affected
-records say so.
+**The official guides are not in this release.** They were approved on their
+content and then withdrawn on their licence: one is published under terms that
+forbid commercial use and derivative works, and the other's terms could not be
+confirmed. Indexing either would mean normalizing and chunking a work whose
+licence does not allow it. The schema still defines `official_guide` because
+MZO is pursuing separate permission, so read
+`coverage_by_document_kind` in the manifest rather than assuming which kinds
+arrived.
+
+This costs the release something real. Guidance is where an abstract
+requirement becomes a judgement about a specific advertising phrase, and the
+decisions alone do not carry that. Where an answer needs it, the honest
+response is `insufficient_evidence`, not a confident answer built from
+statutes and case law that do not reach the question.
 
 Final counts are intentionally not duplicated in this template. The signed
 release manifest wins over examples, planning notes, and prose.

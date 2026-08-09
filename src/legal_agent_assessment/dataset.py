@@ -55,10 +55,12 @@ class DatasetModel(BaseModel):
 
 
 class DocumentKind(StrEnum):
-    """Kinds that actually occur in the release.
+    """Kinds this contract defines. Not every kind occurs in every release.
 
-    A new kind is a schema change, not a new enum value smuggled into a
-    delivery: each kind carries its own required citation identity below.
+    Each kind carries its own required citation identity below, so adding one
+    is a schema change rather than a new enum value smuggled into a delivery.
+    Which kinds a particular release actually contains is stated by that
+    release's `coverage_by_document_kind` — read it rather than assuming.
     """
 
     JUDGEMENT = "judgement"

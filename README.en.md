@@ -59,8 +59,15 @@ retrieval implementation, a test set, relevance labels, prompts, or pass bars.
 The corpus has two public origins. Court decisions come from the 법제처
 국가법령정보 OPEN API at law.go.kr, searched against four target laws — 의료법,
 표시·광고의 공정화에 관한 법률, 소비자기본법, and 안마사에 관한 규칙. Decisions
-whose full text that API does not publish were not collected. The official
-guides are government publications issued by 보건복지부 and 식품의약품안전처.
+whose full text that API does not publish were not collected.
+
+Official guidance from 보건복지부 and 식품의약품안전처 was approved on content
+and then withdrawn on licence: one is published under terms forbidding
+commercial use and derivative works, the other's terms could not be confirmed.
+Neither is in the release. Guidance is where an abstract requirement becomes a
+judgement about a specific advertising phrase, so expect questions the
+decisions alone cannot answer, and answer those with
+`insufficient_evidence`.
 
 MZO delivers this as a frozen release, and **the frozen release is the
 measurement basis**. Build and measure your submission from it. That is what
@@ -68,10 +75,9 @@ lets MZO's rerun reproduce your numbers, and what makes a difference between
 two contributors attributable to design rather than to who collected more.
 
 **Looking at the raw sources is allowed**, which is why they are named here.
-Every decision carries its own source URL, so you can check any one of them
-against the original, and the guides carry their official publication number.
-The API is open, but its `OC` id is issued per developer, so query it directly
-only with an id you registered yourself.
+Every record carries its own source URL, so you can check any decision against
+the original. The API is open, but its `OC` id is issued per developer, so
+query it directly only with an id you registered yourself.
 
 If you conclude the coverage is wrong — something missing, or something
 included that does not belong — **explain it to gyro. Coverage can change.** A
@@ -86,11 +92,11 @@ the release manifest.
 
 ### How the release was built, and how to check it
 
-The scripts that produced it are in [scripts/](scripts/) — the guides are
-parsed from their PDFs through a document API, the decisions are mapped from
-the collected JSONL, and the manifest counts its coverage from the records
-rather than from anything typed in. Reading them is the fastest way to learn
-why a record looks the way it does.
+The scripts that produced it are in [scripts/](scripts/) — the decisions are
+mapped from the collected JSONL, and the manifest counts its coverage from the
+records rather than from anything typed in. Reading them is the fastest way to
+learn why a record looks the way it does. The guide tooling is kept alongside
+them for the release that adds guidance if permission arrives.
 
 **Verify first.** `scripts/verify_release.py` recomputes every content hash,
 checks the files and coverage against the manifest, and exits non-zero on an
@@ -103,22 +109,16 @@ deterministic given the same inputs and the same declared timestamps:
 ```powershell
 uv run python scripts/build_judgement_records.py --rag-dir <dir> `
     --out judgements.jsonl --acquired-at 2026-08-08T14:42:00Z
-uv run python scripts/build_guide_records.py --parsed <parsed> --pdf-dir <pdfs> `
-    --out guides.jsonl --acquired-at 2026-08-08T14:42:00Z --parsed-at 2026-08-09T01:52:00Z
 ```
 
-Those two timestamps are when MZO received the sources and when it parsed the
-guides. They are inputs rather than facts about your machine, and they have to
-be passed because a record carries them: leave them out and each build stamps
-its own clock and file times, producing records that differ from the release in
-nothing but when they were made. Pass the values above and the files hash to
-what the manifest declares.
+That timestamp is when MZO received the sources. It is an input rather than a
+fact about your machine, and it has to be passed because a record carries it:
+leave it out and each build stamps its own file times, producing records that
+differ from the release in nothing but when they were made. Pass the value
+above and the file hashes to what the manifest declares.
 
-The guide text itself comes from a hosted parser whose engine and model can
-change under you. That is why `provenance.extraction` records which parser
-produced the text: a later run that disagrees means the parser moved, not that
-the release is wrong. If a rebuild disagrees with the manifest, report it
-rather than adopting your own output.
+If a rebuild disagrees with the manifest, report it rather than adopting your
+own output.
 
 Access to the parsing and AWS services is delivered separately. Having it does
 not widen the corpus: the frozen release stays the measurement basis, and

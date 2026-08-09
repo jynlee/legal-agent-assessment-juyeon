@@ -119,6 +119,13 @@ you may split.
 
 ### Guide identity
 
+**No release currently contains this kind.** The official guides were approved
+on their content and withdrawn on their licence, and MZO is pursuing separate
+permission. The contract keeps the kind defined so that granting permission
+adds records rather than changing the schema. `coverage_by_document_kind` in
+the manifest is what tells you which kinds a release actually holds; code
+against it rather than against this section.
+
 `issuingAuthority`, `issuingDivision`, `officialNumber`,
 `officialNumberScheme`, `edition`, `issuedOn`, `pageCount`, `legallyBinding`,
 `nonBindingStatement`.
@@ -206,29 +213,12 @@ Paragraph structure is carried by literal `<br/>` markup, present in nearly
 every record. Newline characters are present in a minority. Anything that
 splits on `\n` will see most judgements as one unbroken line.
 
-Guide text is Markdown produced by a document parser reading the PDF pages, not
-a PDF text layer. `provenance.extraction` names the tool, engine, model, and
-settings that produced it, because that tool is versioned software: upgrade it
-and the text moves, which moves `contentHash`. You do not need to run it — MZO
-runs it once and delivers the result, so every contributor holds the same guide
-bytes.
-
-What that gives you: headings survive as headings, tables arrive as Markdown
-tables rather than a flattened cell stream, page position is marked inline as
-`#### [PAGE_NUMBER]: N`, and running headers and page numbers are dropped
-instead of being interleaved with the body.
-
-What it does not give you: **the advertisement screenshots are not text.** They
-arrive as Markdown image references such as `![](<hash>_img.jpg)` at the point
-where the visual sits. The surrounding table cells — advertising medium,
-treatment field, what the violation was — are text and are present; the
-screenshot of the advertisement itself is not, and asking the parser to OCR
-embedded images does not change that.
-
-Read the placeholders as a map rather than as noise. Each one marks a place
-where the guide showed evidence the corpus cannot quote, so a chunk containing
-one is describing a case whose exhibit is missing. The affected records state
-this in `limitations`.
+Guide text, when a release carries it, is Markdown produced by a document
+parser reading the PDF pages rather than a PDF text layer.
+`provenance.extraction` names the tool, engine, model, and settings, because
+that tool is versioned software: upgrade it and the text moves, which moves
+`contentHash`. MZO runs it once and delivers the result, so no contributor
+needs the parser and everyone holds the same bytes.
 
 MZO does not publish a chunk size, a chunking strategy, or retrieval results.
 Deciding those from the data is the assessment.
@@ -282,16 +272,14 @@ passes while the leakage remains.
   the release and are marked `inDefaultCorpus: false`. Including them is your
   call, as described above.
 - No further law is being collected. The target law coverage is closed.
-- Guide text is parsed once by MZO and delivered with the release, so the guide
-  records are byte-identical for everyone. `provenance.extraction` records the
-  parser. The advertisement screenshots stay as image references; no OCR
-  recovers them.
+- The official guides are out of the release on licence grounds, not content
+  grounds. The kind stays defined; the manifest's coverage says what arrived.
 
 ## Open items
 
-- The guides are approved but were not present in the candidate JSONL that this
-  schema was measured against. `official_guide` is defined from the approved
-  source documents themselves; the delivered records are expected to conform.
+- MZO is seeking separate permission for the official guides. If it is granted
+  they enter a later release as `official_guide` records; the schema does not
+  change, because the kind is already defined.
 - Evaluation-only material enters the release only once MZO confirms that its
   restricted-use conditions are satisfied, as [DATASET.md](DATASET.md) states.
   The schema is ready for it either way: `restricted` admission with
