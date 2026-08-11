@@ -22,6 +22,7 @@ from legal_agent_assessment.dataset_validation import (
     summarize,
     validate_release,
 )
+from legal_agent_assessment.record_selection import default_corpus_sentinel_findings
 
 
 def main() -> None:
@@ -59,6 +60,14 @@ def main() -> None:
     for finding in blocking[:20]:
         print(f"  ERROR {finding.code}: {finding.message}")
 
+    # Generic sentinel findings are warnings (they describe the corpus in
+    # general); this project's policy is stricter for the records it actually
+    # indexes. See reports/decisions/2026-08-10-record-selection-and-document-kind-policy.md.
+    default_corpus_sentinels = default_corpus_sentinel_findings(records, findings)
+    print(f"\nsentinels inside default corpus: {len(default_corpus_sentinels)}")
+    for finding in default_corpus_sentinels[:20]:
+        print(f"  BLOCKING {finding.code}: {finding.message}")
+
     indexable = select_index_inputs(records)
     baseline = [record for record in records if record.in_default_corpus]
     guides = [r for r in records if r.document_kind is DocumentKind.OFFICIAL_GUIDE]
@@ -74,8 +83,9 @@ def main() -> None:
         f"{sum(1 for r in judgements if r.provenance.raw_artifact_path)}/{len(judgements)}"
     )
 
-    if blocking or mismatched:
-        raise SystemExit(f"release is not deliverable: {len(blocking) + len(mismatched)} error(s)")
+    if blocking or mismatched or default_corpus_sentinels:
+        problems = len(blocking) + len(mismatched) + len(default_corpus_sentinels)
+        raise SystemExit(f"release is not deliverable: {problems} error(s)")
     print("\nno blocking errors", file=sys.stderr)
 
 

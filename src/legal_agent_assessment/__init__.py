@@ -40,6 +40,10 @@ from legal_agent_assessment.dataset_validation import (
     summarize,
     validate_release,
 )
+from legal_agent_assessment.record_selection import (
+    default_corpus_sentinel_findings,
+    select_records_for_indexing,
+)
 
 __all__ = [
     "AnswerStatus",
@@ -72,8 +76,10 @@ __all__ = [
     "assert_supplied_by_manifest",
     "content_hash",
     "default_corpus",
+    "default_corpus_sentinel_findings",
     "errors",
     "select_index_inputs",
+    "select_records_for_indexing",
     "summarize",
     "validate_release",
 ]
