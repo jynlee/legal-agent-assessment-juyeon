@@ -125,6 +125,55 @@ KNOWN_GAPS = (
     "linkedLaws는 본문 검색 결과이며 core가 아닌 연계는 그 법령에 관한 판단이 아니다",
 )
 
+V2_DISPOSITIONS = (
+    DispositionNote(
+        subject="핵심 8개 법령의 현행 법률·시행령·시행규칙·별표",
+        included=True,
+        reason="gyro가 승인한 dataset-v2 법령 범위이며 조문·별표 단위로 제공한다",
+    ),
+    DispositionNote(
+        subject="핵심 8개 법령과 피부미용·에스테틱 도메인의 교집합 판례",
+        included=True,
+        reason=(
+            "deterministic selection policy가 include로 판정한 판례와, 그 review 후보 중 "
+            "LLM 근거 검증 뒤 gyro가 명시적으로 승인한 15건의 전문 공개 판례를 제공한다"
+        ),
+    ),
+    DispositionNote(
+        subject="판례 selection의 review 및 exclude 후보",
+        included=False,
+        reason="raw artifact와 selection ledger에는 보존하지만 corpus 및 index에는 넣지 않는다",
+    ),
+    DispositionNote(
+        subject="의료기사 등에 관한 법률·전자상거래법·법령해석례·행정규칙·공식 가이드",
+        included=False,
+        reason="2026-08-11 gyro가 고정한 dataset-v2 범위 밖이며 후속 release 후보로 남긴다",
+    ),
+    DispositionNote(
+        subject="과거 연혁 법령",
+        included=False,
+        reason="dataset-v2는 수집 시점의 현행 법령만 제공한다",
+    ),
+)
+
+V2_LICENCES = (
+    LicenceNote(
+        subject="법제처 국가법령정보 공동활용 법령 및 판례",
+        terms="레코드의 법제처 출처 표기를 답변과 재사용 산출물에 드러낸다",
+        attribution_required=True,
+    ),
+)
+
+V2_KNOWN_GAPS = (
+    "현행 법령만 제공하므로 판례 선고 당시 적용된 과거 조문과 다를 수 있다",
+    (
+        "review 판례는 자동 편입하지 않는다. LLM 검토 결과도 사람의 명시적 승인 "
+        "없이는 corpus record가 아니다"
+    ),
+    "법령해석례·고시·예규·훈령 및 공식 가이드는 dataset-v2 범위에 포함되지 않는다",
+    "법제처가 전문을 제공하지 않는 판례 검색 결과는 인용 가능한 corpus record가 아니다",
+)
+
 
 def read(path: pathlib.Path) -> tuple[list[SourceRecord], ReleaseFile]:
     """Parse one record file and describe it for the manifest."""
@@ -161,6 +210,20 @@ def describe_artifacts(path: pathlib.Path, contained: int) -> ReleaseFile:
     )
 
 
+def describe_metadata(path: pathlib.Path) -> ReleaseFile:
+    """Describe a line-oriented audit file that is not corpus evidence."""
+
+    raw = path.read_bytes()
+    rows = sum(bool(line.strip()) for line in raw.decode("utf-8").splitlines())
+    return ReleaseFile(
+        path=path.name,
+        kind=ReleaseFileKind.METADATA,
+        sha256="sha256:" + hashlib.sha256(raw).hexdigest(),
+        byte_size=len(raw),
+        record_count=rows,
+    )
+
+
 def coverage(values: collections.Counter[str]) -> tuple[CoverageEntry, ...]:
     """Turn counted values into manifest coverage entries."""
 
@@ -179,10 +242,13 @@ def main() -> None:
         "--artifact-archive",
         help="retained source artifacts referenced by rawArtifactPath, e.g. source-native.tar.gz",
     )
+    parser.add_argument("--artifact-count", type=int, help="all raw artifacts in the archive")
+    parser.add_argument("--metadata-file", action="append", default=[])
     parser.add_argument("--dataset-version", required=True)
     parser.add_argument("--schema-version", default="source-record-v1")
     parser.add_argument("--delivery-id", required=True)
     parser.add_argument("--delivered-by", default="MZO")
+    parser.add_argument("--frozen-at", help="fixed ISO-8601 timestamp; defaults to the build time")
     parser.add_argument("--out", type=pathlib.Path, required=True)
     args = parser.parse_args()
 
@@ -200,14 +266,27 @@ def main() -> None:
             for record in records
             if record.provenance.raw_artifact_path
         }
-        archive = describe_artifacts(args.rag_dir / args.artifact_archive, len(retained))
+        contained = args.artifact_count if args.artifact_count is not None else len(retained)
+        archive = describe_artifacts(args.rag_dir / args.artifact_archive, contained)
         files.append(archive)
-        print(f"{archive.path:20s} {len(retained):5d} artifacts {archive.byte_size:>11,} bytes")
+        print(f"{archive.path:20s} {contained:5d} artifacts {archive.byte_size:>11,} bytes")
+
+    for name in args.metadata_file:
+        described = describe_metadata(args.rag_dir / name)
+        files.append(described)
+        print(f"{name:20s} {described.record_count:5d} metadata rows")
+
+    is_v2 = args.schema_version == "source-record-v2"
+    frozen_at = (
+        dt.datetime.fromisoformat(args.frozen_at.replace("Z", "+00:00"))
+        if args.frozen_at
+        else dt.datetime.now(dt.UTC).replace(microsecond=0)
+    )
 
     manifest = ReleaseManifest(
         dataset_version=args.dataset_version,
         schema_version=args.schema_version,
-        frozen_at=dt.datetime.now(dt.UTC).replace(microsecond=0),
+        frozen_at=frozen_at,
         delivery_id=args.delivery_id,
         delivered_by=args.delivered_by,
         files=tuple(files),
@@ -218,9 +297,9 @@ def main() -> None:
             collections.Counter(record.provenance.provider for record in records)
         ),
         coverage_by_usage=coverage(collections.Counter(str(record.usage) for record in records)),
-        dispositions=DISPOSITIONS,
-        licences=LICENCES,
-        known_gaps=KNOWN_GAPS,
+        dispositions=V2_DISPOSITIONS if is_v2 else DISPOSITIONS,
+        licences=V2_LICENCES if is_v2 else LICENCES,
+        known_gaps=V2_KNOWN_GAPS if is_v2 else KNOWN_GAPS,
     )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

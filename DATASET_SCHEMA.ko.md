@@ -44,7 +44,7 @@ MZO는 **입력** 측을 고정합니다. 출처 신원, 출처 이력(provenanc
 | --- | --- |
 | `documentId` | 전달된 문서 하나의 안정적·유일한 신원 |
 | `sourceGroupId` | 분할 안전(split safety). 같은 판결인 레코드들이 하나를 공유함 |
-| `documentKind` | `judgement` 또는 `official_guide` |
+| `documentKind` | `statute`, `judgement` 또는 `official_guide` |
 | `title` | 사람이 읽는 이름 |
 | `text` | 전달된 그대로의 원문 |
 | `contentHash` | `text`의 `sha256:<소문자 hex 64자>` |
@@ -57,8 +57,9 @@ MZO는 **입력** 측을 고정합니다. 출처 신원, 출처 이력(provenanc
 | `linkedLaws` | 대상 법령과 이 레코드가 각 법령에 대해 갖는 관계 |
 | `limitations` | 알려진 결손. 고치지 않고 명시함 |
 
-**레코드 하나는 소스 문서 하나 전체입니다.** 108쪽짜리 가이드도 전문을 담은 레코드
-하나로 도착합니다. 이를 인용 단위로 쪼개는 것이 청킹입니다.
+레코드 하나는 독립적으로 인용 가능한 소스 단위 하나입니다. 법령은 조문 또는 별표당
+레코드 하나로 도착하고, 108쪽짜리 가이드는 전문을 담은 레코드 하나로 도착합니다.
+검색용 청킹은 이 소스 경계보다 뒤의 작업입니다.
 
 `rawArtifactPath`와 `rawArtifactHash`는 선택이며 **둘 다 있거나 둘 다 없습니다.**
 응답 바이트를 보존하는 결정은 텍스트의 출처를 기록하는 결정과 별개입니다. 해시 없는
@@ -84,6 +85,26 @@ MZO는 **입력** 측을 고정합니다. 출처 신원, 출처 이력(provenanc
 가능 여부를 결정하며 **`inDefaultCorpus`를 참조하지 않습니다.** 기본 코퍼스 밖에
 있으면서 색인에 아무 문제가 없는 레코드가 있을 수 있고, `evaluation_only` 레코드는
 둘 다 아닙니다.
+
+### 법령 신원(statute identity)
+
+`source-record-v2`는 v1 필드를 삭제하거나 의미를 바꾸지 않고 `statute`를 추가합니다.
+`unitKind`는 `article` 또는 `appendix`입니다. 둘 다 `lawName`, 안정적인 `lawId`,
+snapshot별 `mst`, `instrumentKind`, `responsibleMinistry`, 선택적
+`promulgationNumber`, `promulgatedOn`, `effectiveOn`, `unitEffectiveOn`을 갖습니다.
+
+조문은 `articleNumber`, `articleBranchNumber`, 선택적 `articleTitle`을 갖고,
+별표는 대응하는 `appendixNumber`, `appendixBranchNumber`, 선택적
+`appendixTitle`을 갖습니다. 두 좌표 계열은 동시에 존재할 수 없습니다. 출처가 제공하는
+경우 선택적 `chapterTitle`과 `sectionTitle`로 계층을 보존합니다.
+
+`lawId`는 개정 전후 하나의 논리 법령을 식별합니다. `mst`는 해당 릴리스가 bytes를
+동결한 정확한 현행법 응답을 식별합니다. 문서 ID는 MST가 아니라 안정적인 법령 ID와
+조문 또는 별표 번호, 별도 가지번호에서 파생합니다. 따라서 새 현행 snapshot을 다시
+만들 때 별개 문서를 추가하지 않고 같은 논리 단위를 교체할 수 있습니다.
+
+Dataset v2는 현행 법령만 포함합니다. 판례는 과거 버전을 적용했을 수 있으므로, 별도
+근거 없이 현행 조문을 법원이 적용한 당시 조문인 것처럼 제시해서는 안 됩니다.
 
 ### 판례 신원(judgement identity)
 
@@ -211,9 +232,11 @@ MZO는 청크 크기도, 청킹 전략도, 검색 결과도 공표하지 않습�
 
 ## 릴리스 매니페스트
 
-`ReleaseManifest`는 데이터셋 버전과 스키마 버전, 동결 시각, 전달 신원, 각 파일의
-SHA-256·바이트 크기·레코드 수, 문서 종류·제공처·사용 처분별 커버리지, 포함/제외
-처분과 그 사유, 라이선스 및 제한적 사용 사항, 알려진 결손을 기록합니다.
+`ReleaseManifest`는 데이터셋 버전과 스키마 버전, 동결 시각, 전달 신원, 각 payload
+파일의 SHA-256·바이트 크기·레코드 수, 문서 종류·제공처·사용 처분별 커버리지,
+포함/제외 처분과 그 사유, 라이선스 및 제한적 사용 사항, 알려진 결손을 기록합니다.
+매니페스트와 `SHA256SUMS`는 전달물을 설명하는 envelope이므로 자신을 payload 파일로
+열거하지 않습니다.
 
 **이것이 정본입니다.** 어떤 문서·메모·예시의 수치가 이와 어긋나면 매니페스트가
 이깁니다.

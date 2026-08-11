@@ -81,10 +81,11 @@ retrieval implementation, a test set, relevance labels, prompts, or pass bars.
 
 ## The dataset and where it comes from
 
-The corpus has two public origins. Court decisions come from the 법제처
-국가법령정보 OPEN API at law.go.kr, searched against four target laws — 의료법,
-표시·광고의 공정화에 관한 법률, 소비자기본법, and 안마사에 관한 규칙. Decisions
-whose full text that API does not publish were not collected.
+Current statutes and court decisions come from the 법제처 국가법령정보 OPEN API
+at law.go.kr. Dataset v2 covers 약사법, 의료법, 개인정보 보호법, 의료기기법,
+표시·광고의 공정화에 관한 법률, 화장품법, 공중위생관리법, and 안마사에 관한 규칙.
+It carries current laws, existing decrees and rules, appendices, and selected
+aesthetic-domain decisions whose full text the API publishes.
 
 Official guidance from 보건복지부 and 식품의약품안전처 was approved on content
 and then withdrawn on licence: one is published under terms forbidding

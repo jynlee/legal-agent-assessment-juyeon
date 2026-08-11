@@ -87,13 +87,24 @@ def build(
     group: str,
     native: pathlib.Path,
     acquired_at: dt.datetime | None,
+    *,
+    all_selected_in_default: bool = False,
 ) -> SourceRecord:
     """Assemble one judgement record from one collected row."""
 
     serial = row["판례일련번호"]
     text = row["content"]
-    artifact = native / f"{serial}.xml"
+    supplied_artifact_path = str(row.get("rawArtifactPath") or "").strip()
+    artifact = (
+        native.parent / supplied_artifact_path
+        if supplied_artifact_path
+        else native / f"{serial}.xml"
+    )
     payload = artifact.read_bytes()
+    artifact_hash = "sha256:" + hashlib.sha256(payload).hexdigest()
+    supplied_artifact_hash = str(row.get("rawArtifactHash") or "").strip()
+    if supplied_artifact_hash and supplied_artifact_hash != artifact_hash:
+        raise ValueError(f"raw artifact hash mismatch for precedent {serial}")
 
     identity = JudgementIdentity(
         case_serial=serial,
@@ -143,13 +154,15 @@ def build(
             source_reference=f"국가법령정보 판례일련번호 {serial} ({row['사건번호']})",
             acquired_at=acquired_at
             or dt.datetime.fromtimestamp(artifact.stat().st_mtime, dt.UTC).replace(microsecond=0),
-            raw_artifact_path=f"source-native/{serial}.xml",
-            raw_artifact_hash="sha256:" + hashlib.sha256(payload).hexdigest(),
+            raw_artifact_path=supplied_artifact_path or f"source-native/{serial}.xml",
+            raw_artifact_hash=artifact_hash,
         ),
         admission=SourceAdmission.EXEMPT,
         attribution=row["source"],
         usage=UsageDisposition.INDEX_ELIGIBLE,
-        in_default_corpus=row["데이터출처명"] not in OUTSIDE_DEFAULT,
+        in_default_corpus=(
+            True if all_selected_in_default else row["데이터출처명"] not in OUTSIDE_DEFAULT
+        ),
         linked_laws=tuple(
             LawLinkage(law_name=law, strength=LinkageStrength(linkage[law]))
             for law in row["ragTargets"]
@@ -170,13 +183,27 @@ def main() -> None:
     # machine; omit it and each record falls back to its artifact's
     # modification time, which copying the tree destroys.
     parser.add_argument("--acquired-at", help="ISO-8601 time the precedents were collected")
+    parser.add_argument(
+        "--all-selected-in-default",
+        action="store_true",
+        help="mark every upstream-selected row as part of the default corpus",
+    )
     args = parser.parse_args()
 
     rows = load(args.rag_dir / args.source)
     groups = group_ids(rows)
     native = args.rag_dir / args.native
     acquired_at = moment(args.acquired_at)
-    records = [build(row, groups[row["판례일련번호"]], native, acquired_at) for row in rows]
+    records = [
+        build(
+            row,
+            groups[row["판례일련번호"]],
+            native,
+            acquired_at,
+            all_selected_in_default=args.all_selected_in_default,
+        )
+        for row in rows
+    ]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="\n") as handle:
