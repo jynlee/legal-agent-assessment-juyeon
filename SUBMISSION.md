@@ -1,11 +1,11 @@
 # Submission Requirements
 
-The reports below are the submission, and the submission is one commit. Commit
-them; `reports/` is deliberately not ignored. What must stay out of Git is
-listed under "Source and execution" and is about content, not location: no
-secrets, dataset payloads, generated indexes, or restricted artifacts. A bulk
-run dump that would carry those belongs in an ignored directory, and the report
-that cites it belongs in the commit.
+Submit the private repository URL and one exact commit SHA. The reports below
+are part of that commit; `reports/` is deliberately not ignored. What must stay
+out of Git is listed under "Source and execution" and is about content, not
+location: no secrets, dataset payloads, generated indexes, or restricted
+artifacts. A bulk run dump that would carry those belongs in an ignored
+directory, and the report that cites it belongs in the commit.
 
 ## Source and execution
 
