@@ -147,26 +147,29 @@ This assessment replaces the legacy OpenSearch 2.17 baseline with **OpenSearch
 3.5**. Build local and managed indexes that are compatible with 3.5. Do not copy
 2.17 mappings or assumptions without revalidating them against 3.5.
 
-## Repository provisioning from a tag
+## Contributor repositories from a tag
 
 MZO freezes the contributor starting point as an immutable tag such as
 `assessment-v1` after the dataset release, model access, and smoke checks are
-ready. MZO then creates one separate private repository per contributor from the
-exact tagged tree. Contributors do not share branches or see one another's work.
+ready. Each contributor then creates a private repository in their own GitHub
+account from the exact tagged tree and grants the designated MZO GitHub account
+collaborator access for review. Contributors do not share branches or see one
+another's work.
 
 The contributor repository records the source tag and commit in its initial
 commit. Work continues on that repository's `master` branch; feature branches
-and pull requests are optional. The final submission is identified by one exact
-commit SHA. A later baseline correction receives a new tag and is distributed
-to every active contributor at the same time.
+and pull requests are optional. The final submission is identified by the
+private repository URL and one exact commit SHA. A later baseline correction
+receives a new tag and is distributed to every active contributor at the same
+time.
 
-MZO provisioning outline:
+Repository outline:
 
 ```text
 legal-agent-assessment-template @ assessment-v1
-        |-- contributor-a private repository
-        |-- contributor-b private repository
-        `-- contributor-c private repository
+        |-- contributor-a/private-repository (+ MZO collaborator)
+        |-- contributor-b/private-repository (+ MZO collaborator)
+        `-- contributor-c/private-repository (+ MZO collaborator)
 ```
 
 Do not create contributor repositories from an untagged moving branch.
