@@ -10,8 +10,31 @@ from legal_agent_assessment.chunking import (
     NORMALIZATION_VERSION,
     Chunk,
     ChunkType,
+    split_paragraphs,
 )
 from legal_agent_assessment.dataset import DocumentKind, LawLinkage, LinkageStrength
+
+
+def test_split_paragraphs_splits_on_br_and_drops_empties() -> None:
+    text = (
+        "【주    문】<br/>  원심판결을 파기한다. <br/><br/>【이    유】  상고이유를 판단한다. <br/>"
+    )
+
+    paragraphs = split_paragraphs(text)
+
+    assert paragraphs == (
+        "【주    문】",
+        "원심판결을 파기한다.",
+        "【이    유】  상고이유를 판단한다.",
+    )
+
+
+def test_split_paragraphs_never_splits_on_a_bare_newline() -> None:
+    text = "한 줄\n다음 줄<br/>다음 청크"
+
+    paragraphs = split_paragraphs(text)
+
+    assert paragraphs == ("한 줄\n다음 줄", "다음 청크")
 
 
 def test_chunk_is_frozen_and_carries_lineage_fields() -> None:

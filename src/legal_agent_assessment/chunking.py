@@ -20,6 +20,8 @@ CHUNKING_VERSION = "chunk-v1"
 # section legitimately produces a short chunk.
 TARGET_MAX_CHARS = 1500
 
+_PARAGRAPH_SEP = "<br/>"
+
 
 class ChunkType(StrEnum):
     """What a chunk's text was derived from."""
@@ -27,6 +29,17 @@ class ChunkType(StrEnum):
     BODY = "body"
     SUMMARY_HEADNOTE = "summary-headnote"
     SUMMARY_HOLDING = "summary-holding"
+
+
+def split_paragraphs(text: str) -> tuple[str, ...]:
+    """Split on the corpus's literal paragraph marker, never on `\\n`.
+
+    `\\n` is present in only a handful of records and is not the paragraph
+    boundary; splitting on it would read most judgements as one unbroken
+    line (DATASET_SCHEMA.md).
+    """
+
+    return tuple(piece.strip() for piece in text.split(_PARAGRAPH_SEP) if piece.strip())
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,4 +73,5 @@ __all__ = [
     "TARGET_MAX_CHARS",
     "Chunk",
     "ChunkType",
+    "split_paragraphs",
 ]
