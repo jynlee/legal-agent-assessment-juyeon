@@ -551,6 +551,69 @@ def chunk_body(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ..
     return tuple(chunks)
 
 
+_SUMMARY_FIELDS: tuple[tuple[ChunkType, str], ...] = (
+    (ChunkType.SUMMARY_HEADNOTE, "판시사항"),
+    (ChunkType.SUMMARY_HOLDING, "판결요지"),
+)
+
+
+def chunk_summary(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ...]:
+    """One chunk per numbered issue in headnote and holding.
+
+    referencedProvisions/referencedPrecedents are never embedded (they are
+    citation lists, not prose) but are attached verbatim to the matching
+    issue's chunk, keyed by the same issue number. See Decision 5 of
+    reports/decisions/2026-08-11-normalization-and-chunking-design.md.
+    """
+
+    identity = record.identity
+    if not isinstance(identity, JudgementIdentity):
+        raise TypeError("chunk_summary requires a JudgementIdentity")
+
+    provisions = extract_issues(identity.referenced_provisions)
+    precedents = extract_issues(identity.referenced_precedents)
+
+    chunks: list[Chunk] = []
+    for chunk_type, locator_label in _SUMMARY_FIELDS:
+        field_text = (
+            identity.headnote if chunk_type is ChunkType.SUMMARY_HEADNOTE else identity.holding
+        )
+        issues = extract_issues(field_text)
+        for ordinal, issue_number in enumerate(sorted(issues)):
+            text = issues[issue_number]
+            if not text:
+                continue
+            chunks.append(
+                Chunk(
+                    chunk_id=f"{record.document_id}#{chunk_type}-{ordinal:03d}",
+                    document_id=record.document_id,
+                    chunk_type=chunk_type,
+                    ordinal=ordinal,
+                    text=text,
+                    content_hash=content_hash(text),
+                    document_kind=record.document_kind,
+                    dataset_version=dataset_version,
+                    normalization_version=NORMALIZATION_VERSION,
+                    chunking_version=CHUNKING_VERSION,
+                    title=record.title,
+                    source_uri=record.provenance.source_url,
+                    official_number=identity.case_number,
+                    locator=f"{locator_label} [{issue_number}]",
+                    linked_laws=record.linked_laws,
+                    kind_fields=JudgementChunkFields(
+                        case_name=identity.case_name,
+                        court=identity.court,
+                        decided_on=None if identity.has_sentinel_date else identity.decided_on,
+                        case_number=identity.case_number,
+                        referenced_provisions=provisions.get(issue_number, ""),
+                        referenced_precedents=precedents.get(issue_number, ""),
+                        issue_ordinal=issue_number,
+                    ),
+                )
+            )
+    return tuple(chunks)
+
+
 _REPEALED_RE = re.compile(r"^제\d+조(?:의\d+)?\s*삭제\b")
 
 
@@ -662,6 +725,7 @@ __all__ = [
     "StatuteSection",
     "chunk_body",
     "chunk_statute_record",
+    "chunk_summary",
     "extract_issues",
     "find_table_spans",
     "pack_lines_to_budget",

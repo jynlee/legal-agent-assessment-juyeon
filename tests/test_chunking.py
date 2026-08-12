@@ -20,6 +20,7 @@ from legal_agent_assessment.chunking import (
     StatuteSection,
     chunk_body,
     chunk_statute_record,
+    chunk_summary,
     extract_issues,
     find_table_spans,
     pack_lines_to_budget,
@@ -712,3 +713,52 @@ def test_chunk_body_locators_are_distinct_within_one_record() -> None:
     locators = [c.locator for c in chunks]
     assert len(chunks) > 1, "fixture must actually produce multiple chunks to test dedup"
     assert len(set(locators)) == len(locators), f"duplicate locators: {locators}"
+
+
+def test_chunk_summary_produces_paired_headnote_and_holding_chunks() -> None:
+    record = _judgement_record(
+        text="본문",
+        headnote="<br/> [1] 문신이 무면허 의료행위인가",
+        holding="[1] 무면허 의료행위에 해당하지 않는다",
+        referenced_provisions="[1] 의료법 제27조 제1항",
+        referenced_precedents="[1] 대법원 2004. 4. 27. 선고 2004도673 판결",
+    )
+
+    chunks = chunk_summary(record, dataset_version="dataset-2026-08-09")
+
+    headnote_chunks = [c for c in chunks if c.chunk_type is ChunkType.SUMMARY_HEADNOTE]
+    holding_chunks = [c for c in chunks if c.chunk_type is ChunkType.SUMMARY_HOLDING]
+
+    assert len(headnote_chunks) == 1
+    assert headnote_chunks[0].chunk_id == "precedent-000001#summary-headnote-000"
+    assert headnote_chunks[0].kind_fields.issue_ordinal == 1
+    assert headnote_chunks[0].locator == "판시사항 [1]"
+    assert headnote_chunks[0].kind_fields.referenced_provisions == "의료법 제27조 제1항"
+    assert (
+        headnote_chunks[0].kind_fields.referenced_precedents
+        == "대법원 2004. 4. 27. 선고 2004도673 판결"
+    )
+    assert headnote_chunks[0].official_number == "2099도1111"
+
+    assert len(holding_chunks) == 1
+    assert holding_chunks[0].locator == "판결요지 [1]"
+    assert holding_chunks[0].kind_fields.referenced_provisions == "의료법 제27조 제1항"
+
+
+def test_chunk_summary_is_empty_for_a_body_only_record() -> None:
+    record = _judgement_record(text="본문", headnote="", holding="")
+
+    assert chunk_summary(record, dataset_version="dataset-2026-08-09") == ()
+
+
+def test_chunk_summary_stores_no_decided_on_for_a_sentinel_date() -> None:
+    """Same regression as chunk_body's, for the summary-chunk path."""
+
+    record = _judgement_record(
+        text="본문", headnote="[1] 쟁점", holding="[1] 결론", decided_on="00010101"
+    )
+
+    chunks = chunk_summary(record, dataset_version="dataset-2026-08-09")
+
+    assert chunks
+    assert all(c.kind_fields.decided_on is None for c in chunks)
