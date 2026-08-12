@@ -132,7 +132,19 @@ Tier table warns against ("Missing chunk lineage... without provenance,
 | --- | --- | --- |
 | `title` | `record.title` | `record.title` |
 | `source_uri` | `record.provenance.source_url` (nullable) | `record.provenance.source_url` (nullable) |
-| `official_number` | `identity.promulgation_number` (nullable — mirrors `GuideIdentity.official_number`) | `identity.case_number` |
+| `official_number` | `identity.mst` (always populated — see below) | `identity.case_number` |
+
+`promulgation_number` was the first candidate (it mirrors
+`GuideIdentity.official_number` conceptually) but is null on all 1,625
+records in this release, which would make `official_number` a silently dead
+field for every statute chunk. `mst` is populated on all 1,625 records, and
+`provenance.source_reference` already cites it as the record's lookup key
+(e.g. `"국가법령정보센터 약사법 제1조 (MST 279725)"`) — it is what a reader
+would use to verify this exact frozen snapshot on law.go.kr. `law_id`
+(stable across amendments, unlike `mst`) was considered and rejected for
+this field because it identifies the instrument in general, not the specific
+frozen version this citation points at; it remains available separately
+through the full `SourceRecord` if a later design needs it.
 
 For judgements, `official_number` is *derived from* `case_number`;
 `JudgementChunkFields.case_number` stays a separate field for locator/citation
