@@ -10,6 +10,7 @@ for statutes per reports/decisions/2026-08-12-statute-chunking-design.md
 matching AGENTS.md's separation of deterministic logic from I/O.
 """
 
+import itertools
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -92,7 +93,7 @@ def split_sections(text: str) -> tuple[tuple[str, str], ...]:
     return tuple(sections)
 
 
-_DIGIT_MARKER = re.compile(r"^(\d+)\.(?!\d)\s*")
+_DIGIT_MARKER = re.compile(r"^(\d{1,2})\.(?!\d)(?!\s*\d{1,2}\.)\s*")
 _HANGUL_MARKER = re.compile(r"^([가-힣])\.\s*")
 _PAREN_MARKER = re.compile(r"^\((\d+)\)\s*")
 
@@ -254,6 +255,14 @@ def extract_issues(field_text: str) -> dict[int, str]:
     four fields is what makes issue-number metadata matching safe: 0
     mismatches across 671 default-corpus records once the same rule is used
     on both sides (verification basis in the chunking design note).
+
+    Adjacent markers with nothing but whitespace between them (e.g.
+    "[1][2] <citation>") share the text that follows -- a real shape in
+    referencedPrecedents where one citation supports multiple issues. A
+    number repeated later in the field (e.g. "[1] a ... [1] b") accumulates
+    rather than overwrites. Both were silent citation-loss bugs on the real
+    release before this fix (Decision 5 addendum,
+    reports/decisions/2026-08-11-normalization-and-chunking-design.md).
     """
 
     stripped = field_text.strip()
@@ -264,13 +273,25 @@ def extract_issues(field_text: str) -> dict[int, str]:
     if not matches:
         return {1: _clean_issue_text(stripped)}
 
-    issues: dict[int, str] = {}
-    for index, match in enumerate(matches):
-        number = int(match.group(1))
-        start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(stripped)
-        issues[number] = _clean_issue_text(stripped[start:end])
-    return issues
+    group_starts = [0]
+    for i in range(1, len(matches)):
+        if stripped[matches[i - 1].end() : matches[i].start()].strip():
+            group_starts.append(i)
+    group_starts.append(len(matches))
+
+    accumulated: dict[int, list[str]] = {}
+    for g in range(len(group_starts) - 1):
+        group_begin, group_end = group_starts[g], group_starts[g + 1]
+        numbers = [int(matches[k].group(1)) for k in range(group_begin, group_end)]
+        text_start = matches[group_end - 1].end()
+        text_end = matches[group_end].start() if group_end < len(matches) else len(stripped)
+        text = _clean_issue_text(stripped[text_start:text_end]).rstrip("/ ").rstrip()
+        if not text:
+            continue
+        for number in numbers:
+            accumulated.setdefault(number, []).append(text)
+
+    return {number: "; ".join(parts) for number, parts in accumulated.items()}
 
 
 def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
@@ -494,6 +515,44 @@ class Chunk:
     kind_fields: JudgementChunkFields | StatuteChunkFields
 
 
+def _digit_group_key(section_name: str, locator: str) -> str:
+    """The locator prefix up to and including the digit-level marker, if any.
+
+    Paragraphs sharing this key belong to the same numbered sub-section per
+    Decision 2 and must never be packed into one chunk across a change in
+    it -- packing across it let a single chunk's locator name only its
+    first paragraph while covering several numbered items' text (measured:
+    37.9% of body chunks on the real release before this fix). Paragraphs
+    sharing one digit (e.g. "이유 > 1 > 가" and "이유 > 1 > 나") still pack
+    together; only a change in the digit component itself ends a group.
+    """
+
+    prefix = f"{section_name} > "
+    if not locator.startswith(prefix):
+        return section_name
+    first_segment = locator[len(prefix) :].split(" > ", 1)[0]
+    return f"{section_name} > {first_segment}" if first_segment.isdigit() else section_name
+
+
+def _dedupe_locator(locator: str, counts: dict[str, int]) -> str:
+    """Disambiguate a repeated locator with a per-locator occurrence count.
+
+    Unconditional: applied to every chunk regardless of whether the
+    upstream splitting/packing logic makes a collision look unlikely, so
+    distinctness is an invariant this function enforces rather than a
+    property that depends on every corpus shape being anticipated
+    correctly -- the same reasoning as this function's predecessor in each
+    chunker (reports/decisions/2026-08-12-statute-chunking-design.md,
+    Decision 5 revised; reports/decisions/2026-08-11-normalization-and-chunking-design.md,
+    Decision 6 addendum). `counts` is the caller's per-record occurrence
+    map, mutated in place.
+    """
+
+    counts[locator] = counts.get(locator, 0) + 1
+    count = counts[locator]
+    return locator if count == 1 else f"{locator} ({count})"
+
+
 def chunk_body(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ...]:
     """Split one judgement record's `text` into structure-aware, non-overlapping chunks.
 
@@ -514,14 +573,15 @@ def chunk_body(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ..
     for section_name, section_text in split_sections(record.text):
         paragraphs = split_paragraphs(section_text)
         located = _tag_paragraphs(section_name, paragraphs)
-        packed.extend(_pack_located(located))
+        for _key, group in itertools.groupby(
+            located, key=lambda pair: _digit_group_key(section_name, pair[0])
+        ):
+            packed.extend(_pack_located(tuple(group)))
 
-    seen_locators: set[str] = set()
+    locator_counts: dict[str, int] = {}
     chunks: list[Chunk] = []
     for ordinal, (locator, text) in enumerate(packed):
-        if locator in seen_locators:
-            locator = f"{locator} #{ordinal + 1}"
-        seen_locators.add(locator)
+        locator = _dedupe_locator(locator, locator_counts)
 
         chunks.append(
             Chunk(
@@ -678,7 +738,7 @@ def chunk_statute_record(record: SourceRecord, dataset_version: str) -> tuple[Ch
                     )
 
     total = len(prepared)
-    seen_locators: set[str] = set()
+    locator_counts: dict[str, int] = {}
     chunks: list[Chunk] = []
     for ordinal, piece in enumerate(prepared):
         if total == 1:
@@ -687,9 +747,7 @@ def chunk_statute_record(record: SourceRecord, dataset_version: str) -> tuple[Ch
             locator = f"{record.title} > {piece.marker}"
         else:
             locator = f"{record.title} (조각 {ordinal + 1}/{total})"
-        if locator in seen_locators:
-            locator = f"{locator} #{ordinal + 1}"
-        seen_locators.add(locator)
+        locator = _dedupe_locator(locator, locator_counts)
 
         chunks.append(
             Chunk(

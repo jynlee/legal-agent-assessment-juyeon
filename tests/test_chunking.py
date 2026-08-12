@@ -528,6 +528,27 @@ def test_paragraph_marker_does_not_match_a_decimal_number() -> None:
     assert paragraph_marker("3.14 원주율에 관하여") is None
 
 
+def test_paragraph_marker_does_not_match_a_date() -> None:
+    """Regression: "2011. 6.경 ..." must not be misread as digit marker "2011"
+    or "6" -- a real, measured false-positive on the frozen release (79
+    paragraphs across 41/182 records)."""
+
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    assert paragraph_marker("2011. 6.경 발생한 사건에 대하여") is None
+    assert paragraph_marker("1994. 1. 7. 법률 제4731호로 개정되고") is None
+
+
+def test_paragraph_marker_still_matches_ordinary_short_digit_markers() -> None:
+    """Regression guard: the date-rejection fix must not reject legitimate
+    markers, including two-digit ones."""
+
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    assert paragraph_marker("1. 사건의 개요") == ("digit", "1")
+    assert paragraph_marker("12. 항소이유에 대한 판단") == ("digit", "12")
+
+
 def test_pack_located_packs_consecutive_paragraphs_up_to_the_target() -> None:
     from legal_agent_assessment.chunking import _pack_located
 
@@ -602,6 +623,20 @@ def test_extract_issues_treats_an_unnumbered_field_as_issue_one() -> None:
 def test_extract_issues_returns_empty_for_an_empty_field() -> None:
     assert extract_issues("") == {}
     assert extract_issues("   ") == {}
+
+
+def test_extract_issues_shares_a_grouped_marker_and_accumulates_repeats() -> None:
+    """Regression, modeled on a real referencedPrecedents shape on the frozen
+    release: "[1][2] <shared citation> /[1] <more> /[2] <more>" -- the shared
+    citation must reach both issues, and a later same-numbered group must
+    accumulate rather than overwrite."""
+
+    field = "[1][2] 공통 판례 인용 /[1] 첫 번째 이슈 추가 인용 /[2] 두 번째 이슈 추가 인용"
+
+    issues = extract_issues(field)
+
+    assert issues[1] == "공통 판례 인용; 첫 번째 이슈 추가 인용"
+    assert issues[2] == "공통 판례 인용; 두 번째 이슈 추가 인용"
 
 
 _ACQUIRED = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
@@ -714,6 +749,44 @@ def test_chunk_body_locators_are_distinct_within_one_record() -> None:
     locators = [c.locator for c in chunks]
     assert len(chunks) > 1, "fixture must actually produce multiple chunks to test dedup"
     assert len(set(locators)) == len(locators), f"duplicate locators: {locators}"
+
+
+def test_chunk_body_never_packs_two_different_numbered_items_into_one_chunk() -> None:
+    """Regression: a chunk's locator must actually describe everything the
+    chunk's text covers -- packing must not cross a digit-level boundary
+    even when both sides are individually small enough to fit the budget
+    together."""
+
+    text = "【이    유】<br/>1. 첫 번째 항목입니다.<br/>2. 두 번째 항목입니다."
+    record = _judgement_record(text=text)
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    body_locators = [c.locator for c in chunks]
+    assert any(loc.endswith("> 1") for loc in body_locators)
+    assert any(loc.endswith("> 2") for loc in body_locators)
+    # The two items must not have been packed into the same chunk.
+    item_1_chunk = next(c for c in chunks if c.locator.endswith("> 1"))
+    item_2_chunk = next(c for c in chunks if c.locator.endswith("> 2"))
+    assert item_1_chunk.text != item_2_chunk.text
+    assert "두 번째 항목" not in item_1_chunk.text
+    assert "첫 번째 항목" not in item_2_chunk.text
+
+
+def test_chunk_body_dedup_uses_per_locator_occurrence_count_not_ordinal() -> None:
+    """Regression: a repeated locator's second occurrence must read as
+    "(2)", not an ordinal-based "#N" that misleadingly suggests position."""
+
+    huge = "피고인은 사실을 인정한다. " * 300
+    text = f"【이    유】<br/>1. {huge}"
+    record = _judgement_record(text=text)
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    assert len(chunks) > 1
+    assert chunks[0].locator == "이유 > 1"
+    assert chunks[1].locator == "이유 > 1 (2)"
+    assert not any("#" in c.locator for c in chunks)
 
 
 def test_chunk_summary_produces_paired_headnote_and_holding_chunks() -> None:
