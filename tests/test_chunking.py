@@ -1,8 +1,10 @@
-"""Deterministic normalization and chunking for default-corpus judgements.
+"""Deterministic normalization and chunking for default-corpus judgements
+and statutes.
 
 Every example here is synthetic, matching the shapes described in
-reports/decisions/2026-08-11-normalization-and-chunking-design.md. Real
-dataset payloads are never committed.
+reports/decisions/2026-08-11-normalization-and-chunking-design.md
+(judgements) and reports/decisions/2026-08-12-statute-chunking-design.md
+(statutes). Real dataset payloads are never committed.
 """
 
 from datetime import UTC, datetime
@@ -356,6 +358,70 @@ def test_chunk_statute_record_keeps_layout_text_for_oversized_markerless_prose()
     assert len(chunks) > 1
     assert all(c.kind_fields.layout == "text" for c in chunks)
     assert "\n".join(c.text for c in chunks) == text
+
+
+def test_chunk_statute_record_locators_are_distinct_for_nested_markers() -> None:
+    """Regression: two items each with lettered sub-items must not collide
+    just because both first sub-items are "가" and both second are "나"."""
+
+    item = "충분히 긴 항목 설명입니다. " * 25
+    text = "\n".join(
+        [
+            f"1. {item}",
+            f"가. {item}",
+            f"나. {item}",
+            f"2. {item}",
+            f"가. {item}",
+            f"나. {item}",
+            f"3. {item}",
+        ]
+    )
+    assert len(text) >= TARGET_MAX_CHARS, "fixture must exceed the split threshold"
+    record = _statute_record(document_id="doc-nested", text=text)
+
+    chunks = chunk_statute_record(record, dataset_version="dataset-v2")
+
+    locators = [c.locator for c in chunks]
+    assert len(set(locators)) == len(locators), f"duplicate locators: {locators}"
+    assert any(loc.endswith("> 1 > 가") for loc in locators)
+    assert any(loc.endswith("> 2 > 가") for loc in locators)
+    assert not any(loc.endswith("> 1 > 가") and loc.endswith("> 2 > 가") for loc in locators)
+
+
+def test_chunk_statute_record_chunk_ids_are_contiguous() -> None:
+    item = "이것은 충분히 긴 항목 설명 문장입니다. " * 40
+    text = "\n".join(f"{n}. {item}" for n in range(1, 8))
+    assert len(text) >= TARGET_MAX_CHARS, "fixture must exceed the split threshold"
+    record = _statute_record(document_id="doc-contiguous", text=text)
+
+    chunks = chunk_statute_record(record, dataset_version="dataset-v2")
+
+    assert [c.ordinal for c in chunks] == list(range(len(chunks)))
+    assert [c.chunk_id for c in chunks] == [
+        f"doc-contiguous#body-{i:03d}" for i in range(len(chunks))
+    ]
+
+
+def test_chunk_statute_record_oversized_table_span_keeps_layout_table() -> None:
+    """Regression: layout must survive pack_lines_to_budget when the piece
+    that needed packing actually is a table, not just when it isn't."""
+
+    row = "│항목 설명입니다 │근거 조문입니다 │처분 내용입니다 │\n"
+    text = "┌───┬───┬───┐\n" + (row * 80) + "└───┴───┴───┘"
+    assert len(text) >= TARGET_MAX_CHARS, "fixture must exceed the split threshold"
+    record = _statute_record(
+        document_id="doc-big-table",
+        title="공중위생관리법 시행규칙 별표 9",
+        text=text,
+        unit_kind=StatuteUnitKind.APPENDIX,
+        article_number=None,
+        appendix_number="0009",
+    )
+
+    chunks = chunk_statute_record(record, dataset_version="dataset-v2")
+
+    assert len(chunks) > 1
+    assert all(c.kind_fields.layout == "table" for c in chunks)
 
 
 def test_chunk_statute_record_flags_a_repealed_placeholder() -> None:

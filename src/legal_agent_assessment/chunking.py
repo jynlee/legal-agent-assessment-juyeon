@@ -1,10 +1,13 @@
-"""Deterministic normalization and chunking for default-corpus judgements.
+"""Deterministic normalization and chunking for default-corpus judgements
+and statutes.
 
 Turns one `SourceRecord` (from `legal_agent_assessment.dataset`) into the
-`body` and `summary` chunks this project indexes, per the design decided in
-reports/decisions/2026-08-11-normalization-and-chunking-design.md. Pure:
-no filesystem, network, or CLI access, matching AGENTS.md's separation of
-deterministic logic from I/O.
+chunks this project indexes: `body`/`summary` chunks for judgements per
+reports/decisions/2026-08-11-normalization-and-chunking-design.md (model
+only -- no producer function exists for judgements yet), and `body` chunks
+for statutes per reports/decisions/2026-08-12-statute-chunking-design.md
+(`chunk_statute_record`). Pure: no filesystem, network, or CLI access,
+matching AGENTS.md's separation of deterministic logic from I/O.
 """
 
 import re
@@ -84,13 +87,36 @@ def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
 
 
 _MARKER_RE = re.compile(
-    r"(?:^|\n)(?P<marker>\d{1,3}|[가나다라마바사아자차카타파하]|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+)\.\s"
+    r"(?:^|\n)(?:(?P<roman>[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+)|(?P<digit>\d{1,3})|(?P<gana>[가나다라마바사아자차카타파하]))\.\s"
 )
+
+_MARKER_LEVELS = {"roman": 0, "digit": 1, "gana": 2}
+
+
+def _marker_level_group_and_text(match: re.Match[str]) -> tuple[int, str, int]:
+    """Return (level, marker text, start offset of the marker group itself).
+
+    Exactly one of the three named groups matches per `_MARKER_RE` hit;
+    `level` orders them roman (0, outermost) > digit (1) > gana (2,
+    innermost), matching how Korean statute structure nests 별표 major
+    sections, 호, and 목.
+    """
+
+    for name, level in _MARKER_LEVELS.items():
+        text = match.group(name)
+        if text is not None:
+            return level, text, match.start(name)
+    raise AssertionError("marker regex matched with no named group set")
 
 
 @dataclass(frozen=True, slots=True)
 class StatuteSection:
-    """One piece of a statute record's text, in document order."""
+    """One piece of a statute record's text, in document order.
+
+    `marker`, when set, is the full open marker-hierarchy path at this
+    piece (e.g. "1 > 가"), not just the leaf marker character -- see
+    `_split_gap`.
+    """
 
     text: str
     marker: str | None
@@ -105,56 +131,70 @@ def split_statute_sections(
     `table_spans` must be sorted, non-overlapping offsets from
     `find_table_spans`. Each span is kept as its own whole, unsplit
     `StatuteSection` -- the marker search never runs on that text, so a
-    marker inside a table row can never become a split point.
+    marker inside a table row can never become a split point. Marker
+    hierarchy state (see `_split_gap`) carries across a table span rather
+    than resetting at it.
     """
 
     sections: list[StatuteSection] = []
     cursor = 0
+    path: dict[int, str] = {}
     for start, end in table_spans:
         if start > cursor:
-            sections.extend(_split_gap(text[cursor:start]))
+            gap_sections, path = _split_gap(text[cursor:start], path)
+            sections.extend(gap_sections)
         sections.append(StatuteSection(text=text[start:end], marker=None, is_table=True))
         cursor = end
     if cursor < len(text):
-        sections.extend(_split_gap(text[cursor:]))
+        gap_sections, path = _split_gap(text[cursor:], path)
+        sections.extend(gap_sections)
     return tuple(sections)
 
 
-def _split_gap(gap: str) -> tuple[StatuteSection, ...]:
+def _split_gap(gap: str, path: dict[int, str]) -> tuple[tuple[StatuteSection, ...], dict[int, str]]:
     """Split one table-free stretch of text at 호/목/로마숫자 markers.
 
-    Piece boundaries are taken at `match.start("marker")`, not
-    `match.start()` -- the latter includes the "\\n" the `(?:^|\\n)`
-    alternative consumes for every marker after the first, which would leave
-    a stray leading blank line on every piece but the first. Cutting at the
-    marker itself and `.strip("\\n")`-ing each piece produces clean,
-    directly embeddable text at the cost of not reproducing the original
-    text byte-for-byte via concatenation (the marker-to-marker line breaks
-    are dropped, not preserved) -- an accepted trade-off, since these pieces
-    become `Chunk.text` and must read cleanly.
+    `path` is the caller's currently-open marker hierarchy (level -> marker
+    text), carried across gaps and table spans so a marker path like
+    "1 > 가" stays correct even when a table interrupts the text between
+    "1." and "가.". Returns the updated path so the caller can pass it into
+    the next gap.
+
+    Piece boundaries are taken at the marker group's own start offset, not
+    the whole match's start -- the match also consumes the "\\n" the
+    `(?:^|\\n)` alternative matches for every marker after the first, which
+    would leave a stray leading blank line on every piece but the first.
+    Cutting at the marker itself and `.strip("\\n")`-ing each piece produces
+    clean, directly embeddable text (these pieces become `Chunk.text`).
     """
 
     matches = list(_MARKER_RE.finditer(gap))
     if not matches:
         if gap.strip():
-            return (StatuteSection(text=gap, marker=None, is_table=False),)
-        return ()
+            return (StatuteSection(text=gap.strip("\n"), marker=None, is_table=False),), path
+        return (), path
+
+    group_starts = [_marker_level_group_and_text(match)[2] for match in matches]
 
     pieces: list[StatuteSection] = []
-    first_marker_start = matches[0].start("marker")
-    if first_marker_start > 0:
-        preamble = gap[:first_marker_start].strip("\n")
+    if group_starts[0] > 0:
+        preamble = gap[: group_starts[0]].strip("\n")
         if preamble.strip():
             pieces.append(StatuteSection(text=preamble, marker=None, is_table=False))
+
     for i, match in enumerate(matches):
-        piece_start = match.start("marker")
-        piece_end = matches[i + 1].start("marker") if i + 1 < len(matches) else len(gap)
+        level, marker_text, piece_start = _marker_level_group_and_text(match)
+        for open_level in [lvl for lvl in path if lvl > level]:
+            del path[open_level]
+        path[level] = marker_text
+        marker_path = " > ".join(path[lvl] for lvl in sorted(path))
+
+        piece_end = group_starts[i + 1] if i + 1 < len(matches) else len(gap)
         piece_text = gap[piece_start:piece_end].rstrip("\n")
         if piece_text.strip():
-            pieces.append(
-                StatuteSection(text=piece_text, marker=match.group("marker"), is_table=False)
-            )
-    return tuple(pieces)
+            pieces.append(StatuteSection(text=piece_text, marker=marker_path, is_table=False))
+
+    return tuple(pieces), path
 
 
 def pack_lines_to_budget(text: str, target_max_chars: int = TARGET_MAX_CHARS) -> tuple[str, ...]:
@@ -249,48 +289,54 @@ def _is_repealed_placeholder(text: str) -> bool:
     return bool(_REPEALED_RE.match(text.strip()))
 
 
-@dataclass(frozen=True, slots=True)
-class _PreparedPiece:
-    text: str
-    marker: str | None
-    is_table: bool
-
-
 def chunk_statute_record(record: SourceRecord, dataset_version: str) -> tuple[Chunk, ...]:
     """Turn one `statute` `SourceRecord` into one or more `Chunk`s.
 
     Implements reports/decisions/2026-08-12-statute-chunking-design.md.
-    `record.identity` must be a `StatuteIdentity` (`SourceRecord.validate_record`
-    already guarantees `document_kind` matches `identity.document_kind`).
     """
 
     identity = record.identity
-    assert isinstance(identity, StatuteIdentity)
+    if not isinstance(identity, StatuteIdentity):
+        raise TypeError("chunk_statute_record requires a StatuteIdentity")
 
     status: Literal["current", "repealed"] = (
         "repealed" if _is_repealed_placeholder(record.text) else "current"
     )
 
     if len(record.text) < TARGET_MAX_CHARS:
-        prepared = [_PreparedPiece(text=record.text, marker=None, is_table=False)]
+        prepared: list[StatuteSection] = [
+            StatuteSection(text=record.text, marker=None, is_table=False)
+        ]
     else:
         table_spans = find_table_spans(record.text)
         sections = split_statute_sections(record.text, table_spans)
         prepared = []
         for section in sections:
             if len(section.text) < TARGET_MAX_CHARS:
+                prepared.append(section)
+                continue
+            packed_texts = pack_lines_to_budget(section.text)
+            if len(packed_texts) == 1:
                 prepared.append(
-                    _PreparedPiece(
-                        text=section.text, marker=section.marker, is_table=section.is_table
+                    StatuteSection(
+                        text=packed_texts[0], marker=section.marker, is_table=section.is_table
                     )
                 )
             else:
-                for packed_text in pack_lines_to_budget(section.text):
+                for i, packed_text in enumerate(packed_texts, start=1):
+                    sub_marker = (
+                        f"{section.marker} (조각 {i}/{len(packed_texts)})"
+                        if section.marker is not None
+                        else None
+                    )
                     prepared.append(
-                        _PreparedPiece(text=packed_text, marker=None, is_table=section.is_table)
+                        StatuteSection(
+                            text=packed_text, marker=sub_marker, is_table=section.is_table
+                        )
                     )
 
     total = len(prepared)
+    seen_locators: set[str] = set()
     chunks: list[Chunk] = []
     for ordinal, piece in enumerate(prepared):
         if total == 1:
@@ -299,6 +345,9 @@ def chunk_statute_record(record: SourceRecord, dataset_version: str) -> tuple[Ch
             locator = f"{record.title} > {piece.marker}"
         else:
             locator = f"{record.title} (조각 {ordinal + 1}/{total})"
+        if locator in seen_locators:
+            locator = f"{locator} #{ordinal + 1}"
+        seen_locators.add(locator)
 
         chunks.append(
             Chunk(
