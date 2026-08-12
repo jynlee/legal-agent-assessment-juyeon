@@ -14,6 +14,7 @@ import argparse
 import pathlib
 import sys
 
+from legal_agent_assessment.chunking import ChunkType, chunk_record, chunk_statute_record
 from legal_agent_assessment.dataset import DocumentKind, ReleaseManifest, SourceRecord
 from legal_agent_assessment.dataset_validation import (
     content_hash,
@@ -73,6 +74,24 @@ def main() -> None:
         "judgements with artifact: "
         f"{sum(1 for r in judgements if r.provenance.raw_artifact_path)}/{len(judgements)}"
     )
+
+    statute_records = [r for r in records if r.document_kind is DocumentKind.STATUTE]
+    all_chunks = [
+        chunk
+        for record in judgements
+        for chunk in chunk_record(record, dataset_version=manifest.dataset_version)
+    ] + [
+        chunk
+        for record in statute_records
+        for chunk in chunk_statute_record(record, manifest.dataset_version)
+    ]
+    body_chunks = [c for c in all_chunks if c.chunk_type is ChunkType.BODY]
+    summary_chunks = [c for c in all_chunks if c.chunk_type is not ChunkType.BODY]
+    print(f"\nchunks produced          : {len(all_chunks)}")
+    print(f"  judgement records chunked: {len(judgements)}")
+    print(f"  statute records chunked  : {len(statute_records)}")
+    print(f"  body                    : {len(body_chunks)}")
+    print(f"  summary                 : {len(summary_chunks)}")
 
     if blocking or mismatched:
         raise SystemExit(f"release is not deliverable: {len(blocking) + len(mismatched)} error(s)")
