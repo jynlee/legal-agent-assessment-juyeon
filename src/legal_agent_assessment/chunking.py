@@ -614,6 +614,14 @@ def chunk_summary(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk,
     return tuple(chunks)
 
 
+def chunk_record(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ...]:
+    """All chunks for one judgement record: body chunks, then summary chunks."""
+
+    return chunk_body(record, dataset_version=dataset_version) + chunk_summary(
+        record, dataset_version=dataset_version
+    )
+
+
 _REPEALED_RE = re.compile(r"^제\d+조(?:의\d+)?\s*삭제\b")
 
 
@@ -724,6 +732,7 @@ __all__ = [
     "StatuteChunkFields",
     "StatuteSection",
     "chunk_body",
+    "chunk_record",
     "chunk_statute_record",
     "chunk_summary",
     "extract_issues",

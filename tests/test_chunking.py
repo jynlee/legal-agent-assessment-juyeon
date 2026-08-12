@@ -19,6 +19,7 @@ from legal_agent_assessment.chunking import (
     StatuteChunkFields,
     StatuteSection,
     chunk_body,
+    chunk_record,
     chunk_statute_record,
     chunk_summary,
     extract_issues,
@@ -762,3 +763,43 @@ def test_chunk_summary_stores_no_decided_on_for_a_sentinel_date() -> None:
 
     assert chunks
     assert all(c.kind_fields.decided_on is None for c in chunks)
+
+
+def test_chunk_record_combines_body_and_summary_chunks() -> None:
+    record = _judgement_record(text="본문", headnote="[1] 쟁점", holding="[1] 결론")
+
+    chunks = chunk_record(record, dataset_version="dataset-2026-08-09")
+
+    types = {chunk.chunk_type for chunk in chunks}
+    assert ChunkType.BODY in types
+    assert ChunkType.SUMMARY_HEADNOTE in types
+    assert ChunkType.SUMMARY_HOLDING in types
+
+
+def test_chunk_record_is_deterministic() -> None:
+    record = _judgement_record(text="본문", headnote="[1] 쟁점", holding="[1] 결론")
+
+    first = chunk_record(record, dataset_version="dataset-2026-08-09")
+    second = chunk_record(record, dataset_version="dataset-2026-08-09")
+
+    assert first == second
+
+
+def test_chunk_record_on_a_body_only_record_has_zero_summary_chunks() -> None:
+    record = _judgement_record(text="본문", headnote="", holding="")
+
+    chunks = chunk_record(record, dataset_version="dataset-2026-08-09")
+
+    assert all(chunk.chunk_type is ChunkType.BODY for chunk in chunks)
+    assert len(chunks) >= 1
+
+
+def test_chunk_record_on_a_record_with_no_section_headers_still_chunks_the_body() -> None:
+    record = _judgement_record(
+        text="헤더가 전혀 없는 판결문 본문입니다. 그래도 청크는 나와야 합니다."
+    )
+
+    chunks = chunk_record(record, dataset_version="dataset-2026-08-09")
+
+    assert len(chunks) == 1
+    assert chunks[0].locator == ""
