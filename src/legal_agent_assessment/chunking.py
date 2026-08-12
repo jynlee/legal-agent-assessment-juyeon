@@ -62,7 +62,7 @@ def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
     pos = 0
     span_start: int | None = None
     lines = text.split("\n")
-    for i, line in enumerate(lines):
+    for line in lines:
         line_end = pos + len(line)
         is_table_line = bool(_BOX_DRAWING_RE.search(line))
         if is_table_line and span_start is None:

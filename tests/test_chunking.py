@@ -15,7 +15,12 @@ from legal_agent_assessment.chunking import (
     find_table_spans,
     split_paragraphs,
 )
-from legal_agent_assessment.dataset import DocumentKind, LawLinkage, LinkageStrength, StatuteUnitKind
+from legal_agent_assessment.dataset import (
+    DocumentKind,
+    LawLinkage,
+    LinkageStrength,
+    StatuteUnitKind,
+)
 
 
 def test_split_paragraphs_splits_on_br_and_drops_empties() -> None:
