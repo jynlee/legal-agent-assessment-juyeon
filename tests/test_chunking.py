@@ -520,3 +520,51 @@ def test_paragraph_marker_does_not_match_a_decimal_number() -> None:
     from legal_agent_assessment.chunking import paragraph_marker
 
     assert paragraph_marker("3.14 원주율에 관하여") is None
+
+
+def test_pack_located_packs_consecutive_paragraphs_up_to_the_target() -> None:
+    from legal_agent_assessment.chunking import _pack_located
+
+    paragraphs = (
+        ("이유 > 1", "가" * 700),
+        ("이유 > 1 > 가", "나" * 700),
+        ("이유 > 1 > 나", "다" * 700),
+    )
+
+    packed = _pack_located(paragraphs, target_max=TARGET_MAX_CHARS)
+
+    assert len(packed) == 2
+    assert packed[0] == ("이유 > 1", "가" * 700 + "\n\n" + "나" * 700)
+    assert packed[1] == ("이유 > 1 > 나", "다" * 700)
+
+
+def test_pack_located_never_produces_a_chunk_over_the_target() -> None:
+    from legal_agent_assessment.chunking import _pack_located
+
+    paragraphs = tuple(("이유", f"문단{i} " * 40) for i in range(20))
+
+    packed = _pack_located(paragraphs, target_max=TARGET_MAX_CHARS)
+
+    assert all(len(text) <= TARGET_MAX_CHARS for _, text in packed)
+    assert "".join(text for _, text in packed).replace("\n\n", "") == "".join(
+        text for _, text in paragraphs
+    )
+
+
+def test_pack_located_splits_a_single_oversized_paragraph_recursively() -> None:
+    from legal_agent_assessment.chunking import _pack_located
+
+    huge = ("피고인은 사실을 인정한다. " * 200).strip()
+    paragraphs = (("이유 > 1", huge),)
+
+    packed = _pack_located(paragraphs, target_max=200)
+
+    assert len(packed) > 1
+    assert all(len(text) <= 200 for _, text in packed)
+    assert all(locator == "이유 > 1" for locator, _ in packed)
+
+
+def test_pack_located_returns_empty_for_no_input() -> None:
+    from legal_agent_assessment.chunking import _pack_located
+
+    assert _pack_located(()) == ()

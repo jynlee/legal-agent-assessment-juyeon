@@ -162,6 +162,81 @@ def _tag_paragraphs(section_name: str, paragraphs: Sequence[str]) -> tuple[tuple
     return tuple(tagged)
 
 
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+def _split_oversized(text: str, target_max: int) -> tuple[str, ...]:
+    """Split one paragraph that alone exceeds the target, by sentence.
+
+    Falls back to a hard character cut only if a single sentence itself
+    still exceeds the target -- an explicit last resort, not a silent one.
+    """
+
+    sentences = [piece for piece in _SENTENCE_SPLIT.split(text) if piece]
+    pieces: list[str] = []
+    current = ""
+
+    for sentence in sentences:
+        if len(sentence) > target_max:
+            if current:
+                pieces.append(current)
+                current = ""
+            for start in range(0, len(sentence), target_max):
+                pieces.append(sentence[start : start + target_max])
+            continue
+        candidate = f"{current} {sentence}".strip() if current else sentence
+        if len(candidate) > target_max and current:
+            pieces.append(current)
+            current = sentence
+        else:
+            current = candidate
+
+    if current:
+        pieces.append(current)
+    return tuple(pieces)
+
+
+def _pack_located(
+    paragraphs: Sequence[tuple[str, str]], *, target_max: int = TARGET_MAX_CHARS
+) -> tuple[tuple[str, str], ...]:
+    """Greedily pack consecutive (locator, text) pairs up to target_max chars.
+
+    No overlap: a paragraph belongs to exactly one output chunk. A chunk's
+    locator is its first paragraph's locator. A single paragraph exceeding
+    target_max is flushed on its own and split further by
+    `_split_oversized`, never force-joined with a neighbour.
+    """
+
+    packed: list[tuple[str, str]] = []
+    group_locator: str | None = None
+    group_parts: list[str] = []
+    group_len = 0
+
+    def flush() -> None:
+        nonlocal group_locator, group_parts, group_len
+        if group_parts:
+            packed.append((group_locator or "", "\n\n".join(group_parts)))
+        group_locator, group_parts, group_len = None, [], 0
+
+    for locator, text in paragraphs:
+        if len(text) > target_max:
+            flush()
+            for piece in _split_oversized(text, target_max):
+                packed.append((locator, piece))
+            continue
+
+        joined_len = group_len + len(text) + (2 if group_parts else 0)
+        if joined_len > target_max and group_parts:
+            flush()
+        if not group_parts:
+            group_locator = locator
+        group_parts.append(text)
+        group_len += len(text) + (2 if len(group_parts) > 1 else 0)
+
+    flush()
+    return tuple(packed)
+
+
 def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Return non-overlapping (start, end) offsets of contiguous table-formatted line runs.
 
