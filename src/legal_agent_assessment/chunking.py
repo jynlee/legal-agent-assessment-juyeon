@@ -18,6 +18,7 @@ from typing import Literal
 
 from legal_agent_assessment.dataset import (
     DocumentKind,
+    JudgementIdentity,
     LawLinkage,
     SourceRecord,
     StatuteIdentity,
@@ -446,7 +447,7 @@ class JudgementChunkFields:
 
     case_name: str
     court: str
-    decided_on: str
+    decided_on: str | None
     case_number: str
     referenced_provisions: str = ""
     referenced_precedents: str = ""
@@ -491,6 +492,63 @@ class Chunk:
     locator: str
     linked_laws: tuple[LawLinkage, ...]
     kind_fields: JudgementChunkFields | StatuteChunkFields
+
+
+def chunk_body(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ...]:
+    """Split one judgement record's `text` into structure-aware, non-overlapping chunks.
+
+    Walks section headers, then <br/>-paragraphs tagged with their marker
+    path, then packs to TARGET_MAX_CHARS. See Decisions 2 and 3 of
+    reports/decisions/2026-08-11-normalization-and-chunking-design.md.
+    """
+
+    identity = record.identity
+    if not isinstance(identity, JudgementIdentity):
+        raise TypeError("chunk_body requires a JudgementIdentity")
+
+    # Pack each section independently (not the flattened whole-document
+    # paragraph stream): a chunk must not span two different top-level
+    # 【...】 sections, since that would mix, e.g., 【주문】 and 【이유】 content
+    # into one citation with a misleading locator.
+    packed: list[tuple[str, str]] = []
+    for section_name, section_text in split_sections(record.text):
+        paragraphs = split_paragraphs(section_text)
+        located = _tag_paragraphs(section_name, paragraphs)
+        packed.extend(_pack_located(located))
+
+    seen_locators: set[str] = set()
+    chunks: list[Chunk] = []
+    for ordinal, (locator, text) in enumerate(packed):
+        if locator in seen_locators:
+            locator = f"{locator} #{ordinal + 1}"
+        seen_locators.add(locator)
+
+        chunks.append(
+            Chunk(
+                chunk_id=f"{record.document_id}#{ChunkType.BODY}-{ordinal:03d}",
+                document_id=record.document_id,
+                chunk_type=ChunkType.BODY,
+                ordinal=ordinal,
+                text=text,
+                content_hash=content_hash(text),
+                document_kind=record.document_kind,
+                dataset_version=dataset_version,
+                normalization_version=NORMALIZATION_VERSION,
+                chunking_version=CHUNKING_VERSION,
+                title=record.title,
+                source_uri=record.provenance.source_url,
+                official_number=identity.case_number,
+                locator=locator,
+                linked_laws=record.linked_laws,
+                kind_fields=JudgementChunkFields(
+                    case_name=identity.case_name,
+                    court=identity.court,
+                    decided_on=None if identity.has_sentinel_date else identity.decided_on,
+                    case_number=identity.case_number,
+                ),
+            )
+        )
+    return tuple(chunks)
 
 
 _REPEALED_RE = re.compile(r"^제\d+조(?:의\d+)?\s*삭제\b")
@@ -602,6 +660,7 @@ __all__ = [
     "JudgementChunkFields",
     "StatuteChunkFields",
     "StatuteSection",
+    "chunk_body",
     "chunk_statute_record",
     "extract_issues",
     "find_table_spans",

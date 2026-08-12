@@ -18,6 +18,7 @@ from legal_agent_assessment.chunking import (
     JudgementChunkFields,
     StatuteChunkFields,
     StatuteSection,
+    chunk_body,
     chunk_statute_record,
     extract_issues,
     find_table_spans,
@@ -28,6 +29,7 @@ from legal_agent_assessment.chunking import (
 )
 from legal_agent_assessment.dataset import (
     DocumentKind,
+    JudgementIdentity,
     LawLinkage,
     LinkageStrength,
     SourceAdmission,
@@ -37,6 +39,7 @@ from legal_agent_assessment.dataset import (
     StatuteUnitKind,
     UsageDisposition,
 )
+from legal_agent_assessment.dataset_validation import content_hash
 from legal_agent_assessment.dataset_validation import content_hash as _content_hash
 
 
@@ -597,3 +600,119 @@ def test_extract_issues_treats_an_unnumbered_field_as_issue_one() -> None:
 def test_extract_issues_returns_empty_for_an_empty_field() -> None:
     assert extract_issues("") == {}
     assert extract_issues("   ") == {}
+
+
+_ACQUIRED = datetime(2026, 8, 1, 9, 0, tzinfo=UTC)
+
+
+def _judgement_record(
+    *,
+    document_id: str = "precedent-000001",
+    text: str,
+    headnote: str = "",
+    holding: str = "",
+    referenced_provisions: str = "",
+    referenced_precedents: str = "",
+    decided_on: str = "20990101",
+) -> SourceRecord:
+    identity = JudgementIdentity(
+        case_serial=document_id,
+        case_name="의료법위반",
+        case_number="2099도1111",
+        court="대법원",
+        case_category="형사",
+        decided_on=decided_on,
+        judgement_type="판결",
+        headnote=headnote,
+        holding=holding,
+        referenced_provisions=referenced_provisions,
+        referenced_precedents=referenced_precedents,
+    )
+    return SourceRecord(
+        document_id=document_id,
+        document_kind=DocumentKind.JUDGEMENT,
+        title="의료법위반",
+        text=text,
+        content_hash=_content_hash(text),
+        identity=identity,
+        provenance=SourceProvenance(
+            provider="대법원",
+            publisher_statement="법제처 국가법령정보 공동활용(www.law.go.kr)",
+            source_url="https://glaw.scourt.go.kr/wsjo/panre/example",
+            source_reference="국가법령정보센터 판례 000000",
+            acquired_at=_ACQUIRED,
+        ),
+        admission=SourceAdmission.EXEMPT,
+        attribution="법제처 국가법령정보 공동활용",
+        usage=UsageDisposition.INDEX_ELIGIBLE,
+        linked_laws=(LawLinkage(law_name="의료법", strength=LinkageStrength.CORE),),
+    )
+
+
+def test_chunk_body_produces_chunks_with_deterministic_ids_and_lineage() -> None:
+    record = _judgement_record(
+        text=(
+            "【주    문】 원심판결을 파기한다.<br/>【이    유】  상고이유를 판단한다. <br/>"
+            "1. 사건의 개요와 쟁점<br/>가. 공소사실의 요지<br/>"
+            "피고인은 의료인이 아님에도 문신시술을 하였다."
+        )
+    )
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    assert len(chunks) >= 1
+    first = chunks[0]
+    assert first.chunk_id == "precedent-000001#body-000"
+    assert first.chunk_type is ChunkType.BODY
+    assert first.ordinal == 0
+    assert first.document_id == "precedent-000001"
+    assert first.dataset_version == "dataset-2026-08-09"
+    assert first.title == "의료법위반"
+    assert first.source_uri == "https://glaw.scourt.go.kr/wsjo/panre/example"
+    assert first.official_number == "2099도1111"
+    assert first.kind_fields.case_name == "의료법위반"
+    assert first.kind_fields.decided_on == "20990101"
+    assert first.content_hash == content_hash(first.text)
+    assert [chunk.ordinal for chunk in chunks] == list(range(len(chunks)))
+
+
+def test_chunk_body_stores_no_decided_on_for_a_sentinel_date() -> None:
+    """Regression for reports/decisions/2026-08-12-record-selection-v2-judgement-sentinels.md:
+    decidedOn="00010101" must never reach a citation as a literal date."""
+
+    record = _judgement_record(text="본문 내용입니다.", decided_on="00010101")
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    assert all(c.kind_fields.decided_on is None for c in chunks)
+
+
+def test_chunk_body_locator_reflects_the_section_and_marker_path() -> None:
+    record = _judgement_record(
+        text="【이    유】<br/>1. 사건의 개요와 쟁점<br/>가. 공소사실의 요지<br/>본문 내용입니다."
+    )
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    assert any(chunk.locator.startswith("이유") for chunk in chunks)
+
+
+def test_chunk_body_locators_are_distinct_within_one_record() -> None:
+    item = "충분히 긴 문단 내용입니다. " * 30
+    text = "<br/>".join(
+        [
+            "【이    유】",
+            f"1. {item}",
+            f"가. {item}",
+            f"나. {item}",
+            f"2. {item}",
+            f"가. {item}",
+            f"나. {item}",
+        ]
+    )
+
+    record = _judgement_record(text=text)
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    locators = [c.locator for c in chunks]
+    assert len(set(locators)) == len(locators), f"duplicate locators: {locators}"
