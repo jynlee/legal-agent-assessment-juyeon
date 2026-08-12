@@ -48,7 +48,7 @@ in the same sense a judgement `body` chunk is, so `ChunkType.BODY` is reused.
 
 ## Decision 2: Table regions are protected before marker search, not after
 
-19 `appendix` records contain box-drawing table characters
+A double-digit number of `appendix` records contain box-drawing table characters
 (`┌┬┐│└┴┘├┤┼─━`) on a line that *also* matches a 가/나/다-style enumeration
 marker (e.g. `│마. 법 제5조를 위반하여│...` — a table row whose first cell
 happens to start with a valid marker). A marker-first split treats this as a
@@ -79,7 +79,8 @@ previous paragraph cannot occur.
 
 ## Decision 3: Repealed articles are included, tagged, not excluded
 
-116 `article` records (7.1%) are repealed placeholders — the entire `text`
+116 `article` records (7.5% of the 1,551 articles; 7.1% of the full
+1,625-record corpus) are repealed placeholders — the entire `text`
 is a pattern like `"제19조 삭제 <2011.3.30>"`, all under 30 characters
 (always below the split threshold, so Decision 2 always produces exactly one
 chunk for them).
@@ -115,9 +116,31 @@ built with statute fields set, or vice versa.
 
 `StatuteChunkFields` carries `law_name`, `unit_kind`, `article_number`,
 `appendix_number`, `status` (`"current" | "repealed"`), and `layout`
-(`"text" | "table"`). `linked_laws` stays a common `Chunk` field — it comes
-from `SourceRecord.linkedLaws`, present at the top level for every document
-kind, not from `JudgementIdentity`. `chunk_id` keeps the existing
+(`"text" | "table"`).
+
+`title`, `source_uri`, and `official_number` are promoted to common `Chunk`
+fields, not left to a later index-mapping step. `contracts.py`'s `Citation`
+(the preserved public contract) requires `document_id`, `chunk_id`, `title`,
+`source_uri`, `official_number`, `locator`, and `excerpt` on every citation.
+Leaving `title`/`source_uri`/`official_number` unset on `Chunk` would force
+whatever builds a `Citation` later to re-open the original `SourceRecord` to
+find them — an avoidable extra lineage hop, and exactly what README.en.md's
+Tier table warns against ("Missing chunk lineage... without provenance,
+`answered` is not reachable"). Populated at chunking time:
+
+| Field | Statute source | Judgement source (model only — judgement chunk-building is out of scope) |
+| --- | --- | --- |
+| `title` | `record.title` | `record.title` |
+| `source_uri` | `record.provenance.source_url` (nullable) | `record.provenance.source_url` (nullable) |
+| `official_number` | `identity.promulgation_number` (nullable — mirrors `GuideIdentity.official_number`) | `identity.case_number` |
+
+For judgements, `official_number` is *derived from* `case_number`;
+`JudgementChunkFields.case_number` stays a separate field for locator/citation
+composition specific to judgement chunks, not because the two disagree.
+
+`linked_laws` stays a common `Chunk` field — it comes from
+`SourceRecord.linkedLaws`, present at the top level for every document kind,
+not from `JudgementIdentity`. `chunk_id` keeps the existing
 `"{document_id}#{chunk_type}-{ordinal:03d}"` pattern; `document_id` is
 already unique per article/appendix, so there is no new collision risk.
 
@@ -133,14 +156,20 @@ already unique per article/appendix, so there is no new collision risk.
 
 All counts above were computed directly against `data/statutes.jsonl`
 (1,625 records, the full file — every record is `inDefaultCorpus=true`).
-The table/marker collision count (19 records) was verified by matching a
-가/나/다-sequence-only marker regex (`가나다라마바사아자차카타파하`) against
-each line, restricted to lines that also contain a box-drawing character,
-re-run once against a looser single-syllable marker regex (19 became 19;
-an even looser "any Korean syllable + period" variant over-matched to 19
-as well in this check but was rejected as too permissive for the design
-itself). Repealed-placeholder count (116) and length distributions were
-computed by direct iteration over every record, not sampling.
+The table/marker collision was checked independently, by different methods,
+in this session at least three times (a same-line box-character-plus-marker
+check re-run with two marker-regex strictness levels, and a separate
+span-based check), and no two of those checks produced the same exact count
+(19 in one check, 16 and 10 in two others). Two of those checks did agree on
+a 34-record candidate pool of `appendix` records containing both a table and
+marker-shaped text somewhere in the record, which is a looser condition than
+"a marker lands inside a table row." The design decision (§ Decision 2) does
+not depend on the exact count, only on the fact that it is greater than
+zero; treat every number in this paragraph as illustrative, and verify
+against the synthetic fixtures written for the implementation's
+table-protection test instead of citing this note. Repealed-placeholder
+count (116) and length distributions were computed by direct iteration over
+every record, not sampling, and are not in dispute.
 
 ## Explicitly out of scope for this note
 
