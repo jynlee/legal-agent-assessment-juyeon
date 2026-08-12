@@ -12,7 +12,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
 
-from legal_agent_assessment.dataset import DocumentKind, LawLinkage, StatuteUnitKind
+from legal_agent_assessment.dataset import (
+    DocumentKind,
+    LawLinkage,
+    SourceRecord,
+    StatuteIdentity,
+    StatuteUnitKind,
+)
+from legal_agent_assessment.dataset_validation import content_hash
 
 _BOX_DRAWING_RE = re.compile(r"[┌┬┐│└┴┘├┤┼─━]")
 
@@ -233,6 +240,97 @@ class Chunk:
     kind_fields: JudgementChunkFields | StatuteChunkFields
 
 
+_REPEALED_RE = re.compile(r"^제\d+조(?:의\d+)?\s*삭제\b")
+
+
+def _is_repealed_placeholder(text: str) -> bool:
+    """True when `text` is a repeal placeholder like '제19조 삭제 <2011.3.30>'."""
+
+    return bool(_REPEALED_RE.match(text.strip()))
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedPiece:
+    text: str
+    marker: str | None
+    is_table: bool
+
+
+def chunk_statute_record(record: SourceRecord, dataset_version: str) -> tuple[Chunk, ...]:
+    """Turn one `statute` `SourceRecord` into one or more `Chunk`s.
+
+    Implements reports/decisions/2026-08-12-statute-chunking-design.md.
+    `record.identity` must be a `StatuteIdentity` (`SourceRecord.validate_record`
+    already guarantees `document_kind` matches `identity.document_kind`).
+    """
+
+    identity = record.identity
+    assert isinstance(identity, StatuteIdentity)
+
+    status: Literal["current", "repealed"] = (
+        "repealed" if _is_repealed_placeholder(record.text) else "current"
+    )
+
+    if len(record.text) < TARGET_MAX_CHARS:
+        prepared = [_PreparedPiece(text=record.text, marker=None, is_table=False)]
+    else:
+        table_spans = find_table_spans(record.text)
+        sections = split_statute_sections(record.text, table_spans)
+        prepared = []
+        for section in sections:
+            if len(section.text) < TARGET_MAX_CHARS:
+                prepared.append(
+                    _PreparedPiece(
+                        text=section.text, marker=section.marker, is_table=section.is_table
+                    )
+                )
+            else:
+                for packed_text in pack_lines_to_budget(section.text):
+                    prepared.append(
+                        _PreparedPiece(text=packed_text, marker=None, is_table=section.is_table)
+                    )
+
+    total = len(prepared)
+    chunks: list[Chunk] = []
+    for ordinal, piece in enumerate(prepared):
+        if total == 1:
+            locator = record.title
+        elif piece.marker is not None:
+            locator = f"{record.title} > {piece.marker}"
+        else:
+            locator = f"{record.title} (조각 {ordinal + 1}/{total})"
+
+        chunks.append(
+            Chunk(
+                chunk_id=f"{record.document_id}#{ChunkType.BODY}-{ordinal:03d}",
+                document_id=record.document_id,
+                chunk_type=ChunkType.BODY,
+                ordinal=ordinal,
+                text=piece.text,
+                content_hash=content_hash(piece.text),
+                document_kind=DocumentKind.STATUTE,
+                dataset_version=dataset_version,
+                normalization_version=NORMALIZATION_VERSION,
+                chunking_version=CHUNKING_VERSION,
+                title=record.title,
+                source_uri=record.provenance.source_url,
+                official_number=identity.mst,
+                locator=locator,
+                linked_laws=record.linked_laws,
+                kind_fields=StatuteChunkFields(
+                    law_name=identity.law_name,
+                    unit_kind=identity.unit_kind,
+                    article_number=identity.article_number,
+                    appendix_number=identity.appendix_number,
+                    status=status,
+                    layout="table" if piece.is_table else "text",
+                ),
+            )
+        )
+
+    return tuple(chunks)
+
+
 __all__ = [
     "CHUNKING_VERSION",
     "NORMALIZATION_VERSION",
@@ -242,6 +340,7 @@ __all__ = [
     "JudgementChunkFields",
     "StatuteChunkFields",
     "StatuteSection",
+    "chunk_statute_record",
     "find_table_spans",
     "pack_lines_to_budget",
     "split_paragraphs",
