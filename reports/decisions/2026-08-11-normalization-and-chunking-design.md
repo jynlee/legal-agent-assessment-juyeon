@@ -57,6 +57,35 @@ If a single structural unit itself exceeds 1,500 characters, it is split
 recursively at its next-lower boundary rather than cut at a fixed offset.
 This only matters for the long tail (p99 ≥ 105,336 characters).
 
+**Addendum (2026-08-13, from the judgement chunking implementation's final
+whole-branch review):** packing paragraphs to the character budget without
+also respecting the digit-level sub-section boundary let a single chunk's
+text span multiple numbered items while its `locator` named only the first
+one. Measured against the real release once `chunk_body` existed: 1,075 of
+2,834 body chunks (37.9%, across 150/182 records) spanned more than one
+marker path this way; the worst case (`이유 > 3 > 나 > (2)`) actually
+covered 25 distinct paths. This contradicted this decision's own stated
+boundary order ("section header, then sub-section, then paragraph") — the
+code honored only the section boundary. Fixed by flushing the pack group
+whenever the digit-level component of the locator changes (not on every
+locator change — paragraphs sharing one digit, like `이유 > 1 > 가` and
+`이유 > 1 > 나`, still pack together), implemented as a grouping step in
+`chunk_body` between `_tag_paragraphs` and `_pack_located` rather than a
+change to either of those functions.
+
+**Addendum (2026-08-13): `_DIGIT_MARKER` false-matched Korean dates.** The
+regex (`^(\d+)\.\s*`, later `^(\d+)\.(?!\d)\s*` after a Task 2 fix round for
+decimals) still matched a paragraph opening with a date like `"2011. 6.경
+..."` or `"1994. 1. 7. 법률 ..."` as a digit marker equal to the year,
+because the lookahead only rejected another digit immediately after the
+period, not a date's `<space><digit>.` continuation. Measured: 79
+paragraphs across 41/182 records; because a digit marker resets any open
+hangul/paren sub-labels, 690 further paragraphs inherited the bogus level
+until the next real marker, corrupting 143/2,834 body-chunk locators (5.0%)
+across 39 records. Fixed by bounding the digit count to 1-2 (a sub-section
+marker is never a 4-digit year) and rejecting a marker immediately followed
+by another `<digit(s)>.` group: `^(\d{1,2})\.(?!\d)(?!\s*\d{1,2}\.)\s*`.
+
 ## Decision 3: Section headers are matched with a whitespace-tolerant regex, in place
 
 Bracketed section headers in this corpus are typeset with inter-character
@@ -106,6 +135,21 @@ non-vector, keyword/text (BM25-searchable) field — keeping a query like
 "의료법 제27조 관련 판례" reachable through lexical search without embedding
 the citation list itself.
 
+**Addendum (2026-08-13): `extract_issues` silently dropped citations on two
+real shapes.** The original implementation assigned into a `dict[int, str]`
+(`issues[number] = text`), so a field with a genuinely repeated `[N]` marker
+overwrote rather than accumulated (6 field-instances on the real release).
+Separately, adjacent markers with no text between them — `"[1][2] <citation>
+/[1] <more> /[2] <more>"`, a real shape in `referencedPrecedents` meaning
+the first citation applies to *both* issues — were parsed as `[1]` owning
+empty text and `[2]` owning the shared citation, then both get overwritten
+by the later `[1]`/`[2]` groups; the shared citation was lost from whichever
+issue's dict entry didn't survive to be the final write (7 field-instances
+carry this grouped shape). Fixed by treating a run of adjacent markers as
+one group whose following text is shared by every number in the run, and
+accumulating (not overwriting) when the same number's text is encountered
+again — verified against the real record carrying this exact shape.
+
 ## Decision 6: Deterministic IDs and lineage
 
 `chunk_id = f"{document_id}#{chunk_type}-{ordinal:03d}"` (e.g.
@@ -123,6 +167,22 @@ record-selection note.
 is visible beyond a case number (per DATASET.md's attribution requirement):
 the section path for `body` chunks (e.g. `"이유 > 1 > 가"`), and
 `"판시사항 [N]"` / `"판결요지 [N]"` for `summary` chunks.
+
+**Addendum (2026-08-13): locator-dedup suffix changed from ordinal-based to
+per-locator-occurrence-based, in both chunkers.** `chunk_body`'s
+unconditional dedup safety net (mirroring `chunk_statute_record`'s) was
+designed as a guard against a rare collision, but measured against the real
+release it fires on 874/2,834 body chunks (30.8%) — the primary
+disambiguator for a large minority of chunks, not a last resort, because a
+single 【이유】 section legitimately restarts "1." numbering many times
+(often inside quoted statute text; the worst case, `이유 > 1`, recurs 37
+times in one record). The original `" #{ordinal + 1}"` suffix used the
+chunk's absolute position in the record, so two unrelated "1." occurrences
+became `이유 > 1` and `이유 > 1 #37` — unique, but the number reads as "the
+37th piece of this locator" when it is not. Changed to a per-locator
+occurrence counter (`이유 > 1`, `이유 > 1 (2)`, `이유 > 1 (3)`, ...) in both
+`chunk_body` and `chunk_statute_record`, via one shared private helper, so
+the two chunkers stay consistent.
 
 ## Verification basis
 
