@@ -151,11 +151,17 @@ def test_an_evaluation_artifact_leak_inside_the_default_corpus_still_raises() ->
         select_records_for_indexing([leaking], evaluation_artifact_roots=("evaluation",))
 
 
-def test_todays_release_shape_has_no_sentinel_inside_the_default_corpus() -> None:
-    """Decision 2: on the frozen 2026-08-09 release, every sentinel-valued
-    record falls inside the 109 excluded by Decision 1, so today this must be
-    empty. This pins that fact down as a synthetic regression case rather
-    than leaving it as an unchecked claim in the decision note."""
+def test_v1_release_shape_had_no_sentinel_inside_the_default_corpus() -> None:
+    """Decision 2: on the frozen 2026-08-09 (v1) release, every sentinel-valued
+    record fell inside the 109 excluded by Decision 1, so that release's
+    default corpus was empty of sentinels. This pins that fact down as a
+    synthetic regression case rather than leaving it as an unchecked claim in
+    the decision note.
+
+    Superseded by dataset v2, which does *not* have this shape -- see
+    `test_v2_release_has_sentinel_records_inside_the_default_corpus_by_decision`
+    below. This test still documents what was true of v1; it is not a claim
+    about the current release."""
 
     sentinel_but_out_of_scope = judgement(
         document_id="precedent-000002",
@@ -174,7 +180,19 @@ def test_a_future_sentinel_inside_the_default_corpus_is_not_silent() -> None:
     release could put a sentinel-valued record inside the default corpus.
     validate_release alone would not stop that (sentinels are warnings, by
     design, since they only describe the corpus in general). This is the
-    check that must catch it instead."""
+    check that must catch it instead.
+
+    Not hypothetical any more. Dataset v2 has exactly this shape: 3 real
+    judgement records carry a sentinel decidedOn/judgementType while
+    inDefaultCorpus=true (MZO pre-filters domain relevance upstream now, so
+    nothing excludes them the way Decision 1 did for v1's 74 sentinel
+    records). `default_corpus_sentinel_findings` finding them is the
+    **expected, decided outcome, not a regression** -- the project chose to
+    include those 3 records rather than exclude them, checked against
+    DATASET_SCHEMA.md's "carrying an explicit unknown" option
+    (reports/decisions/2026-08-12-record-selection-v2-judgement-sentinels.md).
+    A run of this check against the real release finding *zero* would be
+    the surprise worth investigating, not the other way around."""
 
     sentinel_in_scope = judgement(decided_on="00010101", judgement_type="null")
 

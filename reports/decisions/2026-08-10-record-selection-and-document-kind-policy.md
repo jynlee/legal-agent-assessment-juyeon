@@ -59,6 +59,23 @@ values in `decidedOn` or `judgementType`. This should be asserted with a test
 against the frozen release so a future release with sentinels inside the
 default corpus does not pass silently.
 
+**Addendum: that future release arrived.** Dataset v2
+(`dataset-2026-08-11-v2.1`) supplies MZO-pre-filtered judgements (182
+records, all `inDefaultCorpus: true` — the domain-relevance filtering
+Decision 1 did is now done upstream, nothing left to exclude on that basis;
+see `reports/decisions/2026-08-12-record-selection-v2-judgement-sentinels.md`)
+rather than 대법원-only decisions requiring exclusion. Among those 182, 3
+carry sentinel `decidedOn`/`judgementType` while `inDefaultCorpus: true` —
+exactly the case this decision's closing sentence anticipated.
+`default_corpus_sentinel_findings()` correctly reports 6 findings (2 codes
+× 3 records) for the current release; **this is the expected, decided
+outcome, not a regression** — the 2026-08-12 note decided to include those
+3 records rather than exclude them, checked against DATASET_SCHEMA.md's
+"carrying an explicit unknown" option. The 2026-08-13 judgement-chunking
+work carries that decision through: `chunk_body`/`chunk_summary` store
+`None` for `decided_on` on those 3 records instead of the literal
+placeholder.
+
 ## Decision 3: Include body-only records (319 of 995)
 
 319 of the 995 default-corpus records (32.1%) have all four judgement summary
