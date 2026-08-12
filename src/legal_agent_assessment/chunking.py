@@ -150,6 +150,32 @@ def _split_gap(gap: str) -> tuple[StatuteSection, ...]:
     return tuple(pieces)
 
 
+def pack_lines_to_budget(text: str, target_max_chars: int = TARGET_MAX_CHARS) -> tuple[str, ...]:
+    """Pack `text` into pieces up to `target_max_chars`, never splitting a line.
+
+    Lines are rejoined with "\\n". A single line longer than
+    `target_max_chars` becomes its own oversized piece rather than being cut
+    mid-line: this function guarantees line integrity, not a hard size cap.
+    """
+
+    lines = text.split("\n")
+    pieces: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for line in lines:
+        added_len = len(line) + (1 if current else 0)
+        if current and current_len + added_len > target_max_chars:
+            pieces.append("\n".join(current))
+            current = [line]
+            current_len = len(line)
+        else:
+            current.append(line)
+            current_len += added_len
+    if current:
+        pieces.append("\n".join(current))
+    return tuple(pieces)
+
+
 @dataclass(frozen=True, slots=True)
 class JudgementChunkFields:
     """Judgement-only citation and grouping data for one chunk.
@@ -217,6 +243,7 @@ __all__ = [
     "StatuteChunkFields",
     "StatuteSection",
     "find_table_spans",
+    "pack_lines_to_budget",
     "split_paragraphs",
     "split_statute_sections",
 ]

@@ -8,12 +8,14 @@ dataset payloads are never committed.
 from legal_agent_assessment.chunking import (
     CHUNKING_VERSION,
     NORMALIZATION_VERSION,
+    TARGET_MAX_CHARS,
     Chunk,
     ChunkType,
     JudgementChunkFields,
     StatuteChunkFields,
     StatuteSection,
     find_table_spans,
+    pack_lines_to_budget,
     split_paragraphs,
     split_statute_sections,
 )
@@ -205,3 +207,29 @@ def test_split_statute_sections_returns_the_whole_text_when_no_markers_or_tables
 
     assert len(sections) == 1
     assert sections[0] == StatuteSection(text=text, marker=None, is_table=False)
+
+
+def test_pack_lines_to_budget_returns_one_piece_under_budget() -> None:
+    text = "짧은 조각"
+
+    assert pack_lines_to_budget(text, target_max_chars=TARGET_MAX_CHARS) == (text,)
+
+
+def test_pack_lines_to_budget_never_splits_a_line_and_reconstructs_exactly() -> None:
+    lines = [f"줄{i}: " + ("내용" * 10) for i in range(10)]
+    text = "\n".join(lines)
+
+    pieces = pack_lines_to_budget(text, target_max_chars=80)
+
+    assert "\n".join(pieces) == text
+    assert len(pieces) > 1
+    for piece in pieces:
+        assert len(piece) <= 80
+
+
+def test_pack_lines_to_budget_keeps_an_oversized_single_line_whole() -> None:
+    text = "가" * (TARGET_MAX_CHARS + 500)
+
+    pieces = pack_lines_to_budget(text, target_max_chars=TARGET_MAX_CHARS)
+
+    assert pieces == (text,)
