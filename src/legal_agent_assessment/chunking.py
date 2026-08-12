@@ -237,6 +237,41 @@ def _pack_located(
     return tuple(packed)
 
 
+_ISSUE_MARKER = re.compile(r"\[(\d+)\]\s*")
+
+
+def _clean_issue_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace(_PARAGRAPH_SEP, " ")).strip()
+
+
+def extract_issues(field_text: str) -> dict[int, str]:
+    """Split headnote/holding/referencedProvisions/referencedPrecedents by [N].
+
+    An unnumbered field is treated as a single issue numbered 1 -- the
+    majority shape for headnote on the frozen v1 release (364/676, 53.8%),
+    not an edge case (Decision 4). Applying this rule identically to all
+    four fields is what makes issue-number metadata matching safe: 0
+    mismatches across 671 default-corpus records once the same rule is used
+    on both sides (verification basis in the chunking design note).
+    """
+
+    stripped = field_text.strip()
+    if not stripped:
+        return {}
+
+    matches = list(_ISSUE_MARKER.finditer(stripped))
+    if not matches:
+        return {1: _clean_issue_text(stripped)}
+
+    issues: dict[int, str] = {}
+    for index, match in enumerate(matches):
+        number = int(match.group(1))
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(stripped)
+        issues[number] = _clean_issue_text(stripped[start:end])
+    return issues
+
+
 def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Return non-overlapping (start, end) offsets of contiguous table-formatted line runs.
 
@@ -568,6 +603,7 @@ __all__ = [
     "StatuteChunkFields",
     "StatuteSection",
     "chunk_statute_record",
+    "extract_issues",
     "find_table_spans",
     "pack_lines_to_budget",
     "paragraph_marker",

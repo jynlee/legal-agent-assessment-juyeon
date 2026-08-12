@@ -19,6 +19,7 @@ from legal_agent_assessment.chunking import (
     StatuteChunkFields,
     StatuteSection,
     chunk_statute_record,
+    extract_issues,
     find_table_spans,
     pack_lines_to_budget,
     split_paragraphs,
@@ -568,3 +569,31 @@ def test_pack_located_returns_empty_for_no_input() -> None:
     from legal_agent_assessment.chunking import _pack_located
 
     assert _pack_located(()) == ()
+
+
+def test_extract_issues_splits_on_bracket_numbers() -> None:
+    field = "<br/> [1] 문신이 무면허 의료행위인가<br/><br/> [2] 피고인이 시술하였다면"
+
+    issues = extract_issues(field)
+
+    assert issues == {
+        1: "문신이 무면허 의료행위인가",
+        2: "피고인이 시술하였다면",
+    }
+
+
+def test_extract_issues_treats_an_unnumbered_field_as_issue_one() -> None:
+    """The majority shape on the frozen v1 release: 364/676 non-empty
+    headnote records (53.8%) carry no [N] marker at all (Decision 4). This
+    must be the primary path, not a fallback exercised only incidentally."""
+
+    field = "<br/> 구 마약류 관리에 관한 법률 제5조 제1항에서 금지하는 행위"
+
+    issues = extract_issues(field)
+
+    assert issues == {1: "구 마약류 관리에 관한 법률 제5조 제1항에서 금지하는 행위"}
+
+
+def test_extract_issues_returns_empty_for_an_empty_field() -> None:
+    assert extract_issues("") == {}
+    assert extract_issues("   ") == {}
