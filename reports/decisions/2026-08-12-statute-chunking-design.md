@@ -23,7 +23,7 @@ note. It does not cover embedding, index mapping, or retrieval.
 | Chunk kind | One: `ChunkType.BODY`, reused as-is — statutes have no headnote/holding-equivalent structured summary |
 | Unsplit records | 1,492/1,625 (91.8%) stay below the 1,500-character threshold and become exactly one chunk |
 | Split ordering | Table regions are detected and protected **before** marker search runs, not after |
-| Oversized protected span | Line-preserving size-budget packing, tagged `layout="table"` |
+| Oversized piece (any origin) | Line-preserving size-budget packing; `layout` reflects origin (table span vs. not), not whether packing fired |
 | Repealed articles (116 records) | Included, not excluded; tagged `status="repealed"` for BM25-first downstream weighting |
 | `Chunk` model | Kind-specific fields split into `JudgementChunkFields \| StatuteChunkFields`, not flattened with `\| None` |
 | Locator | Same section-path convention as judgement chunks: `"제1조"`, `"제2조 > 1"`, `"별표 8 (조각 2/5)"` |
@@ -66,16 +66,36 @@ The chunking order is therefore:
 3. Search for 호/목 markers (숫자+`.`, 가/나/다-sequence+`.`, appendix Roman
    numerals Ⅰ/Ⅱ/Ⅲ) only in text **outside** protected spans, and split
    there.
-4. If a resulting piece — including a protected span taken whole — is still
-   at or above 1,500 characters, fall back to line-preserving, size-budget
-   packing (never splitting a line, since a line may be one table row),
-   tagging every chunk from it `layout="table"`. Pieces not produced this
-   way carry `layout="text"`.
+4. If a resulting piece is still at or above 1,500 characters — a protected
+   span taken whole, *or* a marker-split (or unmarked) prose piece that had
+   no table content at all — fall back to line-preserving, size-budget
+   packing for that piece (never splitting a line, since a line may be one
+   table row).
 
 Protecting the table region first, rather than trying to detect a bad split
 after the fact, removes the table text from the marker search entirely — the
 marker regex cannot fire inside it, so the silent-success case in the
 previous paragraph cannot occur.
+
+**`layout` is set by origin, not by whether step 4 fired.** A piece carries
+`layout="table"` if and only if it came from a protected span (regardless of
+its size); every other piece carries `layout="text"`, including one that
+went through the step-4 size-budget fallback for being oversized prose with
+no table content. The two are independent: "did this piece need
+size-budget packing" is a size question, and "is this piece table content"
+is a content-origin question — collapsing them into one flag mislabels an
+oversized ordinary paragraph as a table.
+
+This is not a hypothetical failure mode. Simulating the marker split against
+the 97 statute records containing no box-drawing characters at all, 3 still
+have a piece at or above 1,500 characters after marker splitting: 약사법
+제47조 (4,354 chars → largest piece 1,535 chars), 의료법 제47조 (1,835
+chars, no markers at all, so the whole record is one oversized piece), and
+의료기기법 시행규칙 별표 3 (30,731 chars → largest piece 3,849 chars — an
+appendix with no table formatting, unlike the box-drawing appendices
+elsewhere in this release). Tagging step-4 output `layout="table"`
+unconditionally, as an earlier draft of this decision did, would have
+mislabeled all three.
 
 ## Decision 3: Repealed articles are included, tagged, not excluded
 
