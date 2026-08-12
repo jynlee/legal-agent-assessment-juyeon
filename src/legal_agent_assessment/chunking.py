@@ -7,11 +7,14 @@ no filesystem, network, or CLI access, matching AGENTS.md's separation of
 deterministic logic from I/O.
 """
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
 
 from legal_agent_assessment.dataset import DocumentKind, LawLinkage, StatuteUnitKind
+
+_BOX_DRAWING_RE = re.compile(r"[┌┬┐│└┴┘├┤┼─━]")
 
 NORMALIZATION_VERSION = "norm-v1"
 CHUNKING_VERSION = "chunk-v1"
@@ -44,6 +47,33 @@ def split_paragraphs(text: str) -> tuple[str, ...]:
     """
 
     return tuple(piece.strip() for piece in text.split(_PARAGRAPH_SEP) if piece.strip())
+
+
+def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
+    """Return non-overlapping (start, end) offsets of contiguous table-formatted line runs.
+
+    A line counts as table-formatted if it contains a box-drawing character.
+    Only strictly contiguous table-formatted lines merge into one span; a
+    non-table line always ends the current span. Splitting must never happen
+    inside a returned span (see `split_statute_sections`).
+    """
+
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    span_start: int | None = None
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        line_end = pos + len(line)
+        is_table_line = bool(_BOX_DRAWING_RE.search(line))
+        if is_table_line and span_start is None:
+            span_start = pos
+        elif not is_table_line and span_start is not None:
+            spans.append((span_start, pos - 1))
+            span_start = None
+        pos = line_end + 1  # account for the "\n" this split() consumed
+    if span_start is not None:
+        spans.append((span_start, len(text)))
+    return tuple(spans)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,5 +141,6 @@ __all__ = [
     "ChunkType",
     "JudgementChunkFields",
     "StatuteChunkFields",
+    "find_table_spans",
     "split_paragraphs",
 ]

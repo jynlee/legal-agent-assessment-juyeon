@@ -12,6 +12,7 @@ from legal_agent_assessment.chunking import (
     ChunkType,
     JudgementChunkFields,
     StatuteChunkFields,
+    find_table_spans,
     split_paragraphs,
 )
 from legal_agent_assessment.dataset import DocumentKind, LawLinkage, LinkageStrength, StatuteUnitKind
@@ -104,3 +105,40 @@ def test_chunk_carries_statute_kind_fields() -> None:
     assert chunk.kind_fields.status == "current"
     assert chunk.kind_fields.layout == "text"
     assert chunk.kind_fields.appendix_number is None
+
+
+def test_find_table_spans_returns_empty_for_plain_text() -> None:
+    assert find_table_spans("그냥 평범한 조문 텍스트\n다음 줄") == ()
+
+
+def test_find_table_spans_covers_a_single_contiguous_table_block() -> None:
+    text = "머리말\n┌─┬─┐\n│a│b│\n└─┴─┘\n꼬리말"
+
+    spans = find_table_spans(text)
+
+    assert len(spans) == 1
+    start, end = spans[0]
+    assert text[start:end] == "┌─┬─┐\n│a│b│\n└─┴─┘"
+
+
+def test_find_table_spans_keeps_two_separate_blocks_apart() -> None:
+    text = "A\n│x│\nB\n│y│\nC"
+
+    spans = find_table_spans(text)
+
+    assert len(spans) == 2
+    assert text[spans[0][0] : spans[0][1]] == "│x│"
+    assert text[spans[1][0] : spans[1][1]] == "│y│"
+
+
+def test_find_table_spans_detects_a_marker_line_inside_a_table_row() -> None:
+    """The exact risk this design exists to catch: a 가/나/다 marker sitting
+    on a table-formatted line must still be inside the detected span."""
+
+    text = "제목\n┌───┬───┐\n│마. 위반 │근거 │\n└───┴───┘\n끝"
+
+    spans = find_table_spans(text)
+
+    assert len(spans) == 1
+    start, end = spans[0]
+    assert "마." in text[start:end]
