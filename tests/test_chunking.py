@@ -12,8 +12,10 @@ from legal_agent_assessment.chunking import (
     ChunkType,
     JudgementChunkFields,
     StatuteChunkFields,
+    StatuteSection,
     find_table_spans,
     split_paragraphs,
+    split_statute_sections,
 )
 from legal_agent_assessment.dataset import (
     DocumentKind,
@@ -147,3 +149,59 @@ def test_find_table_spans_detects_a_marker_line_inside_a_table_row() -> None:
     assert len(spans) == 1
     start, end = spans[0]
     assert "마." in text[start:end]
+
+
+def test_split_statute_sections_splits_plain_text_at_numbered_markers() -> None:
+    text = "1. 첫 번째 항목 내용\n2. 두 번째 항목 내용"
+
+    sections = split_statute_sections(text, table_spans=())
+
+    assert [s.text for s in sections] == ["1. 첫 번째 항목 내용", "2. 두 번째 항목 내용"]
+    assert [s.marker for s in sections] == ["1", "2"]
+    assert all(not s.is_table for s in sections)
+
+
+def test_split_statute_sections_splits_at_gana_markers() -> None:
+    text = "가. 첫 목\n나. 두번째 목"
+
+    sections = split_statute_sections(text, table_spans=())
+
+    assert [s.marker for s in sections] == ["가", "나"]
+
+
+def test_split_statute_sections_keeps_a_protected_span_whole_and_unsplit() -> None:
+    """The exact risk this design exists to catch: a marker sitting inside a
+    protected table span must never become a split point."""
+
+    text = "머리말\n┌───┬───┐\n│마. 위반 │근거 │\n└───┴───┘\n꼬리말"
+    table_spans = find_table_spans(text)
+
+    sections = split_statute_sections(text, table_spans)
+
+    table_sections = [s for s in sections if s.is_table]
+    assert len(table_sections) == 1
+    assert "마." in table_sections[0].text
+    assert table_sections[0].marker is None
+    # The table piece is not further split at "마." -- it is exactly the
+    # protected span's full text.
+    start, end = table_spans[0]
+    assert table_sections[0].text == text[start:end]
+
+
+def test_split_statute_sections_handles_text_around_a_protected_span() -> None:
+    text = "1. 앞부분\n┌─┐\n│x│\n└─┘\n2. 뒷부분"
+    table_spans = find_table_spans(text)
+
+    sections = split_statute_sections(text, table_spans)
+
+    kinds = [(s.marker, s.is_table) for s in sections]
+    assert kinds == [("1", False), (None, True), ("2", False)]
+
+
+def test_split_statute_sections_returns_the_whole_text_when_no_markers_or_tables() -> None:
+    text = "번호도 목차도 없이 쭉 이어지는 산문 텍스트."
+
+    sections = split_statute_sections(text, table_spans=())
+
+    assert len(sections) == 1
+    assert sections[0] == StatuteSection(text=text, marker=None, is_table=False)

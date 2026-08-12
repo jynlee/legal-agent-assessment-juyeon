@@ -76,6 +76,80 @@ def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
     return tuple(spans)
 
 
+_MARKER_RE = re.compile(
+    r"(?:^|\n)(?P<marker>\d{1,3}|[가나다라마바사아자차카타파하]|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+)\.\s"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class StatuteSection:
+    """One piece of a statute record's text, in document order."""
+
+    text: str
+    marker: str | None
+    is_table: bool
+
+
+def split_statute_sections(
+    text: str, table_spans: tuple[tuple[int, int], ...]
+) -> tuple[StatuteSection, ...]:
+    """Split `text` at 호/목/로마숫자 markers outside `table_spans`.
+
+    `table_spans` must be sorted, non-overlapping offsets from
+    `find_table_spans`. Each span is kept as its own whole, unsplit
+    `StatuteSection` -- the marker search never runs on that text, so a
+    marker inside a table row can never become a split point.
+    """
+
+    sections: list[StatuteSection] = []
+    cursor = 0
+    for start, end in table_spans:
+        if start > cursor:
+            sections.extend(_split_gap(text[cursor:start]))
+        sections.append(StatuteSection(text=text[start:end], marker=None, is_table=True))
+        cursor = end
+    if cursor < len(text):
+        sections.extend(_split_gap(text[cursor:]))
+    return tuple(sections)
+
+
+def _split_gap(gap: str) -> tuple[StatuteSection, ...]:
+    """Split one table-free stretch of text at 호/목/로마숫자 markers.
+
+    Piece boundaries are taken at `match.start("marker")`, not
+    `match.start()` -- the latter includes the "\\n" the `(?:^|\\n)`
+    alternative consumes for every marker after the first, which would leave
+    a stray leading blank line on every piece but the first. Cutting at the
+    marker itself and `.strip("\\n")`-ing each piece produces clean,
+    directly embeddable text at the cost of not reproducing the original
+    text byte-for-byte via concatenation (the marker-to-marker line breaks
+    are dropped, not preserved) -- an accepted trade-off, since these pieces
+    become `Chunk.text` and must read cleanly.
+    """
+
+    matches = list(_MARKER_RE.finditer(gap))
+    if not matches:
+        if gap.strip():
+            return (StatuteSection(text=gap, marker=None, is_table=False),)
+        return ()
+
+    pieces: list[StatuteSection] = []
+    first_marker_start = matches[0].start("marker")
+    if first_marker_start > 0:
+        preamble = gap[:first_marker_start].strip("\n")
+        if preamble.strip():
+            pieces.append(StatuteSection(text=preamble, marker=None, is_table=False))
+    for i, match in enumerate(matches):
+        piece_start = match.start("marker")
+        piece_end = matches[i + 1].start("marker") if i + 1 < len(matches) else len(gap)
+        piece_text = gap[piece_start:piece_end].rstrip("\n")
+        if piece_text.strip():
+            pieces.append(
+                StatuteSection(text=piece_text, marker=match.group("marker"), is_table=False)
+            )
+    return tuple(pieces)
+
+
 @dataclass(frozen=True, slots=True)
 class JudgementChunkFields:
     """Judgement-only citation and grouping data for one chunk.
@@ -141,6 +215,8 @@ __all__ = [
     "ChunkType",
     "JudgementChunkFields",
     "StatuteChunkFields",
+    "StatuteSection",
     "find_table_spans",
     "split_paragraphs",
+    "split_statute_sections",
 ]
