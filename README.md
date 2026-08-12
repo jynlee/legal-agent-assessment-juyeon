@@ -79,10 +79,11 @@ uv run pytest
 
 ## 데이터셋과 그 출처
 
-코퍼스의 원천은 두 가지입니다. 판례는 law.go.kr의 **법제처 국가법령정보 OPEN
-API**에서, 대상 법령 네 개 — 의료법, 표시·광고의 공정화에 관한 법률, 소비자기본법,
-안마사에 관한 규칙 — 를 본문 검색해 수집했습니다. 그 API가 본문 전문을 공개하지
-않는 판례는 수집하지 않았습니다.
+현행 법령과 판례는 law.go.kr의 **법제처 국가법령정보 OPEN API**에서 수집합니다.
+Dataset v2는 약사법, 의료법, 개인정보 보호법, 의료기기법,
+표시·광고의 공정화에 관한 법률, 화장품법, 공중위생관리법, 안마사에 관한 규칙을
+대상으로 합니다. 현행 법률과 존재하는 시행령·시행규칙·별표, 그리고 API가 전문을
+공개하는 판례 중 미용 도메인으로 선별된 판례를 담습니다.
 
 보건복지부·식품의약품안전처의 공식 가이드는 **내용으로는 승인되었으나 이용조건 때문에
 철회**되었습니다. 한 건은 상업적 이용과 변형을 금지하는 조건으로 공개돼 있고, 다른 한
@@ -138,22 +139,23 @@ uv run python scripts/build_judgement_records.py --rag-dir <dir> `
 로컬 및 관리형 인덱스는 3.5와 호환되어야 합니다. 2.17의 매핑이나 가정을 그대로
 복사하지 말고 3.5에서 다시 검증하십시오.
 
-## 태그 기반 개별 저장소 생성
+## 태그 기반 기여자 저장소 생성
 
 MZO는 데이터셋 릴리스, 모델 접근, smoke check가 준비되면 기여자 시작점을
-`assessment-v1` 같은 불변 태그로 고정합니다. 이후 정확히 그 태그의 tree로
-기여자별 private repo를 하나씩 생성합니다. 기여자들은 브랜치를 공유하지 않습니다.
+`assessment-v1` 같은 불변 태그로 고정합니다. 이후 각 기여자는 정확히 그 태그의
+tree로 본인 GitHub 계정에 private repo를 생성하고, 검수를 위해 지정된 MZO GitHub
+계정에 collaborator 권한을 부여합니다. 기여자들은 브랜치를 공유하지 않습니다.
 
 각 기여자 repo의 초기 커밋에는 원본 태그와 commit을 기록합니다. 작업은 해당
 repo의 `master`에서 계속하며 feature branch와 PR은 선택 사항입니다. 최종 제출은
-정확한 commit SHA 하나로 식별합니다. 이후 베이스라인 수정이 필요하면 새 태그를
-만들어 모든 활성 기여자에게 동시에 배포합니다.
+private repo URL과 정확한 commit SHA 하나로 식별합니다. 이후 베이스라인 수정이
+필요하면 새 태그를 만들어 모든 활성 기여자에게 동시에 배포합니다.
 
 ```text
 legal-agent-assessment-template @ assessment-v1
-        |-- contributor-a private repository
-        |-- contributor-b private repository
-        `-- contributor-c private repository
+        |-- contributor-a/private-repository (+ MZO collaborator)
+        |-- contributor-b/private-repository (+ MZO collaborator)
+        `-- contributor-c/private-repository (+ MZO collaborator)
 ```
 
 태그 없이 움직이는 브랜치에서 기여자 repo를 만들지 않습니다.

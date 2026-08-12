@@ -65,6 +65,14 @@ class DocumentKind(StrEnum):
 
     JUDGEMENT = "judgement"
     OFFICIAL_GUIDE = "official_guide"
+    STATUTE = "statute"
+
+
+class StatuteUnitKind(StrEnum):
+    """Independently citable units supplied from one current instrument."""
+
+    ARTICLE = "article"
+    APPENDIX = "appendix"
 
 
 class UsageDisposition(StrEnum):
@@ -221,8 +229,54 @@ class GuideIdentity(DatasetModel):
     non_binding_statement: str = Field(min_length=1)
 
 
+class StatuteIdentity(DatasetModel):
+    """Citation coordinates for one current statute article or appendix.
+
+    `law_id` identifies the instrument across amendments, while `mst` identifies
+    the exact current-law response acquired for this frozen release. Article and
+    appendix branch numbers stay separate because the API supplies them as
+    separate coordinates and concatenating their padded forms is ambiguous.
+    """
+
+    document_kind: Literal[DocumentKind.STATUTE] = DocumentKind.STATUTE
+    unit_kind: StatuteUnitKind
+    law_name: str = Field(min_length=1)
+    law_id: str = Field(min_length=1)
+    mst: str = Field(min_length=1)
+    instrument_kind: str = Field(min_length=1)
+    responsible_ministry: str = Field(min_length=1)
+    promulgation_number: str | None = None
+    promulgated_on: str = Field(pattern=COMPACT_DATE_PATTERN.pattern)
+    effective_on: str = Field(pattern=COMPACT_DATE_PATTERN.pattern)
+    unit_effective_on: str = Field(pattern=COMPACT_DATE_PATTERN.pattern)
+    chapter_title: str | None = None
+    section_title: str | None = None
+    article_number: str | None = None
+    article_branch_number: str | None = None
+    article_title: str | None = None
+    appendix_number: str | None = None
+    appendix_branch_number: str | None = None
+    appendix_title: str | None = None
+
+    @model_validator(mode="after")
+    def validate_coordinates(self) -> "StatuteIdentity":
+        """Require exactly the coordinate family named by `unit_kind`."""
+
+        if self.unit_kind is StatuteUnitKind.ARTICLE:
+            if not self.article_number:
+                raise ValueError("article identity requires article coordinates")
+            if any((self.appendix_number, self.appendix_branch_number, self.appendix_title)):
+                raise ValueError("article identity cannot carry appendix coordinates")
+        else:
+            if not self.appendix_number:
+                raise ValueError("appendix identity requires appendix coordinates")
+            if any((self.article_number, self.article_branch_number, self.article_title)):
+                raise ValueError("appendix identity cannot carry article coordinates")
+        return self
+
+
 SourceIdentity = Annotated[
-    JudgementIdentity | GuideIdentity,
+    JudgementIdentity | GuideIdentity | StatuteIdentity,
     Field(discriminator="document_kind"),
 ]
 
@@ -320,6 +374,7 @@ class ReleaseFileKind(StrEnum):
 
     RECORDS = "records"
     ARTIFACTS = "artifacts"
+    METADATA = "metadata"
 
 
 class ReleaseFile(DatasetModel):

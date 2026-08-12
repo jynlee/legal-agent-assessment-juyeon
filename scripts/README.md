@@ -21,9 +21,9 @@ uv run python scripts/verify_release.py --rag-dir data `
 
 It exits non-zero on an error and prints warnings with counts. Warnings
 describe the corpus — placeholder dates, duplicate decisions, body-only
-records — and are not failures. The current release contains decisions only;
-if a later manifest adds another record file, pass one `--file` argument for
-that file as well.
+records — and are not failures. Dataset v2 contains separate statute and
+judgement record files, so pass both `--file` arguments shown in its
+`DELIVERY.md`.
 
 ## MZO release build
 

@@ -45,7 +45,7 @@ Every record carries these, regardless of kind:
 | --- | --- |
 | `documentId` | Stable, unique identity for one supplied document |
 | `sourceGroupId` | Split safety: records that are the same underlying decision share one |
-| `documentKind` | `judgement` or `official_guide` |
+| `documentKind` | `statute`, `judgement`, or `official_guide` |
 | `title` | Human-readable name |
 | `text` | The supplied source text, as delivered |
 | `contentHash` | `sha256:<64 lowercase hex>` of `text` |
@@ -58,8 +58,9 @@ Every record carries these, regardless of kind:
 | `linkedLaws` | Target laws and this record's relationship to each |
 | `limitations` | Known gaps, stated rather than repaired |
 
-One record is one whole source document. A 108-page guide arrives as a single
-record holding its full text; splitting it into citable units is chunking.
+One record is one independently citable source unit. Statutes arrive as one
+record per article or appendix; a 108-page guide arrives as one record holding
+its full text. Retrieval chunking remains downstream of this source boundary.
 
 `rawArtifactPath` and `rawArtifactHash` are optional and are set together or
 not at all. Retaining the response bytes is a separate decision from recording
@@ -88,6 +89,30 @@ This is not "adding corpus data" — the prohibition in
 governs what may be indexed at all, and it does not consult `inDefaultCorpus`.
 A record can be outside the default corpus and perfectly indexable; an
 `evaluation_only` record is neither.
+
+### Statute identity
+
+`source-record-v2` adds `statute` without deleting or changing any v1 field.
+`unitKind` is `article` or `appendix`. Both carry `lawName`, stable `lawId`,
+snapshot-specific `mst`, `instrumentKind`, `responsibleMinistry`, optional
+`promulgationNumber`, `promulgatedOn`, `effectiveOn`, and `unitEffectiveOn`.
+
+An article carries `articleNumber`, `articleBranchNumber`, and optional
+`articleTitle`; an appendix carries the corresponding `appendixNumber`,
+`appendixBranchNumber`, and optional `appendixTitle`. The two coordinate
+families are mutually exclusive. Optional `chapterTitle` and `sectionTitle`
+preserve hierarchy when the source supplies it.
+
+`lawId` identifies one logical instrument across amendments. `mst` identifies
+the exact current-law response whose bytes were frozen for the release. A
+document ID derives from the stable law ID plus the article or appendix number
+and its separate branch number; it does not derive from MST, so rebuilding a
+new current snapshot replaces the same logical unit instead of appending an
+unrelated document.
+
+Dataset v2 contains current law only. A judgement may have applied an older
+version, so current statute text must not be presented as the historical text
+the court applied without separate evidence.
 
 ### Judgement identity
 
@@ -226,10 +251,11 @@ Deciding those from the data is the assessment.
 ## The release manifest
 
 `ReleaseManifest` records the dataset and schema versions, freeze timestamp,
-delivery identity, every file with its SHA-256, byte size and record count,
+delivery identity, every payload file with its SHA-256, byte size and record count,
 coverage broken down by document kind, provider and usage, inclusion and
 exclusion dispositions with reasons, licence and restricted-use notes, and
-known gaps.
+known gaps. The manifest and `SHA256SUMS` are the self-describing delivery
+envelope and therefore do not list themselves as payload files.
 
 It is authoritative. Where a number in any document, note, or example
 contradicts it, it wins.

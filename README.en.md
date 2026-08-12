@@ -81,10 +81,11 @@ retrieval implementation, a test set, relevance labels, prompts, or pass bars.
 
 ## The dataset and where it comes from
 
-The corpus has two public origins. Court decisions come from the 법제처
-국가법령정보 OPEN API at law.go.kr, searched against four target laws — 의료법,
-표시·광고의 공정화에 관한 법률, 소비자기본법, and 안마사에 관한 규칙. Decisions
-whose full text that API does not publish were not collected.
+Current statutes and court decisions come from the 법제처 국가법령정보 OPEN API
+at law.go.kr. Dataset v2 covers 약사법, 의료법, 개인정보 보호법, 의료기기법,
+표시·광고의 공정화에 관한 법률, 화장품법, 공중위생관리법, and 안마사에 관한 규칙.
+It carries current laws, existing decrees and rules, appendices, and selected
+aesthetic-domain decisions whose full text the API publishes.
 
 Official guidance from 보건복지부 and 식품의약품안전처 was approved on content
 and then withdrawn on licence: one is published under terms forbidding
@@ -146,26 +147,29 @@ This assessment replaces the legacy OpenSearch 2.17 baseline with **OpenSearch
 3.5**. Build local and managed indexes that are compatible with 3.5. Do not copy
 2.17 mappings or assumptions without revalidating them against 3.5.
 
-## Repository provisioning from a tag
+## Contributor repositories from a tag
 
 MZO freezes the contributor starting point as an immutable tag such as
 `assessment-v1` after the dataset release, model access, and smoke checks are
-ready. MZO then creates one separate private repository per contributor from the
-exact tagged tree. Contributors do not share branches or see one another's work.
+ready. Each contributor then creates a private repository in their own GitHub
+account from the exact tagged tree and grants the designated MZO GitHub account
+collaborator access for review. Contributors do not share branches or see one
+another's work.
 
 The contributor repository records the source tag and commit in its initial
 commit. Work continues on that repository's `master` branch; feature branches
-and pull requests are optional. The final submission is identified by one exact
-commit SHA. A later baseline correction receives a new tag and is distributed
-to every active contributor at the same time.
+and pull requests are optional. The final submission is identified by the
+private repository URL and one exact commit SHA. A later baseline correction
+receives a new tag and is distributed to every active contributor at the same
+time.
 
-MZO provisioning outline:
+Repository outline:
 
 ```text
 legal-agent-assessment-template @ assessment-v1
-        |-- contributor-a private repository
-        |-- contributor-b private repository
-        `-- contributor-c private repository
+        |-- contributor-a/private-repository (+ MZO collaborator)
+        |-- contributor-b/private-repository (+ MZO collaborator)
+        `-- contributor-c/private-repository (+ MZO collaborator)
 ```
 
 Do not create contributor repositories from an untagged moving branch.

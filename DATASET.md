@@ -15,10 +15,11 @@ Before implementation:
 4. Preserve raw supplied bytes; write derived artifacts to ignored directories.
 5. Report a mismatch immediately instead of repairing the release locally.
 
-The final release reflects MZO's approved dataset review. It supplies citable
-law.go.kr cases. Duplicated law PDFs and AI Hub 452 are excluded. AI Hub 71874
-is not retrieval evidence and may be used for evaluation only when MZO confirms
-that its restricted-use conditions are satisfied.
+The final release reflects MZO's approved dataset review. Dataset v2 supplies
+citable current statutes and selected aesthetic-domain cases from law.go.kr.
+Duplicated law PDFs and AI Hub 452 are excluded. AI Hub 71874 is not retrieval
+evidence and may be used for evaluation only when MZO confirms that its
+restricted-use conditions are satisfied.
 
 Records whose subject matter sits away from this agent's questions are supplied
 but marked outside the default corpus. Including them is a record-selection

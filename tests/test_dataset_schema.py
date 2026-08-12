@@ -26,6 +26,8 @@ from legal_agent_assessment import (
     SourceAdmission,
     SourceProvenance,
     SourceRecord,
+    StatuteIdentity,
+    StatuteUnitKind,
     TextExtraction,
     UsageDisposition,
     content_hash,
@@ -128,6 +130,44 @@ def guide(
     )
 
 
+def statute(
+    document_id: str = "statute-001234-10-0",
+    text: str = "제10조(영업자의 준수사항) 영업자는 위생관리 기준을 지켜야 한다.",
+    **overrides: object,
+) -> SourceRecord:
+    identity: dict[str, object] = {
+        "unit_kind": StatuteUnitKind.ARTICLE,
+        "law_name": "공중위생관리법",
+        "law_id": "001234",
+        "mst": "999999",
+        "instrument_kind": "법률",
+        "responsible_ministry": "보건복지부",
+        "promulgated_on": "20260101",
+        "effective_on": "20260701",
+        "article_number": "10",
+        "article_branch_number": "0",
+        "article_title": "영업자의 준수사항",
+        "unit_effective_on": "20260701",
+    }
+    identity.update(overrides)
+    return SourceRecord(
+        document_id=document_id,
+        document_kind=DocumentKind.STATUTE,
+        title="공중위생관리법 제10조",
+        text=text,
+        content_hash=content_hash(text),
+        identity=StatuteIdentity.model_validate(identity),
+        provenance=provenance(
+            provider="법제처",
+            source_url="https://www.law.go.kr/법령/공중위생관리법",
+            source_reference="국가법령정보센터 공중위생관리법 제10조",
+        ),
+        admission=SourceAdmission.EXEMPT,
+        attribution="법제처 국가법령정보 공동활용",
+        usage=UsageDisposition.INDEX_ELIGIBLE,
+    )
+
+
 def manifest(
     records: int = 2,
     kinds: tuple[tuple[str, int], ...] = (("judgement", 1), ("official_guide", 1)),
@@ -159,6 +199,24 @@ def manifest(
 
 
 class TestSourceRecord:
+    def test_statute_article_round_trips_with_citation_coordinates(self) -> None:
+        record = statute()
+
+        wire = record.model_dump(by_alias=True, mode="json")
+
+        assert wire["documentKind"] == "statute"
+        assert wire["identity"]["unitKind"] == "article"
+        assert wire["identity"]["articleNumber"] == "10"
+        assert SourceRecord.model_validate(wire) == record
+
+    def test_statute_appendix_requires_appendix_coordinates(self) -> None:
+        with pytest.raises(ValidationError, match="appendix coordinates"):
+            statute(unit_kind="appendix", article_number=None, article_branch_number=None)
+
+    def test_statute_article_refuses_appendix_coordinates(self) -> None:
+        with pytest.raises(ValidationError, match="article identity cannot carry appendix"):
+            statute(appendix_number="5")
+
     def test_camel_case_round_trip_preserves_the_record(self) -> None:
         record = judgement()
 
@@ -473,7 +531,7 @@ class TestReleaseValidation:
 
     def test_manifest_refuses_an_unknown_coverage_key(self) -> None:
         with pytest.raises(ValidationError, match="unknown keys"):
-            manifest(kinds=(("statute", 2),))
+            manifest(kinds=(("administrative_rule", 2),))
 
     def test_manifest_refuses_a_repeated_file_path(self) -> None:
         base = manifest()
