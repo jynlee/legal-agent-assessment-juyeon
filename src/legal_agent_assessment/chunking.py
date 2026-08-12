@@ -11,6 +11,7 @@ matching AGENTS.md's separation of deterministic logic from I/O.
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
@@ -88,6 +89,76 @@ def split_sections(text: str) -> tuple[tuple[str, str], ...]:
         sections.append((name, text[content_start:content_end]))
 
     return tuple(sections)
+
+
+_DIGIT_MARKER = re.compile(r"^(\d+)\.\s*")
+_HANGUL_MARKER = re.compile(r"^([가-힣])\.\s*")
+_PAREN_MARKER = re.compile(r"^\((\d+)\)\s*")
+
+
+def paragraph_marker(paragraph: str) -> tuple[str, str] | None:
+    """Return (level, label) if a paragraph opens with a numbered marker.
+
+    Matches only at the very start of the paragraph, so an ordinary sentence
+    is never mistaken for a marker unless it literally opens with a single
+    enumerator character (가/나/다/...) followed by a period, which is the
+    convention this corpus uses for lettered sub-items.
+    """
+
+    for level, pattern in (
+        ("digit", _DIGIT_MARKER),
+        ("hangul", _HANGUL_MARKER),
+        ("paren", _PAREN_MARKER),
+    ):
+        match = pattern.match(paragraph)
+        if match:
+            return (level, match.group(1))
+    return None
+
+
+def _build_locator(
+    section_name: str,
+    digit: str | None,
+    hangul: str | None,
+    paren: str | None,
+) -> str:
+    return " > ".join(part for part in (section_name, digit, hangul, paren) if part)
+
+
+def _tag_paragraphs(section_name: str, paragraphs: Sequence[str]) -> tuple[tuple[str, str], ...]:
+    """Attach a locator path to each paragraph in one section.
+
+    A digit marker resets any hangul/paren sub-labels seen so far (a new
+    "2." starts a new sub-item, so the previous "가"/"나" no longer apply); a
+    hangul marker resets any paren sub-label. This produces paths like
+    "이유 > 1 > 가" that match the section's actual nesting as it is read
+    top to bottom -- the same hierarchy-path approach the statute chunker
+    uses (reports/decisions/2026-08-12-statute-chunking-design.md, Decision
+    5), scoped per section rather than per record since a judgement's
+    section boundary already prevents a "1" in 【주문】 colliding with a "1"
+    in 【이유】.
+    """
+
+    digit_label: str | None = None
+    hangul_label: str | None = None
+    paren_label: str | None = None
+    tagged: list[tuple[str, str]] = []
+
+    for paragraph in paragraphs:
+        marker = paragraph_marker(paragraph)
+        if marker is not None:
+            level, label = marker
+            if level == "digit":
+                digit_label, hangul_label, paren_label = label, None, None
+            elif level == "hangul":
+                hangul_label, paren_label = label, None
+            else:
+                paren_label = label
+        tagged.append(
+            (_build_locator(section_name, digit_label, hangul_label, paren_label), paragraph)
+        )
+
+    return tuple(tagged)
 
 
 def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
@@ -423,6 +494,7 @@ __all__ = [
     "chunk_statute_record",
     "find_table_spans",
     "pack_lines_to_budget",
+    "paragraph_marker",
     "split_paragraphs",
     "split_sections",
     "split_statute_sections",

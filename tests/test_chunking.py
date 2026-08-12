@@ -465,3 +465,39 @@ def test_split_sections_with_no_header_at_all_returns_one_unlabeled_section() ->
     sections = split_sections("헤더가 전혀 없는 본문")
 
     assert sections == (("", "헤더가 전혀 없는 본문"),)
+
+
+def test_paragraph_marker_recognizes_digit_hangul_and_paren_markers() -> None:
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    assert paragraph_marker("1. 사건의 개요와 쟁점") == ("digit", "1")
+    assert paragraph_marker("가. 공소사실의 요지") == ("hangul", "가")
+    assert paragraph_marker("(1) 첫 번째 쟁점") == ("paren", "1")
+
+
+def test_paragraph_marker_returns_none_for_ordinary_prose() -> None:
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    assert paragraph_marker("피고인은 의료인이 아님에도") is None
+
+
+def test_tag_paragraphs_builds_a_locator_path_from_markers_seen_so_far() -> None:
+    from legal_agent_assessment.chunking import _tag_paragraphs
+
+    paragraphs = (
+        "상고이유를 판단한다.",
+        "1. 사건의 개요와 쟁점",
+        "가. 공소사실의 요지",
+        "피고인은 의료인이 아님에도 문신시술을 하였다.",
+        "나. 원심의 판단",
+        "2. 대법원의 판단",
+    )
+
+    tagged = _tag_paragraphs("이유", paragraphs)
+
+    assert tagged[0] == ("이유", "상고이유를 판단한다.")
+    assert tagged[1] == ("이유 > 1", "1. 사건의 개요와 쟁점")
+    assert tagged[2] == ("이유 > 1 > 가", "가. 공소사실의 요지")
+    assert tagged[3] == ("이유 > 1 > 가", "피고인은 의료인이 아님에도 문신시술을 하였다.")
+    assert tagged[4] == ("이유 > 1 > 나", "나. 원심의 판단")
+    assert tagged[5] == ("이유 > 2", "2. 대법원의 판단")
