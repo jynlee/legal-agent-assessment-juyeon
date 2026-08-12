@@ -698,21 +698,17 @@ def test_chunk_body_locator_reflects_the_section_and_marker_path() -> None:
 
 
 def test_chunk_body_locators_are_distinct_within_one_record() -> None:
-    item = "충분히 긴 문단 내용입니다. " * 30
-    text = "<br/>".join(
-        [
-            "【이    유】",
-            f"1. {item}",
-            f"가. {item}",
-            f"나. {item}",
-            f"2. {item}",
-            f"가. {item}",
-            f"나. {item}",
-        ]
-    )
+    """Regression: a single oversized paragraph split by _split_oversized
+    produces multiple pieces sharing one raw locator -- chunk_body's dedup
+    must make the resulting chunk locators distinct."""
+
+    huge = "피고인은 사실을 인정한다. " * 300
+    text = f"【이    유】<br/>1. {huge}"
+    assert len(huge) >= TARGET_MAX_CHARS, "fixture must force _split_oversized to fire"
 
     record = _judgement_record(text=text)
     chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
 
     locators = [c.locator for c in chunks]
+    assert len(chunks) > 1, "fixture must actually produce multiple chunks to test dedup"
     assert len(set(locators)) == len(locators), f"duplicate locators: {locators}"
