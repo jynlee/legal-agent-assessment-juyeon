@@ -176,13 +176,73 @@ not from `JudgementIdentity`. `chunk_id` keeps the existing
 `"{document_id}#{chunk_type}-{ordinal:03d}"` pattern; `document_id` is
 already unique per article/appendix, so there is no new collision risk.
 
-## Decision 5: Locator follows the judgement section-path convention
+## Decision 5 (revised): Locator carries the full marker hierarchy, plus an unconditional distinctness safety net
+
+**Superseded.** The original version of this decision (below, kept for
+history) emitted only the *leaf* marker — `"제2조 > 1"` for a piece under
+"1.", and the same `"제2조 > 1"` again for a *different* piece under a
+later, unrelated "1." (e.g. the "1." that restarts inside "2."'s own
+sub-items). The final whole-branch review (2026-08-12) demonstrated this is
+not an edge case: an ordinary article with two numbered 호 items, each with
+lettered 목 sub-items (`1. … 가. … 나. … 2. … 가. … 나. … 3. …`), produced 9
+chunks with only 5 distinct locators when run against the actual code.
+
+**Revised rule:**
+
+1. `_MARKER_RE` gains three named groups (`roman`, `digit`, `gana`) instead
+   of one, so each match's *level* is known: roman = 0 (outermost), digit =
+   1, gana = 2 (innermost) — matching Korean statute structure (별표 major
+   sections in roman numerals, 호 in digits, 목 in 가나다).
+2. While walking a record's markers in document order (across gaps *and*
+   across intervening table spans, which do not reset the state), maintain
+   an open path as `{level: marker_text}`. On each new marker: drop every
+   open level deeper than the new marker's level, set the new marker at its
+   level, then join the remaining open levels in order — `"1"`, then
+   `"1 > 가"`, then `"1 > 나"`, then (on the next digit-level marker) drop
+   level 2, giving `"2"`, then `"2 > 가"` (a *different* string from the
+   earlier `"1 > 가"`, even though the leaf marker is again "가").
+3. `StatuteSection.marker` now holds this composed path string, not the bare
+   leaf character — the type doesn't change (`str | None`), only what it
+   contains.
+4. If a marker-bearing section itself still exceeds the split threshold and
+   `pack_lines_to_budget` produces more than one piece from it, each
+   sub-piece keeps the path and appends its own sub-position:
+   `"1 > 가 (조각 2/3)"`. A single-piece pack keeps the bare path.
+5. **Unconditional safety net:** after computing every chunk's locator for
+   one record, if a locator string repeats within that record — including a
+   case this hierarchy still cannot see, such as source numbering that
+   restarts at "1." without any higher-level marker in between — the repeat
+   is disambiguated by appending `" #{ordinal + 1}"`. This makes
+   distinctness an invariant the code enforces directly, rather than a
+   property that depends on every real statute in the corpus following a
+   clean nesting convention.
+
+| Case | Locator example |
+| --- | --- |
+| Unsplit record (91.8%) | `"제1조"`, `"별표 8"` — the record's own title |
+| Nested marker path | `"제2조 > 1 > 가"` |
+| Marker-bearing piece that still needed packing | `"제2조 > 1 > 가 (조각 2/3)"` |
+| Markerless piece (table-whole, or packed prose with no marker) | `"별표 8 (조각 2/5)"` (global numbering over the record's full chunk list) |
+| Any locator that still collided after the above | `"제2조 > 1 #7"` (ordinal-suffixed) |
+
+Test coverage added for this revision: a nested-marker fixture asserting
+`len({c.locator for c in chunks}) == len(chunks)`, per the final review's
+explicit recommendation.
+
+<details>
+<summary>Original Decision 5 (2026-08-12, superseded same day)</summary>
 
 | Case | Locator example |
 | --- | --- |
 | Unsplit record (91.8%) | `"제1조"`, `"별표 8"` — the record's own title |
 | Marker-split piece | `"제2조 > 1"` |
 | Table-fallback piece | `"별표 8 (조각 2/5)"` |
+
+This did not track marker level, so two pieces under different parent
+markers but with the same leaf marker character produced identical
+locators. See the revision above.
+
+</details>
 
 ## Verification basis
 
