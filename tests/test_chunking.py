@@ -472,7 +472,7 @@ def test_paragraph_marker_recognizes_digit_hangul_and_paren_markers() -> None:
 
     assert paragraph_marker("1. 사건의 개요와 쟁점") == ("digit", "1")
     assert paragraph_marker("가. 공소사실의 요지") == ("hangul", "가")
-    assert paragraph_marker("(1) 첫 번째 쟁점") == ("paren", "1")
+    assert paragraph_marker("(1) 첫 번째 쟁점") == ("paren", "(1)")
 
 
 def test_paragraph_marker_returns_none_for_ordinary_prose() -> None:
@@ -501,3 +501,22 @@ def test_tag_paragraphs_builds_a_locator_path_from_markers_seen_so_far() -> None
     assert tagged[3] == ("이유 > 1 > 가", "피고인은 의료인이 아님에도 문신시술을 하였다.")
     assert tagged[4] == ("이유 > 1 > 나", "나. 원심의 판단")
     assert tagged[5] == ("이유 > 2", "2. 대법원의 판단")
+
+
+def test_paragraph_marker_paren_label_is_distinguishable_from_a_digit_label() -> None:
+    """Regression: a lone "(1)" marker with no preceding digit/hangul context
+    must not produce the same locator a literal "1." digit marker would."""
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    digit_marker = paragraph_marker("1. 사건의 개요")
+    paren_marker = paragraph_marker("(1) 첫 번째 쟁점")
+
+    assert digit_marker is not None
+    assert paren_marker is not None
+    assert digit_marker[1] != paren_marker[1]
+
+
+def test_paragraph_marker_does_not_match_a_decimal_number() -> None:
+    from legal_agent_assessment.chunking import paragraph_marker
+
+    assert paragraph_marker("3.14 원주율에 관하여") is None

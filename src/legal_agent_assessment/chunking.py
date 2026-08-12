@@ -91,7 +91,7 @@ def split_sections(text: str) -> tuple[tuple[str, str], ...]:
     return tuple(sections)
 
 
-_DIGIT_MARKER = re.compile(r"^(\d+)\.\s*")
+_DIGIT_MARKER = re.compile(r"^(\d+)\.(?!\d)\s*")
 _HANGUL_MARKER = re.compile(r"^([가-힣])\.\s*")
 _PAREN_MARKER = re.compile(r"^\((\d+)\)\s*")
 
@@ -112,7 +112,8 @@ def paragraph_marker(paragraph: str) -> tuple[str, str] | None:
     ):
         match = pattern.match(paragraph)
         if match:
-            return (level, match.group(1))
+            label = f"({match.group(1)})" if level == "paren" else match.group(1)
+            return (level, label)
     return None
 
 
