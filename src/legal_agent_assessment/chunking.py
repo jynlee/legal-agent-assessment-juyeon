@@ -59,6 +59,37 @@ def split_paragraphs(text: str) -> tuple[str, ...]:
     return tuple(piece.strip() for piece in text.split(_PARAGRAPH_SEP) if piece.strip())
 
 
+_SECTION_HEADER = re.compile(r"【([^】]*)】")
+
+
+def split_sections(text: str) -> tuple[tuple[str, str], ...]:
+    """Split on bracketed section headers, matched in place.
+
+    Headers in this corpus are padded with inter-character spacing
+    (`【이    유】`, not `【이유】`) as a typesetting convention. The bracket
+    pattern here tolerates any internal whitespace and reports the
+    normalized name, but matches against the original text so the split
+    position is exact and no prose is mutated. See Decision 3 in
+    reports/decisions/2026-08-11-normalization-and-chunking-design.md.
+    """
+
+    matches = list(_SECTION_HEADER.finditer(text))
+    if not matches:
+        return (("", text),)
+
+    sections: list[tuple[str, str]] = []
+    if matches[0].start() > 0:
+        sections.append(("", text[: matches[0].start()]))
+
+    for index, match in enumerate(matches):
+        name = re.sub(r"\s+", "", match.group(1))
+        content_start = match.end()
+        content_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections.append((name, text[content_start:content_end]))
+
+    return tuple(sections)
+
+
 def find_table_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Return non-overlapping (start, end) offsets of contiguous table-formatted line runs.
 
@@ -393,5 +424,6 @@ __all__ = [
     "find_table_spans",
     "pack_lines_to_budget",
     "split_paragraphs",
+    "split_sections",
     "split_statute_sections",
 ]

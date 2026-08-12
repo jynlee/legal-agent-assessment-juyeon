@@ -22,6 +22,7 @@ from legal_agent_assessment.chunking import (
     find_table_spans,
     pack_lines_to_budget,
     split_paragraphs,
+    split_sections,
     split_statute_sections,
 )
 from legal_agent_assessment.dataset import (
@@ -435,3 +436,32 @@ def test_chunk_statute_record_flags_a_repealed_placeholder() -> None:
 
     assert len(chunks) == 1
     assert chunks[0].kind_fields.status == "repealed"
+
+
+def test_split_sections_matches_padded_bracket_headers_in_place() -> None:
+    """Verified against the frozen v1 release: an exact match finds 이유 in
+    only 24/995 default-corpus records; a whitespace-tolerant match finds it
+    in 995/995 (reports/decisions/2026-08-11-normalization-and-chunking-design.md,
+    Decision 3). This is the padding those records actually use."""
+
+    text = "【주    문】 파기환송한다.<br/>【이    유】  상고이유를 판단한다."
+
+    sections = split_sections(text)
+
+    assert sections == (
+        ("주문", " 파기환송한다.<br/>"),
+        ("이유", "  상고이유를 판단한다."),
+    )
+
+
+def test_split_sections_keeps_leading_text_as_an_unlabeled_section() -> None:
+    sections = split_sections("머리말<br/>【이유】 본문")
+
+    assert sections[0] == ("", "머리말<br/>")
+    assert sections[1] == ("이유", " 본문")
+
+
+def test_split_sections_with_no_header_at_all_returns_one_unlabeled_section() -> None:
+    sections = split_sections("헤더가 전혀 없는 본문")
+
+    assert sections == (("", "헤더가 전혀 없는 본문"),)
