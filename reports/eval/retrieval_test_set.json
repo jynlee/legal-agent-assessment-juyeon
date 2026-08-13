@@ -1,0 +1,452 @@
+[
+  {
+    "id": 1,
+    "question": "화장품 원료를 소분해서 손님들한테 따로 나눠 팔면 이것도 화장품 제조허가가 필요한가요?",
+    "domain": "약사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-108043#summary-headnote-000",
+    "relevant_chunk_ids": ["precedent-108043#summary-headnote-000"],
+    "notes": "화장품 원료 소분 = 제조행위 해당 여부를 다룬 판례."
+  },
+  {
+    "id": 2,
+    "question": "약사 자격 없이 한약국 비슷한 걸 운영하면 어떤 처벌을 받나요?",
+    "domain": "약사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-206398#body-009",
+    "relevant_chunk_ids": ["precedent-206398#body-009"],
+    "notes": "무자격 한약국 개설에 대한 적용 법조·형 선택."
+  },
+  {
+    "id": 3,
+    "question": "약사법에서 말하는 '판매'에 해외로 수출하는 것도 포함되나요?",
+    "domain": "약사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-190259#body-005",
+    "relevant_chunk_ids": ["precedent-190259#body-005"],
+    "notes": "약사법상 '판매' 개념에 해외 수출 포함 여부 쟁점."
+  },
+  {
+    "id": 4,
+    "question": "한약조제자격이 있는 약사는 한약을 조제할 때도 조제기록부를 꼭 작성해야 하나요?",
+    "domain": "약사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-84300#summary-holding-000",
+    "relevant_chunk_ids": ["precedent-84300#summary-holding-000"],
+    "notes": "한약조제자격을 가진 약사는 조제기록부 작성·보존의무 조항(약사법 제25조의2) 적용대상이 아니라는 판례."
+  },
+  {
+    "id": 5,
+    "question": "미용실에서 눈썹 반영구 화장(문신) 시술을 해드려도 무면허 의료행위가 되지 않나요?",
+    "domain": "의료법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-622115#summary-headnote-000",
+    "relevant_chunk_ids": ["precedent-622115#summary-headnote-000"],
+    "notes": "통상적인 미용문신행위는 무면허 의료행위에 해당하지 않는다고 본 판례."
+  },
+  {
+    "id": 6,
+    "question": "손님이 원하는 그림 문신(타투)도 제가 직접 새겨드려도 되나요?",
+    "domain": "의료법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-622263#summary-headnote-000",
+    "relevant_chunk_ids": ["precedent-622263#summary-headnote-000"],
+    "notes": "서화문신행위는 무면허 의료행위에 해당하지 않는다고 본 판례."
+  },
+  {
+    "id": 7,
+    "question": "손님한테 지압 마사지나 침술 같은 걸 해드리면 무면허 의료행위가 되나요?",
+    "domain": "의료법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-99684#summary-holding-000",
+    "relevant_chunk_ids": ["precedent-99684#summary-holding-000"],
+    "notes": "지압안마·침술을 무면허 의료행위로 다룬 판례."
+  },
+  {
+    "id": 8,
+    "question": "저희 매장도 병원처럼 손님 시술 기록을 남기고 보관해야 하는 법적 의무가 있나요?",
+    "domain": "의료법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-141548#summary-holding-000",
+    "relevant_chunk_ids": ["precedent-141548#summary-holding-000"],
+    "notes": "의료법상 진료기록부 작성·보존의무의 범위를 다룬 판례. 의료인 대상 규정이라는 경계를 확인하는 문항."
+  },
+  {
+    "id": 9,
+    "question": "손님 개인정보를 본인 동의 없이 다른 사람한테 알려주면 법 위반이 되나요?",
+    "domain": "개인정보보호법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-220165#body-039",
+    "relevant_chunk_ids": ["precedent-220165#body-039"],
+    "notes": "동의 없는 제3자 제공 사례."
+  },
+  {
+    "id": 10,
+    "question": "다른 매장에서 받은 고객 연락처 DB를 사서 저희 매장 광고 문자를 보내도 되나요?",
+    "domain": "개인정보보호법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-614445#body-027",
+    "relevant_chunk_ids": ["precedent-614445#body-027"],
+    "notes": "타 업체 DB 이전·활용에 개인정보보호법상 동의 절차가 필요하다고 본 판단."
+  },
+  {
+    "id": 11,
+    "question": "매장 회원 정보를 관리할 때 개인정보보호법상 꼭 지켜야 할 게 있나요?",
+    "domain": "개인정보보호법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-614445#body-010",
+    "relevant_chunk_ids": ["precedent-614445#body-010"],
+    "notes": "위탁계약상 개인정보보호법 등 관련 법규 준수 조항."
+  },
+  {
+    "id": 12,
+    "question": "손님이 예약할 때 남긴 개인정보를 원래 목적과 다른 용도로 써도 되나요?",
+    "domain": "개인정보보호법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-220165#body-043",
+    "relevant_chunk_ids": ["precedent-220165#body-043"],
+    "notes": "목적 외 이용 금지(개인정보보호법 제19조)를 다룬 판례."
+  },
+  {
+    "id": 13,
+    "question": "해외에서 직접 구매한 미용기기(레이저 제모기 등)를 허가 없이 매장에서 쓰면 문제가 되나요?",
+    "domain": "의료기기법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-204543#body-013",
+    "relevant_chunk_ids": ["precedent-204543#body-013"],
+    "notes": "무허가·미신고 수입 의료기기 사용·광고에 대한 처벌."
+  },
+  {
+    "id": 14,
+    "question": "무허가 의료기기를 쓰다 적발되면 과징금이 어떻게 매겨지나요?",
+    "domain": "의료기기법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-b32ea63979985827444e4667#body-000",
+    "relevant_chunk_ids": ["doc-b32ea63979985827444e4667#body-000"],
+    "notes": "의료기기법 시행령 별표1 과징금 산정기준. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 15,
+    "question": "의료기기 관련 신고를 제때 안 하면 과태료가 얼마나 나오나요?",
+    "domain": "의료기기법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-9ecad433d2e3fb7a5dff96ad#body-000",
+    "relevant_chunk_ids": ["doc-9ecad433d2e3fb7a5dff96ad#body-000"],
+    "notes": "의료기기법 시행령 별표2 과태료 부과기준. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 16,
+    "question": "무허가 의료기기를 판매하다 적발되면 영업정지 같은 행정처분을 받나요?",
+    "domain": "의료기기법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-f2510c7421cd41afe7d16ccd#body-000",
+    "relevant_chunk_ids": ["doc-f2510c7421cd41afe7d16ccd#body-000"],
+    "notes": "의료기기법 시행규칙 별표8 행정처분 기준. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 17,
+    "question": "블로그나 배너 광고에 시술 후기랑 구매 개수를 부풀려서 올려도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-207141#summary-holding-001",
+    "relevant_chunk_ids": ["precedent-207141#summary-holding-001"],
+    "notes": "배너광고의 구매 개수·시술후기 허위 게시로 표시광고법 위반이 인정된 사례."
+  },
+  {
+    "id": 18,
+    "question": "세일 광고할 때 '원래 가격'을 실제보다 높게 적어서 할인율을 크게 보이게 해도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-221809#body-020",
+    "relevant_chunk_ids": ["precedent-221809#body-020"],
+    "notes": "'종전거래가격' 허위 표시와 할인광고의 거짓·과장성 판단."
+  },
+  {
+    "id": 19,
+    "question": "제품에 부작용 위험이 있다는 걸 알면서 광고에서 그 내용을 빼도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-220369#body-010",
+    "relevant_chunk_ids": ["precedent-220369#body-010"],
+    "notes": "인체 안전 관련 정보 은폐·누락이 기만적 표시·광고에 해당한다고 본 사례."
+  },
+  {
+    "id": 20,
+    "question": "1+1 행사 광고를 할 때 정가를 실제보다 높게 표시해서 이득처럼 보이게 해도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-220843#body-008",
+    "relevant_chunk_ids": ["precedent-220843#body-008"],
+    "notes": "1+1 광고에서 종전거래가격 허위표시의 거짓·과장성 판단기준."
+  },
+  {
+    "id": 21,
+    "question": "화장품을 직접 만들어서 팔려면 허가가 아니라 신고만 하면 되는 건가요?",
+    "domain": "화장품법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-85430#body-008",
+    "relevant_chunk_ids": ["precedent-85430#body-008"],
+    "notes": "화장품 제조업이 허가제에서 신고제로 바뀐 연혁과 그 의미를 다룬 판례."
+  },
+  {
+    "id": 22,
+    "question": "매장에서 파는 화장품도 품질관리기준을 지켜야 하나요?",
+    "domain": "화장품법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-84719cca9a1d779c854080c0#body-000",
+    "relevant_chunk_ids": ["doc-84719cca9a1d779c854080c0#body-000"],
+    "notes": "화장품법 시행규칙 별표1 품질관리기준. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 23,
+    "question": "화장품법을 위반하면 영업정지 같은 행정처분을 받을 수 있나요?",
+    "domain": "화장품법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-468e683a08a513121b891499#body-000",
+    "relevant_chunk_ids": ["doc-468e683a08a513121b891499#body-000"],
+    "notes": "화장품법 시행규칙 별표7 행정처분의 기준. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 24,
+    "question": "매장에서 소분한 화장품 용기에도 표시기준을 지켜서 라벨을 붙여야 하나요?",
+    "domain": "화장품법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-19df8956ba4711806d5a3c00#body-000",
+    "relevant_chunk_ids": ["doc-19df8956ba4711806d5a3c00#body-000"],
+    "notes": "화장품법 시행규칙 별표4 화장품 포장의 표시기준 및 표시방법. 근거 청크가 별표 제목 수준으로 얇음."
+  },
+  {
+    "id": 25,
+    "question": "제가 자격증 없이 손님한테 보톡스나 필러 시술을 해드리면 무면허 의료행위가 되나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-173261#body-014",
+    "relevant_chunk_ids": ["precedent-173261#body-014"],
+    "notes": "무면허로 보톡스·필러를 시술한 사례에 대한 양형 판단."
+  },
+  {
+    "id": 26,
+    "question": "속눈썹 연장이나 모발이식 시술도 무면허로 하면 의료법 위반이 되나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-216061#summary-headnote-001",
+    "relevant_chunk_ids": ["precedent-216061#summary-headnote-001"],
+    "notes": "속눈썹·모발 이식시술행위가 의료행위에 해당한다고 본 판례."
+  },
+  {
+    "id": 27,
+    "question": "미용실에서 손님한테 안마를 해드리면 무자격 안마영업이 되나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-83069#summary-headnote-001",
+    "relevant_chunk_ids": ["precedent-83069#summary-headnote-001"],
+    "notes": "이발소에서의 안마행위가 무자격 안마영업에 해당한다고 본 판례."
+  },
+  {
+    "id": 28,
+    "question": "제가 직원한테 의료행위에 해당하는 시술을 지시해서 시키면 저도 무면허 의료행위 책임을 지나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-600433#body-015",
+    "relevant_chunk_ids": ["precedent-600433#body-015"],
+    "notes": "사용인(직원)에게 무면허 의료행위를 지시한 사안의 양형 판단."
+  },
+  {
+    "id": 29,
+    "question": "미용업을 하려면 위생교육을 꼭 받아야 하나요?",
+    "domain": "공중위생법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-bb3d1f9eaf8e4300d7ac3e98#body-000",
+    "relevant_chunk_ids": ["doc-bb3d1f9eaf8e4300d7ac3e98#body-000"],
+    "notes": "공중위생관리법 시행규칙 제23조 위생교육 의무."
+  },
+  {
+    "id": 30,
+    "question": "영업신고를 안 하고 미용실을 운영하면 어떤 처분을 받나요?",
+    "domain": "공중위생법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-032",
+    "relevant_chunk_ids": ["doc-909409c33b448aaa6f49785a#body-032"],
+    "notes": "공중위생관리법 시행규칙 별표7, 무신고 영업·시설기준 위반 행정처분기준."
+  },
+  {
+    "id": 31,
+    "question": "제가 다른 사람한테서 매장을 인수했는데, 전 사장님이 위반한 것 때문에 저한테 불이익이 갈 수도 있나요?",
+    "domain": "공중위생법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-80695#body-004",
+    "relevant_chunk_ids": ["precedent-80695#body-004"],
+    "notes": "영업양도인의 법규위반사실로 양수인에게 행정처분을 할 수 있는지를 다룬 판례."
+  },
+  {
+    "id": 32,
+    "question": "공중위생관리법에서 미용업은 정확히 어떤 업종으로 분류되나요?",
+    "domain": "공중위생법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-160636#body-013",
+    "relevant_chunk_ids": ["precedent-160636#body-013"],
+    "notes": "공중위생(관리)법상 위생접객업 영업 구분(숙박업·목욕장업·이용업·미용업 등) 연혁."
+  },
+  {
+    "id": 33,
+    "question": "미용실에서 쓰는 가위나 도구를 소독 안 하고 그냥 쓰면 문제가 되나요?",
+    "domain": "미용법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-53f90adbd0bc23656fb2cfdc#body-027",
+    "relevant_chunk_ids": ["doc-53f90adbd0bc23656fb2cfdc#body-027"],
+    "notes": "공중위생관리법 시행규칙 별표1, 미용업 기구 소독 의무."
+  },
+  {
+    "id": 34,
+    "question": "미용사 자격증이 없어도 미용실에서 시술을 할 수 있나요?",
+    "domain": "미용법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-88efda1b60dfe93bd7341326#body-000",
+    "relevant_chunk_ids": ["doc-88efda1b60dfe93bd7341326#body-000"],
+    "notes": "공중위생관리법 시행규칙 제14조, 미용사 업무범위."
+  },
+  {
+    "id": 35,
+    "question": "미용사 면허를 새로 받거나 재발급 받을 때 수수료가 얼마나 드나요?",
+    "domain": "미용법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-c7eba9168dcc608ed6eb1934#body-000",
+    "relevant_chunk_ids": ["doc-c7eba9168dcc608ed6eb1934#body-000"],
+    "notes": "공중위생관리법 시행령 제10조의2, 면허 신규신청·재교부 수수료."
+  },
+  {
+    "id": 36,
+    "question": "네일아트만 전문으로 하는 매장도 법적으로 미용업에 해당하나요?",
+    "domain": "미용법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-026",
+    "relevant_chunk_ids": ["doc-909409c33b448aaa6f49785a#body-026"],
+    "notes": "공중위생관리법 시행규칙 별표7 업종 목록 중 '미용업' 항목. 근거 청크가 목차 수준으로 얇음."
+  },
+  {
+    "id": 37,
+    "question": "안마사는 꼭 시각장애인만 할 수 있는 자격인가요?",
+    "domain": "안마사법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-40bb91a38251e6988a4de8c5#body-000",
+    "relevant_chunk_ids": ["doc-40bb91a38251e6988a4de8c5#body-000"],
+    "notes": "의료법 제82조, 안마사 자격을 시각장애인으로 제한."
+  },
+  {
+    "id": 38,
+    "question": "스포츠마사지 자격증이 있으면 손님한테 안마 시술을 해도 되나요?",
+    "domain": "안마사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-83065#summary-headnote-000",
+    "relevant_chunk_ids": ["precedent-83065#summary-headnote-000"],
+    "notes": "스포츠마사지사 자격증 소지자의 시술이 무자격 안마행위에 해당한다고 본 판례."
+  },
+  {
+    "id": 39,
+    "question": "안마사 자격을 취득할 때 제출한 서류에 문제가 있으면 나중에 자격이 취소될 수도 있나요?",
+    "domain": "안마사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-143905#body-006",
+    "relevant_chunk_ids": ["precedent-143905#body-006"],
+    "notes": "허위 졸업장 제출로 안마사 자격인정이 철회된 사례."
+  },
+  {
+    "id": 40,
+    "question": "시각장애인이 아닌 사람이 다른 사람 명의를 빌려서 안마시술소를 운영해도 되나요?",
+    "domain": "안마사법",
+    "expected_status": "answered",
+    "source_chunk_id": "precedent-170159#body-007",
+    "relevant_chunk_ids": ["precedent-170159#body-007"],
+    "notes": "안마사 자격 없는 자가 명의를 차용해 안마시술소를 운영한 사안."
+  },
+  {
+    "id": 41,
+    "question": "이 시술을 받으면 피부 노화가 되돌아간다고 광고해도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "철회된 보건복지부·식약처 공식 가이드가 다뤘을 특정 효능 문구 판단 영역. 코퍼스(판례·법령)만으로는 확정 답변 불가하도록 의도적으로 구성."
+  },
+  {
+    "id": 42,
+    "question": "'식약처 인증 성분 사용'이라는 문구를 화장품 광고에 넣어도 되나요?",
+    "domain": "화장품법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "철회된 공식 가이드의 구체적 광고 문구 판단 영역을 겨냥."
+  },
+  {
+    "id": 43,
+    "question": "이 기기가 '의료기기 수준의 효과'가 있다고 홍보해도 되나요?",
+    "domain": "의료기기법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "철회된 공식 가이드의 구체적 광고 문구 판단 영역을 겨냥."
+  },
+  {
+    "id": 44,
+    "question": "시술 전후 사진에 '100% 만족 보장'이라는 문구를 붙여도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "철회된 공식 가이드의 구체적 광고 문구 판단 영역을 겨냥."
+  },
+  {
+    "id": 45,
+    "question": "이 관리 프로그램을 '피부과 전문의가 추천'했다고 광고해도 되나요?",
+    "domain": "표시광고법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "철회된 공식 가이드의 구체적 광고 문구 판단 영역을 겨냥."
+  },
+  {
+    "id": 46,
+    "question": "오늘 날씨가 어때요?",
+    "domain": null,
+    "expected_status": "out_of_scope",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "순수 잡담, 법률 질의가 아님."
+  },
+  {
+    "id": 47,
+    "question": "매장 근처에 맛집 좀 추천해주세요",
+    "domain": null,
+    "expected_status": "out_of_scope",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "법률과 무관한 일상 질의."
+  },
+  {
+    "id": 48,
+    "question": "직원 급여를 인상하려면 어떻게 협상해야 하나요?",
+    "domain": null,
+    "expected_status": "out_of_scope",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "근로기준법 등 이 코퍼스가 다루는 10개 도메인 밖의 법률·경영 질의."
+  },
+  {
+    "id": 49,
+    "question": "매장 인테리어는 어떤 컨셉으로 하면 좋을까요?",
+    "domain": null,
+    "expected_status": "out_of_scope",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "경영·디자인 조언, 법률 질의가 아님."
+  },
+  {
+    "id": 50,
+    "question": "이 시스템은 어떤 AI 모델을 쓰나요?",
+    "domain": null,
+    "expected_status": "out_of_scope",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "에이전트 자체에 대한 메타 질문, 법률 질의가 아님."
+  }
+]
