@@ -16,7 +16,7 @@ from.
 | --- | --- |
 | Index topology | One index for both `body` and `summary` chunks, distinguished by `chunk_type` |
 | Kind-specific fields | Flattened onto the mapping as nullable top-level fields per document kind, not a generalized `{key, value}` facet array |
-| `linked_laws` | Two `keyword[]` fields split by strength: `linked_law_names_confirmed`, `linked_law_names_candidate` |
+| `linked_laws` | Three `keyword[]` fields split by strength: `linked_law_names_core`, `linked_law_names_candidate`, `linked_law_names_unlinked` |
 | `decided_on` | `date`, `format: "yyyyMMdd"` — no transformation code needed |
 | Text analyzer | `standard`, on both the local container and the managed domain — Nori was considered and rejected |
 | Vector field | `knn_vector`, dimension 1536, no `method` block (exact k-NN via query-time `script_score`) |
@@ -69,31 +69,41 @@ mapping change — the same cost the generalized version would have paid to
 add a new key, without carrying nested-query overhead for a case that may
 never arrive.
 
-## Decision 3: `linked_laws` becomes two `keyword[]` fields, not a nested type
+## Decision 3: `linked_laws` becomes three `keyword[]` fields, not a nested type
 
 `Chunk.linked_laws` is `tuple[LawLinkage, ...]` — a variable-length list of
-`{law_name, strength}` pairs (`strength` is `confirmed` or `candidate`,
-`dataset.py`). This is the one genuinely list-shaped field in the mapping
-(unlike Decision 2's fields, which are scalar per chunk), so it does need
-an array-capable design.
+`{law_name, strength}` pairs. `strength` is `dataset.py`'s
+`LinkageStrength`, which has **three** values — `core`, `candidate`,
+`unlinked` — not the two ("confirmed"/"candidate") this decision
+originally stated; that was a citation error from writing this section
+without rechecking the enum, caught and fixed 2026-08-13 while planning
+the indexing implementation, before any code was written against it. This
+is the one genuinely list-shaped field in the mapping (unlike Decision 2's
+fields, which are scalar per chunk), so it does need an array-capable
+design.
 
 The only query this project currently needs against it is "does this chunk
-cite law X" (exact `law_name` match, optionally restricted to confirmed
-linkage) — not a combined `{law_name: X, strength: Y}` structural match that
-would require `nested` to avoid cross-pair false matches. Since the only
-two `strength` values are fixed and known, the strength dimension is
-folded into the field name instead of kept as sub-document structure:
+cite law X" (exact `law_name` match, optionally restricted by strength) —
+not a combined `{law_name: X, strength: Y}` structural match that would
+require `nested` to avoid cross-pair false matches. Since the three
+`strength` values are fixed and known, the strength dimension is folded
+into the field name instead of kept as sub-document structure:
 
 ```json
 {
-  "linked_law_names_confirmed": ["약사법", "의료법"],
-  "linked_law_names_candidate": ["개인정보보호법"]
+  "linked_law_names_core": ["약사법", "의료법"],
+  "linked_law_names_candidate": ["개인정보보호법"],
+  "linked_law_names_unlinked": []
 }
 ```
 
-Both are plain `keyword[]` — a `terms` filter answers the only query this
-project needs, with no `nested` query overhead and no risk of the `object`
-dynamic-subfield explosion Decision 2 also avoided.
+All three are plain `keyword[]` — a `terms` filter answers the only query
+this project needs, with no `nested` query overhead and no risk of the
+`object` dynamic-subfield explosion Decision 2 also avoided. Keeping
+`unlinked` as its own field (rather than dropping it) matches
+`reports/decisions/2026-08-10-record-selection-and-document-kind-policy.md`'s
+policy of preserving `linkedLaws` strength as metadata rather than
+filtering it away at index time.
 
 ## Decision 4: `decided_on` is a `date` field; no sentinel-handling code needed at index time
 
