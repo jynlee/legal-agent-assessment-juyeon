@@ -146,28 +146,30 @@ def chunk_to_document(chunk: Chunk, embedding: Sequence[float]) -> dict[str, Any
     document["linked_law_names_unlinked"] = unlinked
 
     if isinstance(chunk.kind_fields, JudgementChunkFields):
-        fields = chunk.kind_fields
-        document["case_name"] = fields.case_name
-        document["court"] = fields.court
-        document["case_number"] = fields.case_number
-        if fields.decided_on is not None:
-            document["decided_on"] = fields.decided_on
-        if fields.referenced_provisions:
-            document["referenced_provisions"] = _split_citation_list(fields.referenced_provisions)
-        if fields.referenced_precedents:
-            document["referenced_precedents"] = _split_citation_list(fields.referenced_precedents)
-        if fields.issue_ordinal is not None:
-            document["issue_ordinal"] = fields.issue_ordinal
+        judgement_fields = chunk.kind_fields
+        document["case_name"] = judgement_fields.case_name
+        document["court"] = judgement_fields.court
+        document["case_number"] = judgement_fields.case_number
+        if judgement_fields.decided_on is not None:
+            document["decided_on"] = judgement_fields.decided_on
+        if judgement_fields.referenced_provisions:
+            provisions = judgement_fields.referenced_provisions
+            document["referenced_provisions"] = _split_citation_list(provisions)
+        if judgement_fields.referenced_precedents:
+            precedents = judgement_fields.referenced_precedents
+            document["referenced_precedents"] = _split_citation_list(precedents)
+        if judgement_fields.issue_ordinal is not None:
+            document["issue_ordinal"] = judgement_fields.issue_ordinal
     elif isinstance(chunk.kind_fields, StatuteChunkFields):
-        fields = chunk.kind_fields
-        document["law_name"] = fields.law_name
-        document["unit_kind"] = str(fields.unit_kind)
-        document["status"] = fields.status
-        document["layout"] = fields.layout
-        if fields.article_number is not None:
-            document["article_number"] = fields.article_number
-        if fields.appendix_number is not None:
-            document["appendix_number"] = fields.appendix_number
+        statute_fields = chunk.kind_fields
+        document["law_name"] = statute_fields.law_name
+        document["unit_kind"] = str(statute_fields.unit_kind)
+        document["status"] = statute_fields.status
+        document["layout"] = statute_fields.layout
+        if statute_fields.article_number is not None:
+            document["article_number"] = statute_fields.article_number
+        if statute_fields.appendix_number is not None:
+            document["appendix_number"] = statute_fields.appendix_number
 
     return document
 
