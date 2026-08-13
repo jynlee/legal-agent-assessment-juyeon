@@ -15,7 +15,10 @@ EMBEDDING_DIMENSION = 1536
 
 
 def build_embed_request(
-    texts: Sequence[str], *, input_type: Literal["search_document", "search_query"]
+    texts: Sequence[str],
+    *,
+    input_type: Literal["search_document", "search_query"],
+    output_dimension: int = EMBEDDING_DIMENSION,
 ) -> dict[str, Any]:
     """Bedrock Cohere Embed v4 invoke_model request body.
 
@@ -23,18 +26,21 @@ def build_embed_request(
     query text (out of scope for this plan) uses "search_query" -- sending
     both sides the same input_type is a defect, not a shortcut.
 
-    Always requests `output_dimension: EMBEDDING_DIMENSION` (1536). The
-    endpoint's default, unrequested output is 1024-dimensional -- confirmed
-    empirically against the real endpoint -- which would silently mismatch
-    the already-created OpenSearch index's `knn_vector` mapping (dimension
-    1536). This is a fixed constant, not a caller-supplied parameter, because
-    ASSIGNMENT.md requires ingest and query to use the same dimension.
+    Always requests `output_dimension` (default `EMBEDDING_DIMENSION`, 1536).
+    The endpoint's default, unrequested output is 1024-dimensional --
+    confirmed empirically against the real endpoint -- which would silently
+    mismatch the already-created OpenSearch index's `knn_vector` mapping
+    (dimension 1536). `output_dimension` is exposed as an explicit,
+    caller-overridable parameter -- symmetric with `parse_embed_response`'s
+    `expected_dimension` -- but every real call site relies on the default,
+    because ASSIGNMENT.md requires ingest and query to use the same
+    dimension.
     """
 
     return {
         "texts": list(texts),
         "input_type": input_type,
-        "output_dimension": EMBEDDING_DIMENSION,
+        "output_dimension": output_dimension,
     }
 
 

@@ -16,9 +16,9 @@ from legal_agent_assessment.chunking import (
     StatuteChunkFields,
 )
 from legal_agent_assessment.dataset import LinkageStrength
+from legal_agent_assessment.embedding import EMBEDDING_DIMENSION
 
 INDEX_VERSION = "index-v1"
-EMBEDDING_DIMENSION = 1536
 
 _TEXT_WITH_KEYWORD: dict[str, Any] = {
     "type": "text",

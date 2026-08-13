@@ -16,6 +16,14 @@ def test_build_embed_request_sets_input_type_and_texts() -> None:
     assert request["output_dimension"] == 1536
 
 
+def test_build_embed_request_accepts_an_explicit_output_dimension_override() -> None:
+    request = build_embed_request(
+        ["텍스트 하나"], input_type="search_document", output_dimension=1024
+    )
+
+    assert request["output_dimension"] == 1024
+
+
 def test_parse_embed_response_reads_the_float_embeddings_list() -> None:
     body = {"embeddings": [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]}
 
