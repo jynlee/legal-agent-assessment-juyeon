@@ -59,3 +59,27 @@ def build_knn_query(query_vector: Sequence[float], *, size: int) -> dict[str, An
             }
         },
     }
+
+
+def reciprocal_rank_fusion(
+    ranked_id_lists: Sequence[Sequence[str]], *, k: int = 60
+) -> list[tuple[str, float]]:
+    """Combine ranked chunk_id lists into one fused ranking via RRF.
+
+    score(id) = sum, over every input list containing id, of
+    1 / (k + rank_in_that_list) (1-indexed rank). `k=60` is the standard
+    constant from the original RRF paper (Cormack, Clarke, Buettcher, 2009),
+    not a project-specific guess (retrieval design Decision 2).
+
+    Returns (chunk_id, score) pairs sorted by descending score. Python's
+    `sorted` is stable, so ties preserve each id's first-appearance order
+    across `ranked_id_lists` -- deterministic given the same inputs, which
+    this project's retrieval must be for KOLAS-reproducible metrics
+    (reports/decisions/2026-08-13-retrieval-design.md).
+    """
+
+    scores: dict[str, float] = {}
+    for ranked_ids in ranked_id_lists:
+        for rank, chunk_id in enumerate(ranked_ids, start=1):
+            scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+    return sorted(scores.items(), key=lambda pair: pair[1], reverse=True)
