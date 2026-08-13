@@ -54,6 +54,24 @@ def test_parse_embed_response_rejects_wrong_dimension() -> None:
         parse_embed_response(body, expected_count=1, expected_dimension=3)
 
 
+def test_parse_embed_response_summarizes_an_unrecognized_shape_without_dumping_it() -> None:
+    # A real body carries full float vectors; the error must stay readable.
+    body = {"embeddings": {"int8": [[1, 2, 3]]}, "id": "abc", "texts": ["가" * 5000]}
+
+    with pytest.raises(ValueError) as error:
+        parse_embed_response(body, expected_count=1, expected_dimension=3)
+
+    message = str(error.value)
+    assert "top-level keys ['embeddings', 'id', 'texts']" in message
+    assert "'embeddings' is dict with keys ['int8']" in message
+    assert "가가가" not in message
+
+
+def test_parse_embed_response_summarizes_a_missing_embeddings_key() -> None:
+    with pytest.raises(ValueError, match=r"top-level keys \['message'\]"):
+        parse_embed_response({"message": "quota exceeded"}, expected_count=1, expected_dimension=3)
+
+
 def test_estimate_tokens_is_a_conservative_overestimate_for_korean_text() -> None:
     # A real Cohere tokenizer isn't available offline; this is a documented,
     # deliberately conservative (over-counts, never under-counts) approximation

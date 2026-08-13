@@ -170,6 +170,10 @@ def chunk_to_document(chunk: Chunk, embedding: Sequence[float]) -> dict[str, Any
             document["article_number"] = statute_fields.article_number
         if statute_fields.appendix_number is not None:
             document["appendix_number"] = statute_fields.appendix_number
+    else:
+        # A third kind_fields type must fail loudly here rather than silently
+        # producing a document with no kind-specific fields at all.
+        raise ValueError(f"unhandled kind_fields type: {type(chunk.kind_fields)!r}")
 
     return document
 

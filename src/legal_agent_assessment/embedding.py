@@ -61,7 +61,16 @@ def parse_embed_response(
     if isinstance(raw, dict):
         raw = raw.get("float")
     if not isinstance(raw, list):
-        raise ValueError(f"unrecognized embed response shape: {response_body!r}")
+        # Summarize rather than repr the body: a real response carries many
+        # full float vectors, and dumping them into a traceback or log buries
+        # the actual problem (and can be megabytes).
+        detail = f"top-level keys {sorted(response_body)}"
+        if "embeddings" in response_body:
+            embeddings = response_body["embeddings"]
+            detail += f"; 'embeddings' is {type(embeddings).__name__}"
+            if isinstance(embeddings, dict):
+                detail += f" with keys {sorted(embeddings)}"
+        raise ValueError(f"unrecognized embed response shape: {detail}")
 
     if len(raw) != expected_count:
         raise ValueError(f"expected {expected_count} embedding(s), got {len(raw)}")
@@ -74,12 +83,16 @@ def parse_embed_response(
 
 
 def estimate_tokens(text: str) -> int:
-    """Conservative token-count overestimate, for pacing only, not billing.
+    """Conservative token-count approximation, for pacing only, not billing.
 
     No offline Cohere tokenizer is available. One token per character is a
-    safe overestimate for Korean legal text (real subword tokenization is
-    never denser than 1 token/char), so pacing against it never exceeds the
-    real shared quota -- it only paces more cautiously than strictly needed.
+    deliberately conservative approximation for Latin-script-oriented BPE,
+    but it is *not* independently verified for Korean subword tokenization:
+    a byte-level BPE can in principle emit more than one token per Hangul
+    character, so this is an approximation rather than a guaranteed upper
+    bound. That is exactly why callers should pace against real headroom
+    below the raw shared-quota limit rather than up to it -- see
+    `scripts/index_chunks.py`'s `TokenBudget` limit.
     """
 
     return len(text)

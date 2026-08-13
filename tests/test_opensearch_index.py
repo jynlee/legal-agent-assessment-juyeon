@@ -1,3 +1,5 @@
+import pytest
+
 from legal_agent_assessment.chunking import (
     Chunk,
     ChunkType,
@@ -200,3 +202,12 @@ def test_chunk_to_document_carries_statute_fields_and_omits_judgement_fields() -
     assert "case_name" not in document
     assert "court" not in document
     assert document["linked_law_names_core"] == []
+
+
+def test_chunk_to_document_rejects_an_unhandled_kind_fields_type() -> None:
+    """A third kind_fields type must fail loudly, not silently drop its fields."""
+
+    chunk = _statute_chunk(kind_fields=object())
+
+    with pytest.raises(ValueError, match="unhandled kind_fields type"):
+        chunk_to_document(chunk, _EMBEDDING)
