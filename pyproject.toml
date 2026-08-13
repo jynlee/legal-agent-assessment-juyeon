@@ -5,6 +5,7 @@ description = "Portable baseline for the General Legal Agent assessment"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "boto3>=1.40,<2",
+    "opensearch-py>=3.2.0",
     "pydantic>=2.11,<3",
 ]
 
