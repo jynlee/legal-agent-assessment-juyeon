@@ -88,18 +88,12 @@ Buettcher, 2009) and the value most retrieval systems default to. Both the
 formula and the constant are established, well-documented choices, not a
 project-specific guess.
 
-**Why 50 candidates per side, and why that's inexpensive:** the exact k-NN
-approach this index uses (Decision 6 of the mapping design — no `method`
-block, so no approximate-search engine) computes a similarity score against
-**every** document in the index regardless of the requested `size`, then
-sorts and truncates to the requested count at the end. Requesting the top-10
-directly versus the top-50 costs essentially the same amount of computation —
-the corpus being small (7,887 chunks) is what makes the full scan cheap, not
-the choice of 50 over 10. The real reason for requesting 50 per side rather
-than the 10 that generation will actually see is headroom for item 5/6's
-retrieval metrics: Recall@k, MRR, or nDCG cannot be computed for a `k` larger
-than the candidate pool that was actually retrieved, so a pool of 50 leaves
-room to evaluate at cutoffs up to 50 without re-running retrieval.
+**Why 50 candidates per side:** exact k-NN's cost is independent of `size`
+(mapping design Decision 6 — see that note for why), so requesting 50 instead
+of 10 is free. The actual reason for 50 is headroom for item 5/6's retrieval
+metrics: Recall@k/MRR/nDCG cannot be computed at a `k` larger than the
+candidate pool actually retrieved, so a pool of 50 leaves room to evaluate
+cutoffs up to 50 without re-running retrieval.
 
 The fused list is truncated to its top 10 before being handed to generation
 — passing more than the answer actually needs to Claude risks diluting
@@ -236,25 +230,15 @@ module in this repo already has.
 
 ## Explicitly out of scope for this note
 
-- The generation prompt's full wording beyond the insufficient-evidence
-  instruction, answer composition style, or how excerpts are trimmed into
-  `Citation.excerpt` — ASSIGNMENT.md item 7.
-- `out_of_scope` and `dependency_unavailable` response-state logic — related
-  to item 7/8 but not decided here; this note's two-layer judgement only
-  covers the `insufficient_evidence` boundary.
-- Test set construction, relevance judgements, and retrieval metrics
-  (Recall@k, MRR, nDCG) themselves — ASSIGNMENT.md items 5–6. This note
-  fixes the pool sizes and RRF constant those metrics will later be computed
-  against, but does not compute them.
-- `scripts/`'s new entry point's exact CLI arguments, usage-log shape for
-  query-time Bedrock calls (which needs the same `reports/usage/`
-  self-instrumentation `scripts/index_chunks.py` already established), or
-  BM25 field-boost tuning — implementation-time detail, not fixed here.
-- The managed-domain permission question for `_search/pipeline` (Decision 1)
-  was reasoned from documented IAM boundaries, not empirically tested against
-  the real managed domain — this note treats client-side RRF as the design
-  regardless of the answer, so the question is moot for this design, but it
-  is not independently confirmed either way.
+Beyond the item 5–7 and CLI-shape exclusions already named above:
+
+- `out_of_scope` / `dependency_unavailable` response-state logic (item 7/8)
+  — only the `insufficient_evidence` boundary is decided here.
+- Query-time `reports/usage/` log shape and BM25 field-boost values —
+  implementation detail.
+- Whether `_search/pipeline` is actually permitted on the managed domain —
+  reasoned from documented IAM boundaries, not empirically tested; moot for
+  this design either way (Decision 1).
 
 This is a design decision, not yet implementation — no retrieval or
 generation code exists yet as of this note.
