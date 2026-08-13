@@ -133,12 +133,26 @@ from the 2026-08-11 evening brainstorming session and initially resolved
 mechanics of that decision surfaced a permission boundary that changes the
 answer.
 
-**The constraint:** `OPENSEARCH_ACCESS.md`'s IAM policy table grants
-contributors `legal-kit-*` index read/write and nothing else — plugin or
-package management (which associating the Nori package on an AWS managed
-OpenSearch domain requires) is not a contributor permission. Nothing in
-this project's documentation makes that association available to a
-contributor working within the documented boundary.
+**The constraint:** Nori ships bundled by default on AWS managed OpenSearch
+domains — that part is confirmed against AWS's own documentation. What is
+*not* confirmed is whether referencing that built-in analyzer from an index
+mapping falls within the `legal-kit-*` index read/write permission
+`OPENSEARCH_ACCESS.md` grants contributors, or crosses into domain
+configuration the documented IAM boundary doesn't cover — this project has
+never actually issued an index-creation call with a Nori analyzer against
+the real managed domain to find out either way.
+
+Rather than assume an answer to that open question, this design treats it
+as a cost/benefit call instead of a hard blocker: confirming it would cost
+time and a call against the shared managed domain, for a benefit — better
+Korean morphological matching in BM25 — that is only partial, since the
+fields most sensitive to exact-token recall (`referencedProvisions`,
+`referencedPrecedents`, statute article numbers) are already plain
+`keyword`, not analyzed text (Decision 2). That benefit doesn't clearly
+outweigh the verification cost, so this design takes the lower-risk path —
+`standard` analyzer, known to work within the documented permission set —
+without spending contributor time or shared-domain access resolving the
+permission question.
 
 **Why not "Nori locally, standard on the managed domain":** this was
 considered — a contributor-built local Docker image could install the Nori
