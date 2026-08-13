@@ -43,7 +43,7 @@ def embed_batch(
         if wait_seconds > 0:
             time.sleep(wait_seconds)
 
-        request = build_embed_request(batch, input_type=input_type)
+        request = build_embed_request(batch, input_type=input_type, output_dimension=dimension)
         response = client.invoke_model(modelId=model_id, body=json.dumps(request))
         body = json.loads(response["body"].read())
         vectors.extend(
