@@ -1,7 +1,10 @@
+from legal_agent_assessment.contracts import Citation, RetrievalHit
 from legal_agent_assessment.retrieval import (
     build_bm25_query,
     build_knn_query,
     reciprocal_rank_fusion,
+    source_to_citation,
+    source_to_retrieval_hit,
 )
 
 
@@ -71,3 +74,63 @@ def test_reciprocal_rank_fusion_returns_scores_matching_the_documented_formula()
 
 def test_reciprocal_rank_fusion_handles_an_empty_list() -> None:
     assert reciprocal_rank_fusion([[], []], k=60) == []
+
+
+_SOURCE = {
+    "chunk_id": "precedent-000001#body-000",
+    "document_id": "precedent-000001",
+    "title": "판례 제목",
+    "source_uri": "https://example.org/case",
+    "official_number": "2020구합1",
+    "locator": "이유 > 1",
+    "text": "본문 예시 텍스트",
+}
+
+
+def test_source_to_retrieval_hit_carries_ids_rank_and_score() -> None:
+    hit = source_to_retrieval_hit(_SOURCE, rank=3, score=0.5)
+
+    assert hit == RetrievalHit(
+        document_id="precedent-000001",
+        chunk_id="precedent-000001#body-000",
+        rank=3,
+        score=0.5,
+    )
+
+
+def test_source_to_citation_carries_lineage_fields_and_uses_text_as_excerpt() -> None:
+    citation = source_to_citation(_SOURCE)
+
+    assert citation == Citation(
+        document_id="precedent-000001",
+        chunk_id="precedent-000001#body-000",
+        title="판례 제목",
+        source_uri="https://example.org/case",
+        official_number="2020구합1",
+        locator="이유 > 1",
+        excerpt="본문 예시 텍스트",
+    )
+
+
+def test_source_to_citation_omits_absent_optional_fields() -> None:
+    source = {
+        "chunk_id": "law-000001#body-000",
+        "document_id": "law-000001",
+        "title": "약사법 제1조",
+        "text": "제1조 본문",
+    }
+
+    citation = source_to_citation(source)
+
+    assert citation.source_uri is None
+    assert citation.official_number is None
+    assert citation.locator is None
+
+
+def test_source_to_citation_trims_text_longer_than_the_excerpt_limit() -> None:
+    source = {**_SOURCE, "text": "가" * 2_100}
+
+    citation = source_to_citation(source)
+
+    assert len(citation.excerpt) == 2_000
+    assert citation.excerpt.endswith("...")
