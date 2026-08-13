@@ -11,6 +11,8 @@ import time
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
+EMBEDDING_DIMENSION = 1536
+
 
 def build_embed_request(
     texts: Sequence[str], *, input_type: Literal["search_document", "search_query"]
@@ -20,9 +22,20 @@ def build_embed_request(
     ASSIGNMENT.md's Fixed constraints: ingest text uses "search_document",
     query text (out of scope for this plan) uses "search_query" -- sending
     both sides the same input_type is a defect, not a shortcut.
+
+    Always requests `output_dimension: EMBEDDING_DIMENSION` (1536). The
+    endpoint's default, unrequested output is 1024-dimensional -- confirmed
+    empirically against the real endpoint -- which would silently mismatch
+    the already-created OpenSearch index's `knn_vector` mapping (dimension
+    1536). This is a fixed constant, not a caller-supplied parameter, because
+    ASSIGNMENT.md requires ingest and query to use the same dimension.
     """
 
-    return {"texts": list(texts), "input_type": input_type}
+    return {
+        "texts": list(texts),
+        "input_type": input_type,
+        "output_dimension": EMBEDDING_DIMENSION,
+    }
 
 
 def parse_embed_response(
@@ -101,6 +114,7 @@ class TokenBudget:
 
 
 __all__ = [
+    "EMBEDDING_DIMENSION",
     "TokenBudget",
     "build_embed_request",
     "estimate_tokens",

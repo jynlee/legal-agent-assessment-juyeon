@@ -13,6 +13,7 @@ def test_build_embed_request_sets_input_type_and_texts() -> None:
 
     assert request["texts"] == ["텍스트 하나", "텍스트 둘"]
     assert request["input_type"] == "search_document"
+    assert request["output_dimension"] == 1536
 
 
 def test_parse_embed_response_reads_the_float_embeddings_list() -> None:
