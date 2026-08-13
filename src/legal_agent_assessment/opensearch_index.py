@@ -6,9 +6,16 @@ separation of deterministic logic from I/O. `scripts/create_opensearch_index.py`
 is the network-facing caller.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
-from legal_agent_assessment.chunking import CHUNKING_VERSION
+from legal_agent_assessment.chunking import (
+    CHUNKING_VERSION,
+    Chunk,
+    JudgementChunkFields,
+    StatuteChunkFields,
+)
+from legal_agent_assessment.dataset import LinkageStrength
 
 INDEX_VERSION = "index-v1"
 EMBEDDING_DIMENSION = 1536
@@ -84,11 +91,93 @@ def build_index_body(*, number_of_replicas: int) -> dict[str, Any]:
     }
 
 
+def _split_citation_list(value: str) -> list[str]:
+    """Split one referencedProvisions/referencedPrecedents string into keyword tokens.
+
+    `extract_issues` (chunking.py) joins multiple citations that accumulate
+    under one issue number with "; " -- this reuses that exact separator
+    rather than inventing a new citation-parsing rule.
+    """
+
+    return [part.strip() for part in value.split("; ") if part.strip()]
+
+
+def chunk_to_document(chunk: Chunk, embedding: Sequence[float]) -> dict[str, Any]:
+    """Build one OpenSearch document from a `Chunk` and its precomputed embedding.
+
+    Fields absent on the source (None or empty) are omitted from the
+    document entirely, not written as null/[] -- matching Decision 2's
+    "intentional and typed" sparsity and letting `decided_on`'s `date`
+    mapping (Task 1) stay untouched by the 3 sentinel-carrying chunks.
+    """
+
+    document: dict[str, Any] = {
+        "chunk_id": chunk.chunk_id,
+        "document_id": chunk.document_id,
+        "chunk_type": str(chunk.chunk_type),
+        "ordinal": chunk.ordinal,
+        "text": chunk.text,
+        "content_hash": chunk.content_hash,
+        "document_kind": str(chunk.document_kind),
+        "dataset_version": chunk.dataset_version,
+        "normalization_version": chunk.normalization_version,
+        "chunking_version": chunk.chunking_version,
+        "title": chunk.title,
+        "locator": chunk.locator,
+        "embedding": list(embedding),
+    }
+    if chunk.source_uri is not None:
+        document["source_uri"] = chunk.source_uri
+    if chunk.official_number is not None:
+        document["official_number"] = chunk.official_number
+
+    core: list[str] = []
+    candidate: list[str] = []
+    unlinked: list[str] = []
+    for linkage in chunk.linked_laws:
+        target = {
+            LinkageStrength.CORE: core,
+            LinkageStrength.CANDIDATE: candidate,
+            LinkageStrength.UNLINKED: unlinked,
+        }[linkage.strength]
+        target.append(linkage.law_name)
+    document["linked_law_names_core"] = core
+    document["linked_law_names_candidate"] = candidate
+    document["linked_law_names_unlinked"] = unlinked
+
+    if isinstance(chunk.kind_fields, JudgementChunkFields):
+        fields = chunk.kind_fields
+        document["case_name"] = fields.case_name
+        document["court"] = fields.court
+        document["case_number"] = fields.case_number
+        if fields.decided_on is not None:
+            document["decided_on"] = fields.decided_on
+        if fields.referenced_provisions:
+            document["referenced_provisions"] = _split_citation_list(fields.referenced_provisions)
+        if fields.referenced_precedents:
+            document["referenced_precedents"] = _split_citation_list(fields.referenced_precedents)
+        if fields.issue_ordinal is not None:
+            document["issue_ordinal"] = fields.issue_ordinal
+    elif isinstance(chunk.kind_fields, StatuteChunkFields):
+        fields = chunk.kind_fields
+        document["law_name"] = fields.law_name
+        document["unit_kind"] = str(fields.unit_kind)
+        document["status"] = fields.status
+        document["layout"] = fields.layout
+        if fields.article_number is not None:
+            document["article_number"] = fields.article_number
+        if fields.appendix_number is not None:
+            document["appendix_number"] = fields.appendix_number
+
+    return document
+
+
 __all__ = [
     "EMBEDDING_DIMENSION",
     "INDEX_MAPPING_PROPERTIES",
     "INDEX_VERSION",
     "build_index_body",
+    "chunk_to_document",
     "index_name",
     "index_settings",
 ]
