@@ -8,6 +8,8 @@ only place real clients are built.
 """
 
 import json
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from legal_agent_assessment.contracts import (
@@ -19,6 +21,7 @@ from legal_agent_assessment.contracts import (
 from legal_agent_assessment.embedding import (
     EMBEDDING_DIMENSION,
     build_embed_request,
+    estimate_tokens,
     parse_embed_response,
 )
 from legal_agent_assessment.generation import build_answer_prompt, parse_answer_response
@@ -35,6 +38,14 @@ _KNN_SIZE = 50
 _FUSED_TOP_N = 10
 _RRF_K = 60
 _GENERATION_MAX_TOKENS = 1024
+
+
+@dataclass(frozen=True, slots=True)
+class _GenerationResult:
+    """One generation call's text plus the token usage Bedrock reported."""
+
+    text: str
+    usage: dict[str, Any]
 
 
 class LegalAgent:
@@ -57,24 +68,66 @@ class LegalAgent:
         self._generation_model_id = generation_model_id
         self._versions = versions
 
-    async def answer(self, request: GeneralLegalRequest) -> GeneralLegalResponse:
+    async def answer(
+        self,
+        request: GeneralLegalRequest,
+        *,
+        on_usage: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> GeneralLegalResponse:
         """Answer one independent question without Peitho runtime objects."""
 
-        return self.answer_sync(request)
+        return self.answer_sync(request, on_usage=on_usage)
 
-    def answer_sync(self, request: GeneralLegalRequest) -> GeneralLegalResponse:
+    def answer_sync(
+        self,
+        request: GeneralLegalRequest,
+        *,
+        on_usage: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> GeneralLegalResponse:
         """Synchronous core: every call here is I/O-bound, not CPU-bound, so
         a thin `async def answer` delegating to this makes the class usable
         from both async and synchronous test/CLI code without duplicating
-        logic. `answer` is the Protocol-required entry point."""
+        logic. `answer` is the Protocol-required entry point.
+
+        `on_usage(step, values)` is invoked after every paid Bedrock call
+        that actually returned -- `"embed"` with `{"estimated_tokens": int}`
+        (no real Cohere token count is available, same reason
+        `embedding.estimate_tokens` exists), and `"generate"` with the real
+        `{"input_tokens": int, "output_tokens": int}` Bedrock reports.
+        Reporting incrementally, rather than returning a total, means a
+        caller can still record the spend already incurred when a later step
+        raises -- the same reason `scripts/bedrock_embedding.py`'s
+        `embed_batch` takes `on_batch_complete`. Optional and `None` by
+        default: existing call sites are unaffected.
+
+        Every `RetrievalHit.score` this method emits is the *fused* RRF
+        score (`retrieval.reciprocal_rank_fusion`), not a raw BM25 score and
+        not a raw cosine similarity -- comparable only within one response.
+        """
 
         query_vector = self._embed_query(request.question)
+        if on_usage is not None:
+            on_usage("embed", {"estimated_tokens": estimate_tokens(request.question)})
+
         bm25_hits = self._search(build_bm25_query(request.question, size=_BM25_SIZE))
         knn_hits = self._search(build_knn_query(query_vector, size=_KNN_SIZE))
 
-        sources_by_id = {hit["_id"]: hit["_source"] for hit in (*bm25_hits, *knn_hits)}
+        # Keyed off the indexed `chunk_id` field, never OpenSearch's own
+        # `_id`: `Citation.chunk_id`, `RetrievalHit.chunk_id` and the
+        # prompt's `[label]`s all use that field, and the two happen to be
+        # equal today only because scripts/index_chunks.py chooses to set
+        # `_id = chunk.chunk_id`. Depending on that choice from here would
+        # make any future re-index with auto-generated ids fail silently:
+        # nothing would ever match, and every answer would degrade to
+        # insufficient_evidence with healthy-looking retrieval_hits.
+        sources_by_id = {
+            hit["_source"]["chunk_id"]: hit["_source"] for hit in (*bm25_hits, *knn_hits)
+        }
         fused = reciprocal_rank_fusion(
-            [[hit["_id"] for hit in bm25_hits], [hit["_id"] for hit in knn_hits]],
+            [
+                [hit["_source"]["chunk_id"] for hit in bm25_hits],
+                [hit["_source"]["chunk_id"] for hit in knn_hits],
+            ],
             k=_RRF_K,
         )[:_FUSED_TOP_N]
 
@@ -94,8 +147,20 @@ class LegalAgent:
         }
 
         prompt = build_answer_prompt(request.question, tuple(candidate_citations.values()))
-        raw_response = self._generate(prompt)
-        parsed = parse_answer_response(raw_response)
+        generation = self._generate(prompt)
+        if on_usage is not None:
+            # Real counts, straight from the Bedrock Anthropic Messages API
+            # response body. Missing keys default to 0 rather than raising:
+            # losing a usage number must never fail an answer that was
+            # already paid for and successfully produced.
+            on_usage(
+                "generate",
+                {
+                    "input_tokens": int(generation.usage.get("input_tokens", 0)),
+                    "output_tokens": int(generation.usage.get("output_tokens", 0)),
+                },
+            )
+        parsed = parse_answer_response(generation.text)
 
         if parsed.status is not AnswerStatus.ANSWERED:
             return GeneralLegalResponse(
@@ -122,12 +187,27 @@ class LegalAgent:
                 versions=self._versions,
             )
 
+        # Partially fabricated citations: some cited ids were real, some were
+        # not. The answer still stands on its real citations, but the
+        # discarded ids are surfaced through `limitations` rather than
+        # dropped without a trace -- a response that quietly cites fewer
+        # sources than the model claimed is exactly what that field is for.
+        dropped_ids = sorted(
+            {chunk_id for chunk_id in parsed.cited_chunk_ids if chunk_id not in candidate_citations}
+        )
+        limitations = (
+            (f"Model cited unknown chunk_id(s), dropped: {', '.join(dropped_ids)}",)
+            if dropped_ids
+            else ()
+        )
+
         return GeneralLegalResponse(
             request_id=request.request_id,
             status=AnswerStatus.ANSWERED,
             answer=parsed.answer,
             citations=cited,
             retrieval_hits=retrieval_hits,
+            limitations=limitations,
             versions=self._versions,
         )
 
@@ -147,7 +227,7 @@ class LegalAgent:
         hits: list[dict[str, Any]] = response["hits"]["hits"]
         return hits
 
-    def _generate(self, prompt: str) -> str:
+    def _generate(self, prompt: str) -> _GenerationResult:
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": _GENERATION_MAX_TOKENS,
@@ -157,8 +237,19 @@ class LegalAgent:
             modelId=self._generation_model_id, body=json.dumps(request_body)
         )
         body = json.loads(response["body"].read())
+
+        # A `max_tokens` stop leaves a truncated JSON fragment, which
+        # `parse_answer_response` can only report as "unparseable JSON" --
+        # naming truncation here keeps the real cause from being buried.
+        if body.get("stop_reason") == "max_tokens":
+            raise RuntimeError(
+                "generation was truncated: the model hit max_tokens "
+                f"({_GENERATION_MAX_TOKENS}) before finishing its JSON response"
+            )
+
         text: str = body["content"][0]["text"]
-        return text
+        usage: dict[str, Any] = body.get("usage") or {}
+        return _GenerationResult(text=text, usage=usage)
 
 
 __all__ = ["LegalAgent"]

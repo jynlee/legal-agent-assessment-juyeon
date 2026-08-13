@@ -92,3 +92,84 @@ def test_parse_answer_response_treats_an_unrecognized_status_as_insufficient_evi
 def test_parse_answer_response_raises_on_unparseable_json() -> None:
     with pytest.raises(ValueError, match="could not parse"):
         parse_answer_response("not json at all")
+
+
+@pytest.mark.parametrize("raw", ["[]", "null", "42", '"answered"'])
+def test_parse_answer_response_raises_on_valid_json_that_is_not_an_object(raw: str) -> None:
+    """Valid JSON of the wrong shape must fail the same documented way as
+    undecodable text -- ValueError, not AttributeError/TypeError from
+    calling dict methods on a list, None, int or str."""
+
+    with pytest.raises(ValueError, match="could not parse"):
+        parse_answer_response(raw)
+
+
+def test_parse_answer_response_unwraps_a_markdown_fenced_json_object() -> None:
+    """Returning JSON inside a ```json fence is a very common real model
+    output pattern, and is not a malformed answer."""
+
+    body = json.dumps(
+        {
+            "status": "answered",
+            "answer": "약사법 제1조는 목적을 규정합니다.",
+            "cited_chunk_ids": ["precedent-000001#body-000"],
+        }
+    )
+
+    parsed = parse_answer_response(f"```json\n{body}\n```")
+
+    assert parsed == ParsedAnswer(
+        status=AnswerStatus.ANSWERED,
+        answer="약사법 제1조는 목적을 규정합니다.",
+        cited_chunk_ids=("precedent-000001#body-000",),
+    )
+
+
+def test_parse_answer_response_unwraps_an_untagged_fence() -> None:
+    body = json.dumps({"status": "insufficient_evidence", "answer": None, "cited_chunk_ids": []})
+
+    parsed = parse_answer_response(f"```\n{body}\n```")
+
+    assert parsed.status is AnswerStatus.INSUFFICIENT_EVIDENCE
+
+
+def test_parse_answer_response_treats_null_cited_chunk_ids_as_no_citations() -> None:
+    """A null (not a list) cited_chunk_ids on an *answered* response used to
+    raise TypeError inside tuple(). It degrades to () instead; agent.py then
+    correctly refuses, since ANSWERED requires >=1 real citation."""
+
+    raw = json.dumps({"status": "answered", "answer": "답변", "cited_chunk_ids": None})
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed.status is AnswerStatus.ANSWERED
+    assert parsed.answer == "답변"
+    assert parsed.cited_chunk_ids == ()
+
+
+def test_parse_answer_response_tolerates_null_cited_chunk_ids_on_a_refusal() -> None:
+    raw = json.dumps({"status": "insufficient_evidence", "answer": None, "cited_chunk_ids": None})
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed == ParsedAnswer(
+        status=AnswerStatus.INSUFFICIENT_EVIDENCE, answer=None, cited_chunk_ids=()
+    )
+
+
+def test_parse_answer_response_drops_non_string_cited_chunk_ids() -> None:
+    """A real chunk_id is always a string in this codebase, so a number or a
+    nested object can never match a retrieved id -- dropping it matches this
+    module's never-trust-the-model philosophy."""
+
+    raw = json.dumps(
+        {
+            "status": "answered",
+            "answer": "답변",
+            "cited_chunk_ids": ["precedent-000001#body-000", 7, None, {"chunk_id": "x"}],
+        }
+    )
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed.cited_chunk_ids == ("precedent-000001#body-000",)
