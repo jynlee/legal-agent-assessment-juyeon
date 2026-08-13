@@ -253,12 +253,12 @@
   },
   {
     "id": 29,
-    "question": "미용업을 하려면 위생교육을 꼭 받아야 하나요?",
+    "question": "매장을 여러 개 운영하면 위생교육도 매장마다 따로 받아야 하나요?",
     "domain": "공중위생법",
     "expected_status": "answered",
     "source_chunk_id": "doc-bb3d1f9eaf8e4300d7ac3e98#body-000",
     "relevant_chunk_ids": ["doc-bb3d1f9eaf8e4300d7ac3e98#body-000"],
-    "notes": "공중위생관리법 시행규칙 제23조 위생교육 의무."
+    "notes": "공중위생관리법 시행규칙 제23조 위생교육 의무(제3항, 동일 영업자의 복수 미용업 면제 규정). 원래 문항이 어휘 중복(overlap 0.77, HIGH OVERLAP)으로 재작성됨."
   },
   {
     "id": 30,
@@ -325,12 +325,12 @@
   },
   {
     "id": 37,
-    "question": "안마사는 꼭 시각장애인만 할 수 있는 자격인가요?",
+    "question": "저는 시각장애가 없는데 안마 관련 자격증을 따서 안마사로 일할 수 있나요?",
     "domain": "안마사법",
     "expected_status": "answered",
     "source_chunk_id": "doc-40bb91a38251e6988a4de8c5#body-000",
     "relevant_chunk_ids": ["doc-40bb91a38251e6988a4de8c5#body-000"],
-    "notes": "의료법 제82조, 안마사 자격을 시각장애인으로 제한."
+    "notes": "의료법 제82조, 안마사 자격을 시각장애인으로 제한. 원래 문항이 어휘 중복(overlap 0.68, HIGH OVERLAP)으로 재작성됨."
   },
   {
     "id": 38,
