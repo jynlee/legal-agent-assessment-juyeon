@@ -403,6 +403,43 @@ def test_answer_reports_only_embed_usage_when_retrieval_is_empty() -> None:
     assert reported == ["embed"]
 
 
+def test_answer_returns_out_of_scope_when_generation_classifies_the_question_as_out_of_scope() -> (
+    None
+):
+    """k-NN always returns its requested size regardless of relevance, so an
+    off-topic question like this one still retrieves some (irrelevant) hit --
+    the point of this test is that generation's out_of_scope classification
+    wins over having *some* retrieval_hits to show for it."""
+
+    bm25_hits: list[dict[str, Any]] = []
+    knn_hits = [_hit("c1", "doc1", text="약사법 제1조 본문")]
+    opensearch = _FakeOpenSearchClient(bm25_hits, knn_hits)
+    generation_text = json.dumps({"status": "out_of_scope", "answer": None, "cited_chunk_ids": []})
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(
+        GeneralLegalRequest(request_id="r1", question="오늘 날씨가 어때요?")
+    )
+
+    assert response.status is AnswerStatus.OUT_OF_SCOPE
+    assert response.answer is None
+    assert response.citations == ()
+    # Diagnostic hits are still reported, matching insufficient_evidence's
+    # existing pattern -- only answer/citations are constrained by
+    # contracts.py's validator.
+    assert len(response.retrieval_hits) == 1
+
+
 def test_legal_agent_satisfies_the_protocol_and_answers_through_the_async_entry_point() -> None:
     """`answer` -- not `answer_sync` -- is what contracts.py's Protocol
     requires; the annotation below is the static conformance check, and

@@ -162,6 +162,14 @@ class LegalAgent:
             )
         parsed = parse_answer_response(generation.text)
 
+        if parsed.status is AnswerStatus.OUT_OF_SCOPE:
+            return GeneralLegalResponse(
+                request_id=request.request_id,
+                status=AnswerStatus.OUT_OF_SCOPE,
+                retrieval_hits=retrieval_hits,
+                versions=self._versions,
+            )
+
         if parsed.status is not AnswerStatus.ANSWERED:
             return GeneralLegalResponse(
                 request_id=request.request_id,
