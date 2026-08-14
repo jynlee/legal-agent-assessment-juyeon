@@ -173,3 +173,39 @@ def test_parse_answer_response_drops_non_string_cited_chunk_ids() -> None:
     parsed = parse_answer_response(raw)
 
     assert parsed.cited_chunk_ids == ("precedent-000001#body-000",)
+
+
+def test_build_answer_prompt_instructs_out_of_scope_for_non_legal_questions() -> None:
+    prompt = build_answer_prompt("질문", [_CITATION])
+
+    assert "out_of_scope" in prompt
+
+
+def test_parse_answer_response_reads_an_out_of_scope_response() -> None:
+    raw = json.dumps({"status": "out_of_scope", "answer": None, "cited_chunk_ids": []})
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed == ParsedAnswer(status=AnswerStatus.OUT_OF_SCOPE, answer=None, cited_chunk_ids=())
+
+
+def test_parse_answer_response_clears_answer_and_citations_when_out_of_scope_model_misbehaves() -> (
+    None
+):
+    """Same never-trust-the-model rule as the existing insufficient_evidence
+    misbehavior test -- an out_of_scope response must never carry answer
+    text or citations, regardless of what the raw model output claims."""
+
+    raw = json.dumps(
+        {
+            "status": "out_of_scope",
+            "answer": "이건 사실 답변입니다.",
+            "cited_chunk_ids": ["precedent-000001#body-000"],
+        }
+    )
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed.status is AnswerStatus.OUT_OF_SCOPE
+    assert parsed.answer is None
+    assert parsed.cited_chunk_ids == ()

@@ -24,20 +24,27 @@ Question: {question}
 Sources:
 {sources}
 
-If, and only if, the sources above do not actually contain enough \
-information to answer this specific question, respond with status \
+First, decide whether this question is even a legal question relevant to \
+the domains this assistant covers. If the question is not a legal question \
+at all (small talk, unrelated business or personal advice, a question about \
+this assistant itself), or is a legal question about a domain this \
+assistant does not cover, respond with status "out_of_scope" and no answer \
+text -- regardless of what the sources above happen to contain.
+
+Otherwise, if, and only if, the sources above do not actually contain \
+enough information to answer this specific question, respond with status \
 "insufficient_evidence" and no answer text. Otherwise, respond with status \
 "answered", an answer grounded strictly in the sources, and the chunk_id of \
 every source you relied on.
 
 Respond with exactly one JSON object and no other text, in this shape:
-{{"status": "answered" | "insufficient_evidence", "answer": string or null, \
-"cited_chunk_ids": [string, ...]}}"""
+{{"status": "answered" | "insufficient_evidence" | "out_of_scope", "answer": \
+string or null, "cited_chunk_ids": [string, ...]}}"""
 
 # Bumped whenever _PROMPT_TEMPLATE changes, and recorded in
 # `RuntimeVersions.prompt` so a stored answer names the prompt that produced
 # it. Kept next to the template so the two cannot silently desync.
-PROMPT_VERSION = "prompt-v1"
+PROMPT_VERSION = "prompt-v2"
 
 
 def build_answer_prompt(question: str, citations: Sequence[Citation]) -> str:
@@ -113,10 +120,17 @@ def parse_answer_response(raw_text: str) -> ParsedAnswer:
     `ValueError` if a non-ANSWERED response carries an `answer` or
     `citations`. The raw model response is never trusted to already respect
     this: whenever the parsed `status` is anything other than the literal
-    string `"answered"` -- including a status the model invented, or an
-    "insufficient_evidence" response that still filled in `answer`/
-    `cited_chunk_ids` -- both fields are cleared here, unconditionally,
-    before this function returns.
+    string `"answered"` -- including `"out_of_scope"`, a status the model
+    invented, or an "insufficient_evidence"/"out_of_scope" response that
+    still filled in `answer`/`cited_chunk_ids` -- both fields are cleared
+    here, unconditionally, before this function returns.
+
+    Three recognized status strings map to their matching `AnswerStatus`:
+    `"answered"`, `"out_of_scope"`. Everything else -- the literal string
+    `"insufficient_evidence"`, an unrecognized status the model invented, a
+    missing `status` key -- maps to `AnswerStatus.INSUFFICIENT_EVIDENCE`,
+    the conservative default this module has always used for "anything not
+    explicitly recognized as something else."
 
     Shape is validated too, not just syntax: valid JSON that is not an
     object (`[]`, `null`, a bare number or string) raises `ValueError`, the
@@ -132,12 +146,17 @@ def parse_answer_response(raw_text: str) -> ParsedAnswer:
     if not isinstance(parsed, dict):
         raise ValueError(f"could not parse model response as JSON: {raw_text!r}")
 
-    if parsed.get("status") == "answered":
+    status = parsed.get("status")
+
+    if status == "answered":
         return ParsedAnswer(
             status=AnswerStatus.ANSWERED,
             answer=parsed.get("answer"),
             cited_chunk_ids=_parse_cited_chunk_ids(parsed.get("cited_chunk_ids")),
         )
+
+    if status == "out_of_scope":
+        return ParsedAnswer(status=AnswerStatus.OUT_OF_SCOPE, answer=None, cited_chunk_ids=())
 
     return ParsedAnswer(status=AnswerStatus.INSUFFICIENT_EVIDENCE, answer=None, cited_chunk_ids=())
 
