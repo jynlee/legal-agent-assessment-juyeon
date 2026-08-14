@@ -57,6 +57,22 @@ Respond with exactly one JSON object in this shape:
 {{"grounding": "grounded" | "partially_grounded" | "unsupported", \
 "justification": string}}"""
 
+# Kept next to _JUDGE_PROMPT_TEMPLATE for the same desync-prevention reason
+# JUDGE_PROMPT_VERSION is: this string is as much "the judge prompt" as the
+# template above, since it is the one lever that actually forces valid
+# JSON. Assistant-turn prefill (seeding the response with "{") was tried
+# first and rejected outright by this model/endpoint: "This model does not
+# support assistant message prefill. The conversation must end with a user
+# message." (real ValidationException, 2026-08-14). A top-level `system`
+# prompt is the next-strongest lever available -- system instructions
+# carry more weight than the same text embedded in the user turn, without
+# needing prefill.
+JUDGE_SYSTEM_PROMPT = (
+    "You only ever output a single raw JSON object as your entire "
+    "response. Never include prose, analysis, markdown formatting, "
+    "or any text before or after the JSON object."
+)
+
 
 def build_judge_prompt(question: str, answer: str, citations: Sequence[Citation]) -> str:
     """Build the judge prompt for one already-generated answer.
@@ -136,6 +152,7 @@ def parse_judge_response(raw_text: str) -> ParsedVerdict:
 
 __all__ = [
     "JUDGE_PROMPT_VERSION",
+    "JUDGE_SYSTEM_PROMPT",
     "GroundingVerdict",
     "ParsedVerdict",
     "build_judge_prompt",

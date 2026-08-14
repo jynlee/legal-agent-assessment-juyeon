@@ -26,6 +26,7 @@ import os
 import pathlib
 import sys
 import time
+from collections.abc import Sequence
 from typing import Any
 
 import boto3
@@ -36,10 +37,12 @@ from opensearch_client import build_client
 
 from legal_agent_assessment.agent import LegalAgent
 from legal_agent_assessment.chunking import NORMALIZATION_VERSION
-from legal_agent_assessment.contracts import GeneralLegalRequest, RuntimeVersions
+from legal_agent_assessment.contracts import Citation, GeneralLegalRequest, RuntimeVersions
 from legal_agent_assessment.generation import PROMPT_VERSION
 from legal_agent_assessment.judge import (
     JUDGE_PROMPT_VERSION,
+    JUDGE_SYSTEM_PROMPT,
+    ParsedVerdict,
     build_judge_prompt,
     parse_judge_response,
 )
@@ -75,9 +78,16 @@ def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
     return data
 
 
+_JUDGE_MAX_TOKENS = 512
+
+
 def call_judge(
-    bedrock_client: Any, model_id: str, question: str, answer: str, citations: Any
-) -> tuple[Any, int, int, str | None]:
+    bedrock_client: Any,
+    model_id: str,
+    question: str,
+    answer: str,
+    citations: Sequence[Citation],
+) -> tuple[ParsedVerdict | None, int, int, str | None]:
     """Call the judge once; return (ParsedVerdict | None, input_tokens, output_tokens, parse_error).
 
     Token usage is read from the real Bedrock response and returned
@@ -95,27 +105,31 @@ def call_judge(
     prompt = build_judge_prompt(question, answer, citations)
     request_body = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 512,
-        # Assistant-turn prefill (seeding the response with "{") was tried
-        # first and rejected outright by this model/endpoint: "This model
-        # does not support assistant message prefill. The conversation
-        # must end with a user message." (real ValidationException,
-        # 2026-08-14). A top-level `system` prompt is the next-strongest
-        # lever available -- system instructions carry more weight than
-        # the same text embedded in the user turn, without needing prefill.
-        "system": (
-            "You only ever output a single raw JSON object as your entire "
-            "response. Never include prose, analysis, markdown formatting, "
-            "or any text before or after the JSON object."
-        ),
+        "max_tokens": _JUDGE_MAX_TOKENS,
+        "system": JUDGE_SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": prompt}],
     }
     response = bedrock_client.invoke_model(modelId=model_id, body=json.dumps(request_body))
     body = json.loads(response["body"].read())
-    text: str = body["content"][0]["text"]
     usage = body.get("usage") or {}
     input_tokens = int(usage.get("input_tokens", 0))
     output_tokens = int(usage.get("output_tokens", 0))
+
+    # Same reasoning as agent._generate's identical check: a max_tokens
+    # stop leaves a truncated JSON fragment that parse_judge_response can
+    # only report as "could not parse as JSON", burying the real cause.
+    # Named explicitly here so a truncated verdict is never confused with
+    # the model choosing to respond with prose.
+    if body.get("stop_reason") == "max_tokens":
+        return (
+            None,
+            input_tokens,
+            output_tokens,
+            f"judge response was truncated: hit max_tokens ({_JUDGE_MAX_TOKENS}) before "
+            "finishing its JSON response",
+        )
+
+    text: str = body["content"][0]["text"]
 
     try:
         verdict = parse_judge_response(text)
@@ -186,12 +200,27 @@ def main() -> None:
             gen_output_this_call = 0
 
             def record_usage(step: str, values: dict[str, Any]) -> None:
+                # Totals are updated the moment each real call returns, not
+                # deferred to the end of the loop iteration -- if a later
+                # step in this same question raises, the tokens already
+                # spent on this call must not be lost from the run's cost
+                # accounting (real, real-cost failure mode observed
+                # 2026-08-14: a crash mid-question zeroed the whole run's
+                # usage log despite real generation calls having happened).
                 nonlocal embed_tokens_this_call, gen_input_this_call, gen_output_this_call
+                nonlocal embed_estimated_tokens_total
+                nonlocal generation_input_tokens_total, generation_output_tokens_total
                 if step == "embed":
-                    embed_tokens_this_call += int(values.get("estimated_tokens", 0))
+                    tokens = int(values.get("estimated_tokens", 0))
+                    embed_tokens_this_call += tokens
+                    embed_estimated_tokens_total += tokens
                 elif step == "generate":
-                    gen_input_this_call += int(values.get("input_tokens", 0))
-                    gen_output_this_call += int(values.get("output_tokens", 0))
+                    in_tokens = int(values.get("input_tokens", 0))
+                    out_tokens = int(values.get("output_tokens", 0))
+                    gen_input_this_call += in_tokens
+                    gen_output_this_call += out_tokens
+                    generation_input_tokens_total += in_tokens
+                    generation_output_tokens_total += out_tokens
 
             request = GeneralLegalRequest(
                 request_id=f"geneval-{entry['id']}", question=question_text
@@ -236,27 +265,49 @@ def main() -> None:
                     response.answer,
                     response.citations,
                 )
+                # Added to the totals immediately, same reasoning as
+                # record_usage above -- the judge call already happened and
+                # already cost real money by this point regardless of what
+                # the rest of this iteration does.
                 gen_input_this_call += judge_input_tokens
                 gen_output_this_call += judge_output_tokens
+                generation_input_tokens_total += judge_input_tokens
+                generation_output_tokens_total += judge_output_tokens
                 if verdict is not None:
                     result["grounding"] = verdict.grounding
                     result["grounding_justification"] = verdict.justification
                 else:
-                    result["grounding"] = "judge_parse_error"
-                    result["grounding_justification"] = judge_error
+                    # Kept out of "grounding" deliberately -- that field
+                    # otherwise only ever holds a real GroundingVerdict, so
+                    # an error sentinel value never has to be filtered back
+                    # out by anything reading this file downstream.
+                    result["judge_parse_error"] = judge_error
 
+            result["embed_estimated_tokens"] = embed_tokens_this_call
+            result["generation_input_tokens"] = gen_input_this_call
+            result["generation_output_tokens"] = gen_output_this_call
             result["latency_ms"] = round((time.perf_counter() - question_start) * 1000, 1)
-            embed_estimated_tokens_total += embed_tokens_this_call
-            generation_input_tokens_total += gen_input_this_call
-            generation_output_tokens_total += gen_output_this_call
             per_question_results.append(result)
+            print(
+                f">>> [{entry['id']:>2}/50] {entry['domain'] or '(out_of_scope)'}: "
+                f"{result['status']} (expected {expected_status}) "
+                f"{result['latency_ms']:.0f}ms"
+            )
 
         answerable = [r for r in per_question_results if r["expected_status"] == "answered"]
         insufficient = [
             r for r in per_question_results if r["expected_status"] == "insufficient_evidence"
         ]
         out_of_scope = [r for r in per_question_results if r["expected_status"] == "out_of_scope"]
-        graded = [r for r in per_question_results if "grounding" in r]
+        # "judged" holds only rows with a real GroundingVerdict -- rows
+        # where the judge call itself failed to parse are counted
+        # separately (judge_parse_error_count) and excluded here, so
+        # grounded_count / judged_answer_count is never silently deflated
+        # by parse failures that have nothing to do with grounding quality.
+        judged = [r for r in per_question_results if "grounding" in r]
+        dependency_unavailable = [
+            r for r in per_question_results if r["status"] == "dependency_unavailable"
+        ]
 
         aggregate = {
             "question_count": len(per_question_results),
@@ -278,19 +329,51 @@ def main() -> None:
             "insufficient_evidence_misclassified_as_out_of_scope": sum(
                 1 for r in insufficient if r["status"] == "out_of_scope"
             ),
-            "limitations_fired_count": limitations_fired_count,
-            "graded_answer_count": len(graded),
-            "grounded_count": sum(1 for r in graded if r["grounding"] == "grounded"),
-            "partially_grounded_count": sum(
-                1 for r in graded if r["grounding"] == "partially_grounded"
+            # The domain-coverage risk this evaluation was designed to
+            # check (deferred from item 7/8's final review) is the
+            # out_of_scope misclassification above. This is the *other*
+            # direction a "insufficient_evidence"-expected question can
+            # miss: the model answers instead of refusing at all -- a
+            # distinct, real finding from this run, not anticipated by the
+            # original design note, so it gets its own named field rather
+            # than staying implicit in status_matches_expected.
+            "insufficient_evidence_misclassified_as_answered": sum(
+                1 for r in insufficient if r["status"] == "answered"
             ),
-            "unsupported_count": sum(1 for r in graded if r["grounding"] == "unsupported"),
+            # The mirror-image failure: a question the retrieval evaluation
+            # already confirmed is answerable-in-principle, but generation
+            # refused it anyway.
+            "false_refusal_count": sum(1 for r in answerable if not r["status_matches_expected"]),
+            "dependency_unavailable_count": len(dependency_unavailable),
+            "limitations_fired_count": limitations_fired_count,
+            "judged_answer_count": len(judged),
+            "grounded_count": sum(1 for r in judged if r["grounding"] == "grounded"),
+            "partially_grounded_count": sum(
+                1 for r in judged if r["grounding"] == "partially_grounded"
+            ),
+            "unsupported_count": sum(1 for r in judged if r["grounding"] == "unsupported"),
             "judge_parse_error_count": sum(
-                1 for r in graded if r["grounding"] == "judge_parse_error"
+                1 for r in per_question_results if "judge_parse_error" in r
+            ),
+            "embed_estimated_tokens": embed_estimated_tokens_total,
+            "generation_input_tokens": generation_input_tokens_total,
+            "generation_output_tokens": generation_output_tokens_total,
+            "estimated_cost_usd": estimated_cost_usd(
+                embed_estimated_tokens=embed_estimated_tokens_total,
+                generation_input_tokens=generation_input_tokens_total,
+                generation_output_tokens=generation_output_tokens_total,
             ),
         }
 
         print(json.dumps(aggregate, ensure_ascii=False, indent=2))
+        if dependency_unavailable:
+            print(
+                f">>> WARNING: {len(dependency_unavailable)} question(s) returned "
+                "dependency_unavailable (a real OpenSearch/Bedrock connectivity failure "
+                "mid-run, not a model decision) -- refusal-accuracy metrics above include "
+                "these as ordinary mismatches. Question ids: "
+                f"{[r['id'] for r in dependency_unavailable]}"
+            )
 
         elapsed = time.perf_counter() - started
         usage = {
