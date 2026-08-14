@@ -164,6 +164,7 @@ def main() -> None:
 
     try:
         for entry in questions:
+            question_start = time.perf_counter()
             question_text = entry["question"]
             query_vector = embed_query(bedrock_client, question_text, embedding_model_id)
             embedding_calls += 1
@@ -172,8 +173,13 @@ def main() -> None:
             fused_ids = retrieve_fused_chunk_ids(
                 opensearch_client, name, question_text, query_vector
             )
+            question_latency_ms = (time.perf_counter() - question_start) * 1000
 
-            result: dict[str, Any] = {"id": entry["id"], "domain": entry["domain"]}
+            result: dict[str, Any] = {
+                "id": entry["id"],
+                "domain": entry["domain"],
+                "latency_ms": round(question_latency_ms, 1),
+            }
             if entry["expected_status"] == "answered":
                 recall, reciprocal_rank = score_answerable_question(
                     fused_ids, entry["relevant_chunk_ids"]
