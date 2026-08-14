@@ -128,9 +128,10 @@ class LegalAgent:
         on_usage: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> GeneralLegalResponse:
         """Synchronous core: every call here is I/O-bound, not CPU-bound, so
-        a thin `async def answer` delegating to this makes the class usable
-        from both async and synchronous test/CLI code without duplicating
-        logic. `answer` is the Protocol-required entry point.
+        a thin `async def answer` delegating through `answer_sync` to this
+        makes the class usable from both async and synchronous test/CLI code
+        without duplicating logic. `answer` is the Protocol-required entry
+        point.
 
         `on_usage(step, values)` is invoked after every paid Bedrock call
         that actually returned -- `"embed"` with `{"estimated_tokens": int}`

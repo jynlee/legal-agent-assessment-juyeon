@@ -125,7 +125,7 @@ def parse_answer_response(raw_text: str) -> ParsedAnswer:
     still filled in `answer`/`cited_chunk_ids` -- both fields are cleared
     here, unconditionally, before this function returns.
 
-    Three recognized status strings map to their matching `AnswerStatus`:
+    Two recognized status strings map to their matching `AnswerStatus`:
     `"answered"`, `"out_of_scope"`. Everything else -- the literal string
     `"insufficient_evidence"`, an unrecognized status the model invented, a
     missing `status` key -- maps to `AnswerStatus.INSUFFICIENT_EVIDENCE`,

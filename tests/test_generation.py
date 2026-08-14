@@ -178,7 +178,11 @@ def test_parse_answer_response_drops_non_string_cited_chunk_ids() -> None:
 def test_build_answer_prompt_instructs_out_of_scope_for_non_legal_questions() -> None:
     prompt = build_answer_prompt("질문", [_CITATION])
 
-    assert "out_of_scope" in prompt
+    # A phrase unique to the out_of_scope instruction paragraph itself, not
+    # the JSON-shape line at the end (which also contains "out_of_scope" and
+    # so would let this assertion pass even if the instruction paragraph
+    # were deleted entirely).
+    assert "is not a legal question at all" in prompt
 
 
 def test_parse_answer_response_reads_an_out_of_scope_response() -> None:

@@ -15,6 +15,7 @@ from legal_agent_assessment.contracts import (
     RuntimeVersions,
 )
 from legal_agent_assessment.embedding import EMBEDDING_DIMENSION
+from legal_agent_assessment.generation import PROMPT_VERSION
 
 _VERSIONS = RuntimeVersions(
     dataset="dataset-2026-08-11-v2.1",
@@ -23,7 +24,7 @@ _VERSIONS = RuntimeVersions(
     index="index-v1",
     embedding_model="global.cohere.embed-v4:0",
     generation_model="global.anthropic.claude-sonnet-4-6",
-    prompt="prompt-v1",
+    prompt=PROMPT_VERSION,
 )
 
 
@@ -116,6 +117,23 @@ class _RaisingBedrockClient:
         self._exception = exception
 
     def invoke_model(self, *, modelId: str, body: str) -> dict[str, Any]:
+        raise self._exception
+
+
+class _RaisingOnGenerationBedrockClient:
+    """Succeeds on the embed call, then raises a fixed exception on the
+    generation call -- routed by `modelId` the same way `_FakeBedrockClient`
+    routes embed vs. generation, so retrieval genuinely succeeds before the
+    failure happens."""
+
+    def __init__(self, *, embedding_model_id: str, exception: Exception) -> None:
+        self._embedding_model_id = embedding_model_id
+        self._exception = exception
+
+    def invoke_model(self, *, modelId: str, body: str) -> dict[str, Any]:
+        if modelId == self._embedding_model_id:
+            payload = {"embeddings": [[0.1] * EMBEDDING_DIMENSION]}
+            return {"body": _FakeStreamingBody(json.dumps(payload))}
         raise self._exception
 
 
@@ -554,6 +572,43 @@ def test_answer_returns_dependency_unavailable_when_bedrock_is_unreachable(
     )
 
     response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
+
+    assert response.status is AnswerStatus.DEPENDENCY_UNAVAILABLE
+    assert response.answer is None
+    assert response.citations == ()
+    assert response.retrieval_hits == ()
+
+
+def test_answer_returns_dependency_unavailable_with_no_hits_when_generation_fails_after_hits() -> (
+    None
+):
+    """The embed call succeeds and both searches return real hits --
+    retrieval genuinely succeeded -- before the *generation* call fails.
+    `retrieval_hits` must still come back empty: a DEPENDENCY_UNAVAILABLE
+    response never carries partial results, regardless of how far the call
+    got before it failed (design Decision 2). The other dependency-unavailable
+    tests only exercise failures before any hits exist; this one proves the
+    "always empty" property in a case where there were real hits to lose."""
+
+    bm25_hits = [_hit("c1", "doc1", text="약사법 제1조 본문")]
+    knn_hits = [_hit("c1", "doc1", text="약사법 제1조 본문")]
+    opensearch = _FakeOpenSearchClient(bm25_hits, knn_hits)
+    bedrock = _RaisingOnGenerationBedrockClient(
+        embedding_model_id="embed-v4",
+        exception=ReadTimeoutError(
+            endpoint_url="https://bedrock-runtime.ap-northeast-2.amazonaws.com"
+        ),
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="약사법 제1조는?"))
 
     assert response.status is AnswerStatus.DEPENDENCY_UNAVAILABLE
     assert response.answer is None
