@@ -355,17 +355,25 @@ real bug (a wrong index name, a malformed request, an authentication
 failure) continues to raise visibly rather than being silently reported to
 a caller as a generic infrastructure outage.
 
-**Known, not yet empirically verified limitation.** The `out_of_scope`
+**Named risk, since empirically verified and resolved.** The `out_of_scope`
 prompt instruction does not give the model an explicit list of the ten
-legal domains this assistant covers, so there is a real, currently
-unverified risk that a question genuinely within scope but unresolvable
-by this corpus — the exact case the retrieval evaluation's test set
-includes five questions to exercise, expecting `insufficient_evidence` —
-could instead be misclassified as `out_of_scope`. This has not been
-observed to actually occur; it is flagged here as a named, deliberately
-deferred risk rather than fixed speculatively, and this project's plan is
-to verify it empirically against those five questions before relying on
-any `out_of_scope` numbers in the Generation evaluation report.
+legal domains this assistant covers, so there was a real, once-unverified
+risk that a question genuinely within scope but unresolvable by this
+corpus — the exact case the retrieval evaluation's test set includes five
+questions to exercise, expecting `insufficient_evidence` — could instead
+be misclassified as `out_of_scope`. This was flagged here as a named,
+deliberately deferred risk rather than fixed speculatively, with a plan to
+verify it empirically before relying on any `out_of_scope` numbers in the
+Generation evaluation report. That verification has since happened: the
+Generation evaluation report's real, full-pipeline run measured
+`insufficient_evidence_misclassified_as_out_of_scope: 0` against all five
+of those questions, confirmed identically across two independent real
+runs. The risk did not materialize; no prompt change was made in
+response, since there was nothing to fix. (What the same run did find,
+in the opposite direction — 3 of those 5 questions were answered instead
+of refused at all — is a different, real finding disclosed in the
+Generation evaluation report's "insufficient_evidence refusal accuracy"
+section, not a domain-coverage problem.)
 
 ## 6. Portability boundaries and known Peitho adaptation work
 
@@ -461,9 +469,11 @@ against directly rather than relied on retries to absorb.
    contributor's machine; clean-checkout setup instructions in this
    submission follow the original, OS-agnostic form, with a footnote for
    any Windows contributor who hits the same block.
-2. *`out_of_scope` domain-coverage risk* — see §5. Named and deliberately
-   deferred pending empirical verification before the Generation
-   evaluation report relies on any `out_of_scope` results.
+2. *`out_of_scope` domain-coverage risk* — see §5. Named, deliberately
+   deferred pending empirical verification, and since resolved: the
+   Generation evaluation report's real run confirmed, across two
+   independent executions, that the risk did not materialize
+   (`insufficient_evidence_misclassified_as_out_of_scope: 0`).
 3. *1536-dimension embedding bug, caught before it reached production.*
    The embedding endpoint's default, unrequested output dimension (1024)
    silently mismatched the already-created vector index mapping (1536); a
@@ -491,6 +501,20 @@ against directly rather than relied on retries to absorb.
    uncertainty; no index-creation call using a Nori analyzer has actually
    been issued against the real managed domain, so whether it would work
    mechanically remains genuinely unverified, independent of item 4 above.
+8. *Generation token ceiling raised from 1024 to 4096, caught by a real
+   run, not anticipated in advance.* `agent.py`'s `_GENERATION_MAX_TOKENS`
+   was initially set to 1024; the Generation evaluation report's first
+   real full-pipeline run hit a genuine truncation on its very first
+   question (a 약사법 answer whose citations and reasoning did not fit),
+   surfaced as an explicit `RuntimeError` naming the cause rather than a
+   silently malformed response — `_generate`'s `stop_reason == "max_tokens"`
+   check (§3) is exactly what made this failure legible instead of an
+   opaque JSON-parse error. Raised to 4096 after confirming against
+   ASSIGNMENT.md's fixed constraints that prompt/response-shape tuning is
+   explicitly contributor discretion, not a boundary this project is
+   fixed against moving. Bedrock bills only the tokens actually generated,
+   so the higher ceiling costs nothing on every response that does not
+   need it.
 
 **Rebuild-without-private-state.** Every environment-dependent value —
 AWS profile and region, model IDs, the OpenSearch URL, dataset version —
