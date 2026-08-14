@@ -45,7 +45,13 @@ _BM25_SIZE = 50
 _KNN_SIZE = 50
 _FUSED_TOP_N = 10
 _RRF_K = 60
-_GENERATION_MAX_TOKENS = 1024
+# Bumped from 1024 to 4096 on 2026-08-14 -- the original value truncated a
+# real generation call during the Generation evaluation run (test-set
+# question 1, a 약사법 question needing a detailed legal-reasoning answer),
+# which agent.py correctly raised on rather than silently returning a
+# truncated JSON fragment. This is a generous ceiling, not a target --
+# Bedrock only bills tokens actually used, so short answers are unaffected.
+_GENERATION_MAX_TOKENS = 4096
 
 
 @dataclass(frozen=True, slots=True)
