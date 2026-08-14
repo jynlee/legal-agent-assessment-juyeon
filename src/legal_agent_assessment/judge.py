@@ -26,7 +26,7 @@ GroundingVerdict = Literal["grounded", "partially_grounded", "unsupported"]
 # never threaded into RuntimeVersions (RuntimeVersions describes what
 # produced a real GeneralLegalResponse; the judge is not part of that
 # response's production, only of evaluating it afterward).
-JUDGE_PROMPT_VERSION = "judge-prompt-v1"
+JUDGE_PROMPT_VERSION = "judge-prompt-v2"
 
 _JUDGE_PROMPT_TEMPLATE = """You are auditing another AI system's answer to \
 a Korean legal question, checking only whether the answer is actually \
@@ -48,7 +48,12 @@ but at least one claim is not directly traceable to them.
 - "unsupported": the answer makes claims the cited sources do not \
 support, or draws a conclusion the sources do not actually reach.
 
-Respond with exactly one JSON object and no other text, in this shape:
+Do not show your work. Do not list or number the individual claims you \
+checked. Do not write any text before or after the JSON object -- your \
+entire response must be the JSON object itself and nothing else. Keep \
+"justification" to one short sentence.
+
+Respond with exactly one JSON object in this shape:
 {{"grounding": "grounded" | "partially_grounded" | "unsupported", \
 "justification": string}}"""
 
