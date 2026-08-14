@@ -181,6 +181,32 @@ with the query — it is a weaker morphological match than Nori would give,
 not a broken one, and the fields most sensitive to exact-token recall are
 already `keyword`, not analyzed text.
 
+**Addendum (2026-08-14):** MZO (안지환) messaged that contributors may freely
+add and use any OpenSearch plugin judged necessary — this directly resolves
+the permission-boundary uncertainty above ("what is *not* confirmed is
+whether referencing that built-in analyzer... falls within the `legal-kit-*`
+index read/write permission grant"). The permission question is answered:
+yes.
+
+This does not by itself change the conclusion. The benefit analysis above —
+Nori's gain is partial because the fields most sensitive to exact-token
+recall (`referencedProvisions`, `referencedPrecedents`, statute article
+numbers) are already `keyword`, not analyzed text — was always independent
+of the permission question and still holds. Weighed against that limited,
+unmeasured benefit is a real cost at this point in the project: switching
+now means rebuilding the local index, re-running the full retrieval
+evaluation (50 real Bedrock embedding calls) against the already-verified,
+already-corrected Recall@10=0.45/MRR=0.251 baseline, and revising any report
+content written against today's numbers — with the 2026-08-21 submission
+deadline approaching and all four required submission reports (Architecture,
+Retrieval evaluation, Generation evaluation, Work report) still unwritten.
+
+**Decision confirmed unchanged: `standard` analyzer.** The permission
+authorization is recorded here for completeness and transparency (so this
+document does not misrepresent what was actually knowable at each point in
+time), not acted on — a deliberate, budget-aware call the contributor made
+explicitly, not an oversight.
+
 ## Decision 6: Vector field uses exact k-NN, no engine/method selection
 
 ```json
