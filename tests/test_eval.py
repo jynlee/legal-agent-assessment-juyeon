@@ -31,3 +31,8 @@ def test_lexical_overlap_ratio_handles_a_one_character_question() -> None:
 
 def test_lexical_overlap_ratio_handles_an_empty_question() -> None:
     assert lexical_overlap_ratio("", "아무 텍스트") == 0.0
+
+
+def test_lexical_overlap_ratio_handles_a_source_text_shorter_than_2_characters() -> None:
+    assert lexical_overlap_ratio("정상적인 질문입니다", "") == 0.0
+    assert lexical_overlap_ratio("정상적인 질문입니다", "가") == 0.0

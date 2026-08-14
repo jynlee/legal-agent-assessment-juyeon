@@ -60,6 +60,7 @@ def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
     """Read the 50-question test set."""
 
     data: list[dict[str, Any]] = json.loads(path.read_text(encoding="utf-8"))
+    assert len(data) == 50, f"expected 50 test-set entries, got {len(data)}"
     return data
 
 
@@ -102,7 +103,27 @@ def score_answerable_question(
     (reports/decisions/2026-08-13-retrieval-evaluation-design.md Decision 4
     ties both metrics to what generation actually receives), not the full
     pre-fusion top-50 pool.
+
+    This metric is deliberately binary/hit-based, not a set-overlap
+    fraction, because Decision 6 of that same design doc states the
+    per-question Recall@10 is "0 or 1, since there is exactly one required
+    positive per answerable question under Decision 3." The assertion
+    below enforces that invariant at call time: Decision 3 explicitly
+    permits (but never requires) recording additional optional positives
+    for a question, and if that ever happens without also revisiting this
+    function, a set-based "any positive found" hit would silently keep
+    returning 1 even when only one of several recorded positives was
+    actually retrieved -- quietly changing what the metric means without
+    any error. Raising here instead keeps that drift from rotting silently.
     """
+
+    assert len(relevant_chunk_ids) == 1, (
+        "score_answerable_question assumes exactly one required positive per "
+        "answerable question (reports/decisions/2026-08-13-retrieval-evaluation-design.md "
+        f"Decision 6), got {len(relevant_chunk_ids)}: {relevant_chunk_ids!r}. "
+        "If a second optional positive was intentionally added per Decision 3, "
+        "this function's binary recall formula needs to be revisited first."
+    )
 
     for rank, chunk_id in enumerate(fused_ids, start=1):
         if chunk_id in relevant_chunk_ids:
@@ -223,6 +244,7 @@ def main() -> None:
                 estimated_tokens / 1_000_000 * _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS, 6
             ),
             "elapsed_seconds": round(elapsed, 2),
+            "aggregate": None,
         }
         _write_usage_log(usage)
         raise
@@ -230,13 +252,16 @@ def main() -> None:
     _write_usage_log(usage)
 
     print("\n>>> Lexical-overlap check (answerable questions):")
+    lexical_overlap: list[dict[str, Any]] = []
     for entry in questions:
         if entry["expected_status"] != "answered":
             continue
         source_chunk_id = entry.get("source_chunk_id")
         # The overlap check needs the source chunk's actual text -- fetch it
-        # by chunk_id via a direct BM25 lookup on that exact id string, which
-        # returns it as the top (and effectively only) exact match.
+        # by chunk_id via an exact-match `term` query on the `chunk_id`
+        # keyword field, not a scored/relevance (BM25) search -- this is a
+        # direct id lookup, returning the one document whose chunk_id
+        # exactly equals source_chunk_id (or nothing, if it isn't indexed).
         lookup = opensearch_client.search(
             index=name,
             body={"size": 1, "query": {"term": {"chunk_id": source_chunk_id}}},
@@ -249,6 +274,9 @@ def main() -> None:
         ratio = lexical_overlap_ratio(entry["question"], source_text)
         flag = " <-- HIGH OVERLAP, review" if ratio > 0.5 else ""
         print(f">>> {entry['id']}: overlap={ratio:.2f}{flag}")
+        lexical_overlap.append({"id": entry["id"], "ratio": ratio, "high_overlap": ratio > 0.5})
+
+    _write_evaluation_results(aggregate, per_domain_summary, per_question_results, lexical_overlap)
 
 
 def _write_usage_log(usage: dict[str, Any]) -> None:
@@ -259,6 +287,34 @@ def _write_usage_log(usage: dict[str, Any]) -> None:
     usage_path = usage_dir / f"{time.time_ns()}-evaluate-retrieval.json"
     usage_path.write_text(json.dumps(usage, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f">>> usage log written to {usage_path}")
+
+
+def _write_evaluation_results(
+    aggregate: dict[str, Any],
+    per_domain: dict[str, Any],
+    per_question: list[dict[str, Any]],
+    lexical_overlap: list[dict[str, Any]],
+) -> None:
+    """Write the full per-run evaluation output to a committed results file.
+
+    Unlike reports/usage/ (a timestamped log per run), this file is a
+    single committed snapshot at reports/eval/retrieval_evaluation_results.json
+    -- the raw per-question/per-domain/lexical-overlap material the eventual
+    Retrieval evaluation report (SUBMISSION.md) draws its numbers from,
+    which previously existed only as stdout output and was never persisted.
+    """
+
+    results = {
+        "aggregate": aggregate,
+        "per_domain": per_domain,
+        "per_question": per_question,
+        "lexical_overlap": lexical_overlap,
+    }
+    results_dir = pathlib.Path(__file__).resolve().parents[1] / "reports" / "eval"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    results_path = results_dir / "retrieval_evaluation_results.json"
+    results_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f">>> evaluation results written to {results_path}")
 
 
 if __name__ == "__main__":
