@@ -12,6 +12,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from botocore.exceptions import (  # type: ignore[import-untyped]
+    ConnectTimeoutError,
+    EndpointConnectionError,
+    ReadTimeoutError,
+)
+from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
+from opensearchpy.exceptions import ConnectionTimeout as OpenSearchConnectionTimeout
+
 from legal_agent_assessment.contracts import (
     AnswerStatus,
     GeneralLegalRequest,
@@ -79,6 +87,41 @@ class LegalAgent:
         return self.answer_sync(request, on_usage=on_usage)
 
     def answer_sync(
+        self,
+        request: GeneralLegalRequest,
+        *,
+        on_usage: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> GeneralLegalResponse:
+        """Answer one question, converting a narrow set of known
+        OpenSearch/Bedrock connectivity failures into a `DEPENDENCY_UNAVAILABLE`
+        response instead of letting them raise.
+
+        Only genuine "could not reach the service at all" failures are
+        caught here -- an OpenSearch/Bedrock error that reached the service
+        and was rejected (bad index name, malformed request, auth failure)
+        is a real bug and must keep propagating uncaught, not be silently
+        reported as an infrastructure outage
+        (reports/decisions/2026-08-14-out-of-scope-and-dependency-unavailable-design.md
+        Decision 2). `_answer_sync_unguarded` carries the actual
+        answering logic and its own detailed docstring.
+        """
+
+        try:
+            return self._answer_sync_unguarded(request, on_usage=on_usage)
+        except (
+            OpenSearchConnectionError,
+            OpenSearchConnectionTimeout,
+            EndpointConnectionError,
+            ConnectTimeoutError,
+            ReadTimeoutError,
+        ):
+            return GeneralLegalResponse(
+                request_id=request.request_id,
+                status=AnswerStatus.DEPENDENCY_UNAVAILABLE,
+                versions=self._versions,
+            )
+
+    def _answer_sync_unguarded(
         self,
         request: GeneralLegalRequest,
         *,

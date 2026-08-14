@@ -3,6 +3,9 @@ import json
 from typing import Any
 
 import pytest
+from botocore.exceptions import ConnectTimeoutError, EndpointConnectionError, ReadTimeoutError
+from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
+from opensearchpy.exceptions import ConnectionTimeout as OpenSearchConnectionTimeout
 
 from legal_agent_assessment.agent import LegalAgent
 from legal_agent_assessment.contracts import (
@@ -94,6 +97,26 @@ class _FakeStreamingBody:
 
     def read(self) -> bytes:
         return self._text.encode("utf-8")
+
+
+class _RaisingOpenSearchClient:
+    """Raises a fixed exception on every `search` call."""
+
+    def __init__(self, exception: Exception) -> None:
+        self._exception = exception
+
+    def search(self, *, index: str, body: dict[str, Any]) -> dict[str, Any]:
+        raise self._exception
+
+
+class _RaisingBedrockClient:
+    """Raises a fixed exception on every `invoke_model` call."""
+
+    def __init__(self, exception: Exception) -> None:
+        self._exception = exception
+
+    def invoke_model(self, *, modelId: str, body: str) -> dict[str, Any]:
+        raise self._exception
 
 
 def test_answer_skips_generation_when_retrieval_is_empty() -> None:
@@ -475,3 +498,84 @@ def test_legal_agent_satisfies_the_protocol_and_answers_through_the_async_entry_
     assert response.answer == "약사법 제1조는 목적을 규정합니다."
     assert [citation.chunk_id for citation in response.citations] == ["c1"]
     assert len(response.retrieval_hits) == 1
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        OpenSearchConnectionError("N/A", "connection refused"),
+        OpenSearchConnectionTimeout("N/A", "timed out"),
+    ],
+)
+def test_answer_returns_dependency_unavailable_when_opensearch_is_unreachable(
+    exception: Exception,
+) -> None:
+    opensearch = _RaisingOpenSearchClient(exception)
+    bedrock = _FakeBedrockClient(embedding_model_id="embed-v4", generation_response_text="unused")
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
+
+    assert response.status is AnswerStatus.DEPENDENCY_UNAVAILABLE
+    assert response.answer is None
+    assert response.citations == ()
+    assert response.retrieval_hits == ()
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        EndpointConnectionError(
+            endpoint_url="https://bedrock-runtime.ap-northeast-2.amazonaws.com"
+        ),
+        ConnectTimeoutError(endpoint_url="https://bedrock-runtime.ap-northeast-2.amazonaws.com"),
+        ReadTimeoutError(endpoint_url="https://bedrock-runtime.ap-northeast-2.amazonaws.com"),
+    ],
+)
+def test_answer_returns_dependency_unavailable_when_bedrock_is_unreachable(
+    exception: Exception,
+) -> None:
+    opensearch = _FakeOpenSearchClient([], [])
+    bedrock = _RaisingBedrockClient(exception)
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
+
+    assert response.status is AnswerStatus.DEPENDENCY_UNAVAILABLE
+    assert response.answer is None
+    assert response.citations == ()
+    assert response.retrieval_hits == ()
+
+
+def test_answer_lets_an_unrelated_exception_propagate_uncaught() -> None:
+    """A bug (e.g. a malformed request the client itself rejects) must not be
+    silently reported as dependency_unavailable -- only the narrow
+    connection/timeout list is caught (design Decision 2)."""
+
+    opensearch = _RaisingOpenSearchClient(ValueError("not a real infra failure"))
+    bedrock = _FakeBedrockClient(embedding_model_id="embed-v4", generation_response_text="unused")
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    with pytest.raises(ValueError, match="not a real infra failure"):
+        agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
