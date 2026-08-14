@@ -65,6 +65,13 @@ def test_parse_judge_response_raises_on_an_unrecognized_grounding_value() -> Non
         parse_judge_response(raw)
 
 
+def test_parse_judge_response_raises_on_a_non_string_grounding_value() -> None:
+    raw = json.dumps({"grounding": [], "justification": "..."})
+
+    with pytest.raises(ValueError, match="unrecognized grounding value"):
+        parse_judge_response(raw)
+
+
 def test_parse_judge_response_raises_on_unparseable_json() -> None:
     with pytest.raises(ValueError, match="could not parse"):
         parse_judge_response("not json at all")

@@ -14,7 +14,7 @@ module from generation.py rather than added to it.
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from legal_agent_assessment.contracts import Citation
 
@@ -119,14 +119,14 @@ def parse_judge_response(raw_text: str) -> ParsedVerdict:
         raise ValueError(f"could not parse judge response as JSON: {raw_text!r}")
 
     grounding = parsed.get("grounding")
-    if grounding not in _VALID_VERDICTS:
+    if not isinstance(grounding, str) or grounding not in _VALID_VERDICTS:
         raise ValueError(f"judge returned an unrecognized grounding value: {grounding!r}")
 
     justification = parsed.get("justification")
     if not isinstance(justification, str):
         justification = ""
 
-    return ParsedVerdict(grounding=grounding, justification=justification)
+    return ParsedVerdict(grounding=cast(GroundingVerdict, grounding), justification=justification)
 
 
 __all__ = [
