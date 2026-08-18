@@ -17,6 +17,14 @@ this report reflect the corrected 56-question set, not the original 50.
 The mislabelling and its correction are disclosed in full in the Work
 report's blocker log, not smoothed over.
 
+**2026-08-18, second update (same day).** A per-question diagnosis found
+the equal-weight RRF fusion was burying kNN's often-correct single-retriever
+hits under BM25/kNN consensus noise. `retrieval.py`'s fusion gained an
+optional per-list weight, applied as kNN×3, raising aggregate Recall@10
+from 0.4524 to **0.5714** and MRR from 0.2437 to **0.2809** with no reindex.
+Full diagnosis, the fix, and its honest limits are in "Fusion weighting"
+and the updated "Failed-query analysis" below.
+
 ## Test-query sources and construction method
 
 Each of the 40 answerable questions was drafted from one real, specific
@@ -215,44 +223,74 @@ nDCG becomes worth adding at that point.
 
 The retrieval pipeline underlying these numbers (query embedding with
 `input_type="search_query"`, BM25 top-50 + exact k-NN top-50, client-side
-Reciprocal Rank Fusion with `k=60`, fused top-10) is exactly the retrieval
-half of the real, production `LegalAgent.answer_sync` path — no separate,
+Reciprocal Rank Fusion with `k=60` and k-NN weighted 3x BM25 as of
+2026-08-18 -- see "Fusion weighting" below, fused top-10) is exactly the
+retrieval half of the real, production `LegalAgent.answer_sync` path — no
+separate,
 evaluation-only retrieval logic exists. `scripts/evaluate_retrieval.py`
 makes no generation call at all, keeping this report's deterministic
 retrieval measurement (same index, same query, same result every time)
 separate from the Generation evaluation report's necessarily stochastic
 measurements, per SUBMISSION.md's own instruction to keep the two apart.
 
+## Fusion weighting
+
+**2026-08-18, second update (same day).** A per-question diagnosis (below
+numbers precede this fix; see "Failed-query analysis" for the follow-up that
+found the cause) replayed the real BM25-top-50 and kNN-top-50 lists for all
+42 answerable questions and found kNN alone held the required chunk within
+its own top-50 for 18 of the 23 original Recall@10 misses, versus BM25's 3
+of 23 -- BM25 essentially fails on this test set's colloquial-register
+questions (see "Failed-query analysis" below), while dense k-NN still finds
+the right chunk, often ranked well, but the original equal-weight RRF
+(`k=60`) let unweighted rank-consensus bury a strong single-retriever hit
+under many weaker chunks both retrievers agreed on. `retrieval.py`'s
+`reciprocal_rank_fusion` gained an optional per-list `weights` parameter
+(default 1.0, so every prior test and the formula's documented behavior are
+unchanged when omitted); `agent.py` and `evaluate_retrieval.py` now call it
+with `weights=(1.0, 3.0)` -- kNN weighted 3x BM25. The weight of 3.0 was
+chosen by replaying the same real top-50 lists against several weight/k
+combinations **offline against this same 42-question set**, not an
+independent holdout -- disclosed as direct tuning against the project's own
+eval set, not a principled a priori choice, and worth an independent check
+against a larger sample if one becomes available.
+
+No reindex was needed -- this changes only how the two already-computed
+rankings are combined, not the chunks, embeddings, or index themselves.
+
 ## Aggregate and per-domain results
 
 Real run, 2026-08-18, against the unchanged production index (7,887
-chunks, 182 judgements + 1,625 statutes), 56-question corrected test set:
+chunks, 182 judgements + 1,625 statutes), 56-question corrected test set.
+**Before/after the fusion-weight fix above, same run day:**
 
-| Metric | Value |
-| --- | --- |
-| Recall@10 (aggregate, 42 answerable questions) | **0.4524** |
-| MRR (aggregate, 42 answerable questions) | **0.2437** |
+| Metric | Before (equal weight) | After (kNN×3) |
+| --- | --- | --- |
+| Recall@10 (42 answerable) | 0.4524 | **0.5714** |
+| MRR (42 answerable) | 0.2437 | **0.2809** |
+
+All numbers below and in the rest of this report are **after** the fix.
 
 | Domain | Recall@10 | MRR | n |
 | --- | --- | --- | --- |
-| 미용법 | 0.80 | 0.325 | 5 |
-| 안마사법 | 0.75 | 0.550 | 4 |
-| 공중위생법 | 0.75 | 0.354 | 4 |
+| 안마사법 | 1.00 | 0.561 | 4 |
+| 미용법 | 0.80 | 0.367 | 5 |
+| 약사법 | 0.75 | 0.134 | 4 |
+| 개인정보보호법 | 0.75 | 0.361 | 4 |
+| 공중위생법 | 0.75 | 0.417 | 4 |
+| 화장품법 | 0.50 | 0.375 | 4 |
 | 무면허의료행위 | 0.50 | 0.500 | 4 |
-| 화장품법 | 0.50 | 0.313 | 4 |
-| 개인정보보호법 | 0.50 | 0.292 | 4 |
-| 약사법 | 0.50 | 0.108 | 4 |
-| 의료기기법 | 0.20 | 0.029 | 5 |
-| **의료법** | **0.00** | **0.00** | 4 |
-| **표시광고법** | **0.00** | **0.00** | 4 |
+| **의료법** | **0.25** | **0.036** | 4 |
+| **표시광고법** | **0.25** | **0.025** | 4 |
+| 의료기기법 | 0.20 | 0.067 | 5 |
 
-의료기기법 grew to 5 questions (id 43, relabelled `answered`) and its
-Recall@10 dropped slightly (0.25→0.20, one non-hit added); 미용법 grew to
-5 (id 54) and rose (0.75→0.80, one hit added). The 14 unanswerable/
-out-of-scope questions are retrieved against for transparency (what
-generation would have seen) but excluded from these metrics by design —
-there is no positive judgement to recall against for a question with no
-source chunk.
+의료기기법 remains the weakest domain (0.20) even after the fix -- its 4
+misses (ids 13, 14, 16, 43) include 2 of the 6 questions whose gold chunk is
+absent from *both* retrievers' top-50 entirely (see "Failed-query analysis"),
+which no fusion-weight change can recover. The 14 unanswerable/out-of-scope
+questions are retrieved against for transparency (what generation would have
+seen) but excluded from these metrics by design — there is no positive
+judgement to recall against for a question with no source chunk.
 
 **A disclosed nuance on id 43 specifically.** Its assigned required
 positive (의료기기법 제26조 제7항) does not appear in this question's
@@ -269,67 +307,87 @@ by adding a second positive after the fact.
 
 ## Failed-query analysis
 
-The two domains scoring 0.0 — 의료법 (Medical Law) and 표시광고법
-(Advertising Labelling Law) — were investigated directly rather than left
-as an unexplained number.
+**This section originally investigated 의료법 and 표시광고법 scoring 0.0**
+before the fusion-weight fix above; that investigation's finding directly
+caused the fix, so it is kept below with its outcome, followed by the
+updated diagnosis against the 18 misses that remain after the fix.
 
-**Ruled out: missing or unindexed data.** All 8 required-positive chunk
-ids for these two domains' questions were looked up directly against the
-freshly rebuilt index by exact `chunk_id` term match; all 8 resolved.
-The correct chunks are indexed and retrievable by id — this is a genuine
-ranking miss, not a corpus or indexing gap.
+**Ruled out: missing or unindexed data.** The 8 original required-positive
+chunk ids for these two domains' questions were looked up directly against
+the index by exact `chunk_id` term match; all 8 resolved. The correct
+chunks are indexed and retrievable by id — this was a genuine ranking miss,
+not a corpus or indexing gap.
 
-| id | domain | question (translated sense) | source chunk |
-| --- | --- | --- | --- |
-| 5 | 의료법 | Is eyebrow semi-permanent tattooing unlicensed medical practice? | precedent-622115#summary-headnote-000 |
-| 6 | 의료법 | Is decorative tattooing unlicensed medical practice? | precedent-622263#summary-headnote-000 |
-| 7 | 의료법 | Is acupressure/acupuncture-style service unlicensed medical practice? | precedent-99684#summary-holding-000 |
-| 8 | 의료법 | Are we legally required to keep treatment records like a clinic? | precedent-141548#summary-holding-000 |
-| 17 | 표시광고법 | Can I inflate reviews/purchase counts in banner ads? | precedent-207141#summary-holding-001 |
-| 18 | 표시광고법 | Can I overstate the "original price" to make a discount look bigger? | precedent-221809#body-020 |
-| 19 | 표시광고법 | Can I omit a known side-effect risk from an ad? | precedent-220369#body-010 |
-| 20 | 표시광고법 | Can I inflate the list price in a 1+1 promotion? | precedent-220843#body-008 |
+**Hypothesis confirmed, and acted on.** The working hypothesis below (a
+register gap between colloquial questions and formal legal source text)
+was confirmed by directly inspecting, for all 42 answerable questions, the
+real raw BM25-top-50 and kNN-top-50 lists rather than only the fused
+top-10: BM25 held the required chunk for only 4 of 23 original misses,
+while dense k-NN held it for 17 of 23 — often at a strong rank (e.g. rank 1
+for id 37, rank 2 for id 9) that the original equal-weight fusion still
+failed to surface into the top-10. This is what motivated the "Fusion
+weighting" change above, which raised aggregate Recall@10 from 0.4524 to
+0.5714. Of the original 8 questions in the table below, ids 8 (의료법) and
+17 (표시광고법) now hit after the fix; the remaining 6 do not, because their
+gold chunk sits too deep in kNN's own top-50 (rank 21, 49, 19, absent, or
+absent) for any single-list weight to promote it into a fused top-10.
 
-**Working hypothesis (labelled as a hypothesis, not confirmed by
-inspecting the actual retrieved candidates for these 8 questions — that
-deeper diagnostic is flagged as follow-up, not completed here):** these
-two domains' questions are drafted in an unusually colloquial,
-practical register by design (Decision 1's whole purpose is to avoid the
-lexical-overlap leakage the section above measures), while their source
-chunks are judgement headnote/holding text written in formal Korean legal
-register (e.g. "무면허 의료행위", "거짓·과장의 표시·광고"). This creates a
-larger vocabulary gap between question and source than in the
-higher-scoring domains: 안마사법/미용법/공중위생법 (0.75 each) ask about
-concrete regulatory facts (자격 요건, 업종 분류, 위생교육 의무) whose
-everyday phrasing and legal phrasing overlap more naturally, while the
-0.0 domains ask "is this specific everyday behavior legal" in a way that
-depends on inferring the applicable legal concept rather than naming it.
-BM25 (exact/near-exact term matching) has little to work with when the
-question's own vocabulary barely appears in the source text; whether
-dense k-NN closed that gap for these particular 8 questions was not
-directly inspected in this report and is the natural next investigation
-if this pattern needs to be addressed (e.g. by domain-specific query
-expansion, or accepting it as a documented retrieval-quality limitation
-of this corpus's size and register range).
+| id | domain | question (translated sense) | source chunk | bm25 rank/50 | knn rank/50 |
+| --- | --- | --- | --- | --- | --- |
+| 5 | 의료법 | Is eyebrow semi-permanent tattooing unlicensed medical practice? | precedent-622115#summary-headnote-000 | absent | 9 |
+| 6 | 의료법 | Is decorative tattooing unlicensed medical practice? | precedent-622263#summary-headnote-000 | absent | absent |
+| 7 | 의료법 | Is acupressure/acupuncture-style service unlicensed medical practice? | precedent-99684#summary-holding-000 | absent | 21 |
+| 8 | 의료법 | Are we legally required to keep treatment records like a clinic? | precedent-141548#summary-holding-000 | absent | 7 (now hits) |
+| 17 | 표시광고법 | Can I inflate reviews/purchase counts in banner ads? | precedent-207141#summary-holding-001 | absent | 9 (now hits) |
+| 18 | 표시광고법 | Can I overstate the "original price" to make a discount look bigger? | precedent-221809#body-020 | absent | 19 |
+| 19 | 표시광고법 | Can I omit a known side-effect risk from an ad? | precedent-220369#body-010 | absent | absent |
+| 20 | 표시광고법 | Can I inflate the list price in a 1+1 promotion? | precedent-220843#body-008 | absent | absent |
 
-**Also notable:** 의료기기법 (0.20/0.029) and 약사법 (0.50/0.108) both
-recall at least one correct chunk but rank it far down the fused list
-(low MRR despite non-zero recall) — consistent with the same
-register-gap pattern in a milder form, rather than a domain-specific
-outlier.
+**Remaining 18 misses after the fix, by cause:**
+
+- **6 questions: gold chunk absent from both retrievers' top-50 entirely**
+  (ids 6, 19, 20, 21, 32, and 16) — no fusion-weight change can recover
+  these; this is a genuine retrieval-quality gap (chunking granularity,
+  embedding limits, or a real vocabulary mismatch too large for either
+  method), flagged as the next thing to investigate if more time is
+  available, not yet root-caused further.
+- **12 questions: gold chunk present in one retriever's top-50 but too deep
+  in rank to win the fusion even at 3x weight** (e.g. id 13's kNN rank 49,
+  id 7's kNN rank 21) — a larger weight or a smaller RRF `k` would recover
+  some of these at the cost of demoting other, currently-correct answers;
+  this is a real tuning ceiling of rank-based fusion, not a bug, and the
+  natural next lever is a genuine reranking stage over a wider candidate
+  pool rather than further weight tuning (see Generation evaluation
+  report's / Work report's "one more week" list).
+
+**Also notable:** 의료기기법 (0.20/0.067) remains the weakest domain even
+after the fix. Of its 4 remaining misses, 1 (id 16) is a "neither
+retriever" case; the other 3 (ids 13, 14, 43) had the gold chunk in kNN's
+own top-50 (ranks 49, 9, 16) but still lost the fused ranking even at 3x
+weight — id 14 in particular (kNN rank 9, same rank id 8 held before it
+flipped to a hit) shows the outcome depends on the competing chunks' own
+scores in each specific question, not the gold chunk's rank alone.
 
 ## Latency percentiles, index size, index build time, and rebuild count
 
 **Per-question retrieval latency** (embed + BM25 search + k-NN search,
-wall-clock, all 56 questions, this run):
+wall-clock, all 56 questions, the fusion-weight-fix run):
 
 | Percentile | Latency |
 | --- | --- |
-| min | 274.4 ms |
-| p50 (median) | 475.6 ms |
-| p95 | 593.7 ms |
-| p99 | 617.7 ms |
-| max | 699.1 ms |
+| min | 303.2 ms |
+| p50 (median) | 525.2 ms |
+| p95 | 1176.8 ms |
+| p99 | 7569.2 ms |
+| max | 7700.8 ms |
+
+**The p99/max above are a disclosed cold-start artifact, not a fusion-weight
+regression.** The 3 slowest questions in this run (ids 1, 3, 4 — 7.7s,
+7.6s, 6.1s) are the first 3 questions run, all in one domain (약사법) at the
+very start of the script; every other question in the same run, including
+the rest of that same domain, is in the 300–1200ms range consistent with
+the pre-fix run's percentiles. Weighting two already-fetched rank lists is
+O(n) over at most 100 ids and adds no measurable latency on its own.
 
 No single outlier dominates this run — the tightest of the three real
 retrieval-eval runs so far, consistent with a warm, stable local

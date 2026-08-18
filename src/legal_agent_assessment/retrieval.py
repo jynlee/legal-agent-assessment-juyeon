@@ -64,14 +64,24 @@ def build_knn_query(query_vector: Sequence[float], *, size: int) -> dict[str, An
 
 
 def reciprocal_rank_fusion(
-    ranked_id_lists: Sequence[Sequence[str]], *, k: int = 60
+    ranked_id_lists: Sequence[Sequence[str]],
+    *,
+    k: int = 60,
+    weights: Sequence[float] | None = None,
 ) -> list[tuple[str, float]]:
     """Combine ranked chunk_id lists into one fused ranking via RRF.
 
     score(id) = sum, over every input list containing id, of
-    1 / (k + rank_in_that_list) (1-indexed rank). `k=60` is the standard
-    constant from the original RRF paper (Cormack, Clarke, Buettcher, 2009),
-    not a project-specific guess (retrieval design Decision 2).
+    weight_of_that_list / (k + rank_in_that_list) (1-indexed rank). `k=60` is
+    the standard constant from the original RRF paper (Cormack, Clarke,
+    Buettcher, 2009), not a project-specific guess (retrieval design
+    Decision 2). `weights` defaults to 1.0 per list (the paper's unweighted
+    form); `weights[i]` scales `ranked_id_lists[i]`'s contribution -- added
+    2026-08-18 after a real per-question diagnosis (Retrieval evaluation
+    report, "Fusion weighting") found kNN alone held the gold chunk within
+    its own top-50 for 18/23 misses versus BM25's 3/23, so equal weighting
+    was letting an unweighted rank-consensus penalize the stronger single
+    retriever.
 
     Returns (chunk_id, score) pairs sorted by descending score. Python's
     `sorted` is stable, so ties preserve each id's first-appearance order
@@ -80,10 +90,11 @@ def reciprocal_rank_fusion(
     (reports/decisions/2026-08-13-retrieval-design.md).
     """
 
+    resolved_weights = weights if weights is not None else [1.0] * len(ranked_id_lists)
     scores: dict[str, float] = {}
-    for ranked_ids in ranked_id_lists:
+    for weight, ranked_ids in zip(resolved_weights, ranked_id_lists, strict=True):
         for rank, chunk_id in enumerate(ranked_ids, start=1):
-            scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+            scores[chunk_id] = scores.get(chunk_id, 0.0) + weight / (k + rank)
     return sorted(scores.items(), key=lambda pair: pair[1], reverse=True)
 
 

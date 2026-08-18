@@ -139,7 +139,14 @@ def parse_answer_response(raw_text: str) -> ParsedAnswer:
     """
 
     try:
-        parsed = json.loads(_strip_code_fence(raw_text))
+        # `raw_decode`, not `json.loads`: a real 2026-08-18 crash showed the
+        # model closing its JSON fence and then continuing with prose
+        # explanation below it. `_strip_code_fence` only ever unwraps an
+        # opening fence, so trailing content after the JSON value is a real,
+        # observed shape, not a hypothetical -- `raw_decode` parses only the
+        # first JSON value and ignores everything after it, the same way an
+        # opening fence is already tolerated rather than treated as an error.
+        parsed, _end = json.JSONDecoder().raw_decode(_strip_code_fence(raw_text))
     except json.JSONDecodeError as error:
         raise ValueError(f"could not parse model response as JSON: {raw_text!r}") from error
 

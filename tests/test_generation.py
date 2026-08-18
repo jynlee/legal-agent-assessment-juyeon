@@ -133,6 +133,32 @@ def test_parse_answer_response_unwraps_an_untagged_fence() -> None:
     assert parsed.status is AnswerStatus.INSUFFICIENT_EVIDENCE
 
 
+def test_parse_answer_response_tolerates_trailing_prose_after_the_closing_fence() -> None:
+    """Real crash, reproduced verbatim (2026-08-18 real run, prompt-v2,
+    question 8 of a 56-question generation evaluation): the model closed its
+    JSON fence and then kept writing an explanation below it. Previously
+    `_strip_code_fence` only stripped a closing fence found on the *last*
+    line, so trailing prose after it made `json.loads` raise "Extra data"
+    and crash the whole run -- real Bedrock spend lost mid-run, not just a
+    wrong answer. The parser must find and use only the first JSON value,
+    the same way it already tolerates an opening fence."""
+
+    raw = (
+        "```json\n"
+        '{\n  "status": "insufficient_evidence",\n  "answer": null,\n'
+        '  "cited_chunk_ids": []\n}\n'
+        "```\n\n"
+        "**설명:** 제공된 자료들은 모두 의료법 및 의료기관에 적용되는 "
+        "진료기록부 작성·보존 의무에 관한 내용입니다."
+    )
+
+    parsed = parse_answer_response(raw)
+
+    assert parsed.status is AnswerStatus.INSUFFICIENT_EVIDENCE
+    assert parsed.answer is None
+    assert parsed.cited_chunk_ids == ()
+
+
 def test_parse_answer_response_treats_null_cited_chunk_ids_as_no_citations() -> None:
     """A null (not a list) cited_chunk_ids on an *answered* response used to
     raise TypeError inside tuple(). It degrades to () instead; agent.py then

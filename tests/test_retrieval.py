@@ -76,6 +76,32 @@ def test_reciprocal_rank_fusion_handles_an_empty_list() -> None:
     assert reciprocal_rank_fusion([[], []], k=60) == []
 
 
+def test_reciprocal_rank_fusion_defaults_every_list_to_equal_weight() -> None:
+    bm25 = ["a"]
+    knn = ["b"]
+
+    assert reciprocal_rank_fusion([bm25, knn], k=60) == reciprocal_rank_fusion(
+        [bm25, knn], k=60, weights=(1.0, 1.0)
+    )
+
+
+def test_reciprocal_rank_fusion_applies_per_list_weights() -> None:
+    # "only-in-bm25" ranks 1st in bm25 and is absent from knn; "only-in-knn"
+    # ranks 2nd in knn and is absent from bm25. At equal weight bm25's rank-1
+    # entry wins (1/61 > 1/62). A high enough knn weight must be able to flip
+    # that ordering -- this is what lets a strong single-retriever signal
+    # outrank a weak one instead of RRF's rank-consensus default punishing it.
+    bm25 = ["only-in-bm25"]
+    knn = ["something-else", "only-in-knn"]
+
+    equal = reciprocal_rank_fusion([bm25, knn], k=60, weights=(1.0, 1.0))
+    assert equal[0][0] == "only-in-bm25"
+
+    knn_favored = reciprocal_rank_fusion([bm25, knn], k=60, weights=(1.0, 5.0))
+    fused_ids = [chunk_id for chunk_id, _score in knn_favored]
+    assert fused_ids.index("only-in-knn") < fused_ids.index("only-in-bm25")
+
+
 _SOURCE = {
     "chunk_id": "precedent-000001#body-000",
     "document_id": "precedent-000001",

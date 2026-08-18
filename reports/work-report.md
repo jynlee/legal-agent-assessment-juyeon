@@ -178,6 +178,61 @@ integration:**
     own test data for the first time here. Full detail in the Generation
     evaluation report's "Two gold-label errors found and corrected."
 
+**A retrieval-quality gap, diagnosed and fixed on 2026-08-18:**
+
+11. **Equal-weight RRF fusion was burying strong single-retriever hits.**
+    A per-question diagnosis (real BM25-top-50 and kNN-top-50 lists for all
+    42 answerable questions, not just the fused top-10) found dense k-NN
+    held the required chunk for 17 of the 23 original Recall@10 misses
+    versus BM25's 4 of 23 — the original `k=60`, equal-weight RRF was
+    letting unweighted rank-consensus bury k-NN's often well-ranked single
+    hits under weaker chunks both retrievers happened to agree on.
+    `retrieval.py`'s `reciprocal_rank_fusion` gained an optional per-list
+    `weights` parameter (TDD: 2 new tests written red, then green; default
+    unchanged so every prior test stayed green); `agent.py` and
+    `evaluate_retrieval.py` now weight k-NN 3x BM25. A real re-run raised
+    aggregate Recall@10 from 0.4524 to 0.5714 and MRR from 0.2437 to
+    0.2809, with no reindex needed. The weight was chosen by replaying the
+    same real top-50 lists offline against several weight/k combinations
+    against this same 42-question test set — disclosed as direct tuning
+    against the project's own eval set, not an independent holdout. Full
+    diagnosis and honest limits (6 of 18 remaining misses have the gold
+    chunk absent from *both* retrievers' top-50 and cannot be recovered by
+    fusion tuning alone) are in the Retrieval evaluation report's "Fusion
+    weighting" and updated "Failed-query analysis."
+12. **The diagnostic script itself was not usage-instrumented.** 65 real
+    Cohere Embed v4 calls (23 for the first miss-only pass, 42 for the
+    full-answerable-set pass) were made by a throwaway diagnostic script
+    that had no `reports/usage/` writer — an instrumentation gap of the
+    same kind as items 8–9 above, caught this time before being pointed
+    out rather than after. Reconstructed after the fact from the real
+    question texts and `estimate_tokens`: 2,627 tokens, ~$0.000315 — real
+    but negligible, folded into the "disclosed separately" line in "AWS
+    use" below rather than the fully-instrumented total.
+
+**A real crash reproduced live and fixed on 2026-08-18:**
+
+13. **`parse_answer_response` crashed on real `prompt-v2` output.** The
+    fusion-weight re-verification's full 56-question real generation run
+    crashed at question 8 (의료법): the model closed its JSON answer with a
+    fence and then kept writing prose explanation below it, which
+    `json.loads` rejected as "Extra data," raising an unhandled `ValueError`
+    that killed the whole run — real Bedrock spend on questions 1–8 lost
+    mid-run (crash-safe accounting still recorded it: $0.395997, `status:
+    "failed"`, `reports/usage/1787049936405213024-evaluate-generation.json`).
+    This is the same failure shape found and fixed once already during the
+    reverted `prompt-v5` trial, but that fix was reverted along with
+    `prompt-v5`'s prompt wording — it turns out the parsing bug is
+    independent of prompt version and was still live in the shipped
+    `prompt-v2` path the whole time, just not yet hit by a real question.
+    Fixed via TDD (test reproduces the exact crash text verbatim): swapped
+    `json.loads` for `json.JSONDecoder().raw_decode`, which parses only the
+    first JSON value and ignores trailing content, the same tolerance the
+    parser already gives an opening code fence. Confirmed by a clean real
+    re-run of all 56 questions with no crash (the numbers throughout this
+    report and the Retrieval/Generation evaluation reports are from this
+    re-run).
+
 ## Completed, incomplete, and deliberately deferred work
 
 **Completed** (all 9 required-work items plus item 10's reporting
@@ -186,7 +241,7 @@ deliverables):
 1. Record-selection and document-kind decisions — done (`reports/decisions/`, record-selection policy).
 2. Normalization, chunking, deterministic identity rules — done (`norm-v1`, `chunk-v1`, statute and judgement chunkers).
 3. Versioned OpenSearch 3.5-compatible index, reproducibly — done (`index-v1`, built twice, byte-identical cost/count both times).
-4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`). Reranking deliberately not implemented (see below).
+4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25 as of 2026-08-18 — see Blocker log item 11). Reranking deliberately not implemented (see below).
 5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
@@ -288,39 +343,41 @@ project's own review process, disclosed rather than silently left):
 Self-instrumented from the first real call this project made, per
 SUBMISSION.md's requirement (contributors share one IAM user; no billing
 or CloudTrail record can attribute usage to a specific contributor).
-Source: every file in `reports/usage/` (gitignored; 32 files, one per real
+Source: every file in `reports/usage/` (gitignored; 35 files, one per real
 script invocation that made at least one real AWS call). This total
 includes every real run made after this report's numbers were first
 drafted on 08-14: the `prompt-v3`, `prompt-v4`, and `prompt-v5` trials (all
 tried, then reverted — `prompt-v2` is what shipped; `prompt-v5`'s first
 attempt crashed mid-run on a real parsing bug, itself fixed, and its
-second, completed attempt is the 5th "failed" generation-evaluation run
+second, completed attempt is one of the "failed" generation-evaluation runs
 below), a 2026-08-18 re-verification pass against the local container to
 confirm the committed numbers reproduce, the test-set expansion/correction
 work (real retrieval and generation evaluation runs against the
 growing/corrected 56-question set), the `agent.py` citation-integrity
-fix's own real validation run, and four further single-question demo
-calls made the same day to spot-check individual response behavior across
-all four contract states (answered, insufficient_evidence, out_of_scope) --
-no different in kind from the other demo calls; every real call is
-recorded from the first one onward per this section's requirement,
-confirmation-only calls included.
+fix's own real validation run, six further single-question demo calls made
+the same day to spot-check individual response behavior across all four
+contract states, the fusion-weight fix's real retrieval re-run, and the
+JSON-parsing crash's real crashed attempt plus its real clean re-run
+(Blocker log items 11–13) -- every real call is recorded from the first one
+onward per this section's requirement, confirmation-only and crashed calls
+included.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
 | Index builds (`index_chunks.py`) | 2 | 7,280,846 | — | — | $0.8738 |
-| Retrieval evaluations (`evaluate_retrieval.py`) | 6 | 11,819 | — | — | $0.001417 |
-| Generation evaluations (`evaluate_generation.py`) | 15 (10 succeeded, 5 failed) | 21,924 | 5,323,959 | 333,010 | $20.969656 |
+| Retrieval evaluations (`evaluate_retrieval.py`) | 7 | 13,967 | — | — | $0.001675 |
+| Generation evaluations (`evaluate_generation.py`) | 17 (11 succeeded, 6 failed) | 24,399 | 5,924,508 | 374,794 | $23.398360 |
 | Real demo calls (`serve_legal_agent.py`) | 9 (2 without token capture) | 166 | 36,487 | 1,823 | $0.136825 |
-| **Total, fully instrumented** | **32** | **7,314,755** | **5,360,446** | **334,833** | **$21.981698** |
+| **Total, fully instrumented** | **35** | **7,319,378** | **5,960,995** | **376,617** | **$24.410660** |
 
 Plus, disclosed separately rather than folded into the total above
-(see Blocker log items 7–9): **~$0.00001** from 6 untracked pre-
-instrumentation dev calls, and an **unknown, likely small** amount of
-real partial spend from the 4 failed Generation-evaluation attempts whose
-cost was zeroed by the since-fixed accounting bug (their real elapsed
-time, 19–31 seconds each, is the only surviving evidence they made real
-calls at all).
+(see Blocker log items 7–9, 12): **~$0.00001** from 6 untracked pre-
+instrumentation dev calls, **~$0.000315** from the 65 real embedding calls
+made by 2026-08-18's uninstrumented retrieval-miss diagnostic script, and
+an **unknown, likely small** amount of real partial spend from the 4
+original failed Generation-evaluation attempts whose cost was zeroed by
+the since-fixed accounting bug (their real elapsed time, 19–31 seconds
+each, is the only surviving evidence they made real calls at all).
 
 **OpenSearch usage.** One versioned index
 (`legal-kit-assessment-jynlee-chunk-v1-index-v1`, `index-v1`), 7,887

@@ -23,6 +23,18 @@ are from the real re-run against the corrected 56-question set. See
 "insufficient_evidence refusal accuracy" below for the full story and why
 it changes this report's central finding.
 
+**2026-08-18, second update (same day).** Two real fixes landed after the
+update above: a retrieval fusion-weight fix (Retrieval evaluation report's
+"Fusion weighting") and a JSON-parsing robustness fix for a real crash hit
+mid-re-verification (Work report's Blocker log item 13). Every number below
+is from the real re-run made after both fixes. Net effect versus the first
+2026-08-18 update: `answered_status_match_rate` 0.9524→0.9762,
+`false_refusal_count` 2→1 (now just id 8), grounding mix shifted slightly
+(`grounded` 16→14, `partially_grounded` 28→31) as expected from a real
+retrieval change altering which chunks generation sees;
+`insufficient_evidence_refusal_accuracy` is unchanged at 0.5556 — the
+over-answering root cause (see below) is independent of retrieval quality.
+
 ## Methodology, restated briefly
 
 Every one of the 56 questions runs through the real, production
@@ -40,22 +52,22 @@ practice showed.
 
 ## Grounding
 
-Of the 44 responses that came back `answered` (40 of the 42
-`expected_status: "answered"` questions, the other 2 having been falsely
+Of the 45 responses that came back `answered` (41 of the 42
+`expected_status: "answered"` questions, the other 1 having been falsely
 refused instead — see "False refusals" below — plus 4 questions expected
 `insufficient_evidence` that were over-answered instead — see
 "insufficient_evidence refusal accuracy" below), the judge classified:
 
 | Verdict | Count | Share of judged answers |
 | --- | --- | --- |
-| `grounded` | 16 | 36.4% |
-| `partially_grounded` | 28 | 63.6% |
+| `grounded` | 14 | 31.1% |
+| `partially_grounded` | 31 | 68.9% |
 | `unsupported` | 0 | 0.0% |
 | `judge_parse_error` | 0 | — |
 
 **Zero `unsupported` answers** — the judge never classified an answer as
 making claims the cited excerpts do not support at all. But
-**`partially_grounded` is the large majority (63.6%), not the exception** —
+**`partially_grounded` is the large majority (68.9%), not the exception** —
 this is disclosed as the headline finding here, not smoothed over by the
 absence of outright `unsupported` verdicts. Reading the judge's
 justification text for the `partially_grounded` cases shows a consistent
@@ -85,25 +97,31 @@ confirmed:
 
 | Domain | grounded | partially_grounded | unsupported | n |
 | --- | --- | --- | --- | --- |
-| 공중위생법 | 5 | 0 | 0 | 5 |
-| 의료법 | 3 | 1 | 0 | 4 |
-| 미용법 | 2 | 3 | 0 | 5 |
-| 안마사법 | 2 | 3 | 0 | 5 |
+| 미용법 | 3 | 2 | 0 | 5 |
+| 안마사법 | 3 | 2 | 0 | 5 |
+| 공중위생법 | 3 | 2 | 0 | 5 |
+| 의료법 | 2 | 1 | 0 | 3 |
 | 약사법 | 2 | 2 | 0 | 4 |
 | 표시광고법 | 1 | 4 | 0 | 5 |
-| 무면허의료행위 | 1 | 3 | 0 | 4 |
+| 개인정보보호법 | 0 | 4 | 0 | 4 |
+| 무면허의료행위 | 0 | 4 | 0 | 4 |
 | 의료기기법 | 0 | 5 | 0 | 5 |
-| 화장품법 | 0 | 4 | 0 | 4 |
-| 개인정보보호법 | 0 | 3 | 0 | 3 |
+| 화장품법 | 0 | 5 | 0 | 5 |
 
-공중위생법 is the only domain with every answer fully `grounded`; three
-domains (의료기기법, 화장품법, 개인정보보호법) had zero fully `grounded`
-answers this run — every one of their answered questions drew at least
-one judge-flagged overreach. This 3-domain set differs from an earlier
-run's 4-domain set (의료법, 표시광고법, 화장품법, 개인정보보호법) —
+No domain has every answer fully `grounded` this run; four domains
+(개인정보보호법, 무면허의료행위, 의료기기법, 화장품법) had zero fully
+`grounded` answers — every one of their answered questions drew at least
+one judge-flagged overreach. This is the *third* different zero-grounded
+domain set across this project's three real full runs (an earlier 4-domain
+set: 의료법, 표시광고법, 화장품법, 개인정보보호법; then a 3-domain set:
+의료기기법, 화장품법, 개인정보보호법; now this 4-domain set) —
 consistent with this section's own point that per-domain grounding is
-disclosed as this run's real result, not asserted as a stable property
-without a larger sample (see "future work" below). 공중위생법's own count
+disclosed as each run's real result, not asserted as a stable property
+without a larger sample (see "future work" below). Only 화장품법,
+의료기기법, and 개인정보보호법 appear as zero-grounded in more than one of
+the three runs; 표시광고법, 의료법, and now 무면허의료행위 have each
+appeared in exactly one such list, consistent with sampling noise on a
+4-5-question-per-domain sample rather than a domain-specific defect. 공중위생법's own count
 includes id
 53 (the new insufficient_evidence question this domain over-answered —
 judged `grounded` even though the status itself was wrong, since the
@@ -305,32 +323,34 @@ the same call already committed to producing an answer.
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct
 of running all 56 questions and reported here because it is a real,
-non-obvious finding: **2 of the 42 answerable questions were incorrectly
-refused** (`false_refusal_count: 2`, `answered_status_match_rate: 0.9524`).
+non-obvious finding. **2026-08-18 update, after the fusion-weight and
+JSON-parsing fixes:** 1 of the 42 answerable questions is now incorrectly
+refused (`false_refusal_count: 1`, `answered_status_match_rate: 0.9762`,
+improved from 2 and 0.9524 in the pre-fix run this section originally
+reported on).
 
 | id | domain | question | actual status |
 | --- | --- | --- | --- |
-| 11 | 개인정보보호법 | 매장 회원 정보 관리 시 개인정보보호법상 지킬 것 | `insufficient_evidence` |
-| 22 | 화장품법 | 매장 판매 화장품도 품질관리기준을 지켜야 하는지 | `insufficient_evidence` |
+| 8 | 의료법 | 저희 매장도 병원처럼 손님 시술 기록을 남기고 보관해야 하는 법적 의무가 있나요? | `insufficient_evidence` |
 
 Cross-referenced against the Retrieval evaluation report's own per-question
-results (`reports/eval/retrieval_evaluation_results.json`): **both
-questions' required-positive chunk was present in the fused top-10**
-(`recall_at_10: 1` for both — id 11 at rank 6, id 22 at rank 4). Retrieval
-delivered the correct source chunk to generation in both cases; generation
-still declined to answer. This is a genuine generation-side over-caution
-finding, not a retrieval failure — the opposite failure direction from the
-insufficient_evidence section above (there, the model answered when it
-should have refused; here, it refused when it had what it needed to
-answer). The "Citation integrity" section above confirms, from real
-response data rather than inference, that both refusals are genuine —
-neither has a `limitations` entry, so neither is a caught total-fabrication
-attempt in disguise. Both directions are real and disclosed; neither is
-investigated to a root cause beyond what is stated here, and both are
-named as candidates for follow-up in the Work report rather than guessed
-at and changed here (three independent prompt/structural attempts at the
-over-answering direction were tried and reverted — see the
-insufficient_evidence section above and the Work report's blocker log).
+results: **the required-positive chunk is present in the fused top-10**
+(`recall_at_10: 1`, rank 7 — this exact question is the one whose kNN-only
+rank-7 hit the fusion-weight fix promoted into the top-10, see "Fusion
+weighting" in the Retrieval evaluation report). Retrieval now delivers the
+correct source chunk to generation; generation still declines to answer.
+This is a genuine generation-side over-caution finding, not a retrieval
+failure — the opposite failure direction from the insufficient_evidence
+section above (there, the model answers when it should refuse; here, it
+refuses when it has what it needs to answer). `limitations_count: 0`
+confirms this is a genuine refusal, not a caught total-fabrication attempt
+in disguise (see "Citation integrity" above). The originally-reported ids
+11 and 22 (pre-fix run) are no longer false refusals in the current run;
+not investigated further here, named as a candidate for follow-up in the
+Work report alongside the still-unresolved over-answering direction (three
+independent prompt/structural attempts at that direction were tried and
+reverted — see the insufficient_evidence section above and the Work
+report's blocker log).
 
 ## out_of_scope refusal accuracy
 
@@ -350,15 +370,15 @@ measured around the whole loop iteration including it, so the two
 
 | | n | min | median | max |
 | --- | --- | --- | --- | --- |
-| All 56 questions | 56 | 1,509.3 ms | 14,243.7 ms | 26,662.1 ms |
-| `answered` only | 44 | 7,463.5 ms | 15,451.8 ms | 26,662.1 ms |
-| Refusal (`insufficient_evidence`/`out_of_scope`) | 12 | 1,509.3 ms | 1,666.3 ms | 1,857.1 ms |
+| All 56 questions | 56 | 1,388.4 ms | 14,375.0 ms | 22,344.7 ms |
+| `answered` only | 45 | 7,917.2 ms | 15,179.4 ms | 22,344.7 ms |
+| Refusal (`insufficient_evidence`/`out_of_scope`) | 11 | 1,388.4 ms | 1,803.8 ms | 2,493.9 ms |
 
 | Percentile (all 56) | Latency |
 | --- | --- |
-| p50 | 14,243.7 ms |
-| p95 | 18,393.1 ms |
-| p99 | 19,689.4 ms |
+| p50 | 14,375.0 ms |
+| p95 | 19,264.1 ms |
+| p99 | 20,588.5 ms |
 
 Refusals are consistently fast (~1.4-1.9s) — the model reaches a
 no-evidence or out-of-scope decision quickly. `answered` responses take an
@@ -379,10 +399,17 @@ returns — not reconstructed afterward).
 | | Value |
 | --- | --- |
 | Embed tokens (estimated, query embedding only) | 2,148 |
-| Generation input tokens (real, answer + judge calls) | 522,315 |
-| Generation output tokens (real, answer + judge calls) | 32,739 |
-| **Estimated cost** | **$2.058288** |
-| Wall-clock elapsed (full 56-question run) | 698.96 s (~11.6 min) |
+| Generation input tokens (real, answer + judge calls) | 502,278 |
+| Generation output tokens (real, answer + judge calls) | 35,041 |
+| **Estimated cost** | **$2.032707** |
+| Wall-clock elapsed (full 56-question run) | 714.53 s (~11.9 min) |
+
+Numbers above are from the 2026-08-18 run made after the fusion-weight fix
+and the JSON-parsing crash fix (both in "Fusion weighting" cross-referenced
+below and the Work report's Blocker log items 11–13). An earlier attempt at
+this same re-verification crashed mid-run on the parsing bug and cost a
+real, separately-disclosed $0.395997 before failing — see the Work report's
+"AWS use."
 
 Per-question token counts are recorded in the committed results file
 (`reports/eval/generation_evaluation_results.json`, `embed_estimated_tokens`
@@ -410,6 +437,20 @@ evidence the refusal-accuracy findings above are a stable property of the
 current prompt and corpus, not an artifact of one unlucky sample — not as
 a formal repeated-trial variance measurement, which remains named as
 future work.
+
+**2026-08-18 addendum.** The above compares two runs against the original
+50-question set, before the fusion-weight fix. The current committed run
+(after the fusion-weight and JSON-parsing fixes, against the now-56-question
+set) has a *different* mismatch set — false refusal: id 8 only (was 11, 22);
+misclassified as answered: ids 42, 44, 53, 55 (was 42, 43, 44; 43 was
+separately relabelled `answered` on 2026-08-18, so it can no longer appear
+in this category by construction). This is expected, not a regression: a
+real retrieval change shifts which questions have full retrieval success in
+the first place, which is a precondition for either failure mode, so the
+specific ids composing a 4-5-question mismatch set are not expected to stay
+fixed across a real pipeline change — the aggregate counts (misclassified
+count still 4; false refusals improved 2→1) are the load-bearing numbers,
+not id-level identity.
 
 ## Versions
 

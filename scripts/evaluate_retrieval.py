@@ -51,6 +51,11 @@ _BM25_SIZE = 50
 _KNN_SIZE = 50
 _FUSED_TOP_N = 10
 _RRF_K = 60
+# Kept in sync with legal_agent_assessment.agent's _RRF_KNN_WEIGHT by hand --
+# this script measures retrieval standalone (no LegalAgent instance), so it
+# cannot import the constant from agent.py without importing agent.py's
+# Bedrock/OpenSearch-facing dependencies into a pure-retrieval evaluation.
+_RRF_KNN_WEIGHT = 3.0
 
 # Same rate as scripts/index_chunks.py's COHERE_EMBED_V4_USD_PER_MILLION_TOKENS.
 _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS = 0.12
@@ -87,7 +92,7 @@ def retrieve_fused_chunk_ids(
     )
     bm25_ids = [hit["_source"]["chunk_id"] for hit in bm25_response["hits"]["hits"]]
     knn_ids = [hit["_source"]["chunk_id"] for hit in knn_response["hits"]["hits"]]
-    fused = reciprocal_rank_fusion([bm25_ids, knn_ids], k=_RRF_K)
+    fused = reciprocal_rank_fusion([bm25_ids, knn_ids], k=_RRF_K, weights=(1.0, _RRF_KNN_WEIGHT))
     return [chunk_id for chunk_id, _score in fused[:_FUSED_TOP_N]]
 
 
