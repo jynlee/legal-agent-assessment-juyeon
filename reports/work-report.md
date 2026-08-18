@@ -288,7 +288,7 @@ project's own review process, disclosed rather than silently left):
 Self-instrumented from the first real call this project made, per
 SUBMISSION.md's requirement (contributors share one IAM user; no billing
 or CloudTrail record can attribute usage to a specific contributor).
-Source: every file in `reports/usage/` (gitignored; 28 files, one per real
+Source: every file in `reports/usage/` (gitignored; 32 files, one per real
 script invocation that made at least one real AWS call). This total
 includes every real run made after this report's numbers were first
 drafted on 08-14: the `prompt-v3`, `prompt-v4`, and `prompt-v5` trials (all
@@ -298,16 +298,21 @@ second, completed attempt is the 5th "failed" generation-evaluation run
 below), a 2026-08-18 re-verification pass against the local container to
 confirm the committed numbers reproduce, the test-set expansion/correction
 work (real retrieval and generation evaluation runs against the
-growing/corrected 56-question set), and the `agent.py` citation-integrity
-fix's own real validation run.
+growing/corrected 56-question set), the `agent.py` citation-integrity
+fix's own real validation run, and four further single-question demo
+calls made the same day to spot-check individual response behavior across
+all four contract states (answered, insufficient_evidence, out_of_scope) --
+no different in kind from the other demo calls; every real call is
+recorded from the first one onward per this section's requirement,
+confirmation-only calls included.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
 | Index builds (`index_chunks.py`) | 2 | 7,280,846 | — | — | $0.8738 |
 | Retrieval evaluations (`evaluate_retrieval.py`) | 6 | 11,819 | — | — | $0.001417 |
 | Generation evaluations (`evaluate_generation.py`) | 15 (10 succeeded, 5 failed) | 21,924 | 5,323,959 | 333,010 | $20.969656 |
-| Real demo calls (`serve_legal_agent.py`) | 5 (2 without token capture) | 74 | 18,444 | 858 | $0.06821 |
-| **Total, fully instrumented** | **28** | **7,314,663** | **5,342,403** | **333,868** | **$21.913083** |
+| Real demo calls (`serve_legal_agent.py`) | 9 (2 without token capture) | 166 | 36,487 | 1,823 | $0.136825 |
+| **Total, fully instrumented** | **32** | **7,314,755** | **5,360,446** | **334,833** | **$21.981698** |
 
 Plus, disclosed separately rather than folded into the total above
 (see Blocker log items 7–9): **~$0.00001** from 6 untracked pre-
