@@ -236,16 +236,23 @@ project's own review process, disclosed rather than silently left):
 Self-instrumented from the first real call this project made, per
 SUBMISSION.md's requirement (contributors share one IAM user; no billing
 or CloudTrail record can attribute usage to a specific contributor).
-Source: every file in `reports/usage/` (gitignored; 16 files, one per real
-script invocation that made at least one real AWS call).
+Source: every file in `reports/usage/` (gitignored; 20 files, one per real
+script invocation that made at least one real AWS call). This total
+includes two runs made after this report's numbers were first drafted: the
+`prompt-v3` trial documented in the Generation evaluation report's
+"insufficient_evidence refusal accuracy" section (tried, then reverted --
+`prompt-v2` is what shipped), and a post-submission-draft re-verification
+pass (one retrieval evaluation, one generation evaluation, one live
+single-question demo call) run directly against the local container to
+confirm the committed numbers reproduce.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
 | Index builds (`index_chunks.py`) | 2 | 7,280,846 | — | — | $0.8738 |
-| Retrieval evaluations (`evaluate_retrieval.py`) | 3 | 5,636 | — | — | $0.000675 |
-| Generation evaluations (`evaluate_generation.py`) | 7 (3 succeeded, 4 failed) | 5,661 | 1,405,199 | 102,187 | $5.74908 |
-| Real demo calls (`serve_legal_agent.py`) | 4 (2 without token capture) | 56 | 11,066 | 407 | $0.039309 |
-| **Total, fully instrumented** | **16** | **7,292,199** | **1,416,265** | **102,594** | **$6.662864** |
+| Retrieval evaluations (`evaluate_retrieval.py`) | 4 | 7,523 | — | — | $0.000901 |
+| Generation evaluations (`evaluate_generation.py`) | 9 (5 succeeded, 4 failed) | 9,435 | 2,325,905 | 155,705 | $9.31442 |
+| Real demo calls (`serve_legal_agent.py`) | 5 (2 without token capture) | 74 | 18,444 | 858 | $0.06821 |
+| **Total, fully instrumented** | **20** | **7,297,878** | **2,344,349** | **156,563** | **$10.257331** |
 
 Plus, disclosed separately rather than folded into the total above
 (see Blocker log items 7–9): **~$0.00001** from 6 untracked pre-
