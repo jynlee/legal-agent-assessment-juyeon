@@ -70,6 +70,22 @@ than forcing one in.
 
 ## Composition
 
+**"Domain" here is a reporting label, not a statute count.** The corpus's
+governing law (`data/statutes.jsonl`'s `identity.lawName`, parent statutes
+only, subordinate 시행령/시행규칙 excluded) is 8 statutes: 약사법, 의료법,
+개인정보 보호법, 의료기기법, 화장품법, 공중위생관리법, 표시ㆍ광고의
+공정화에 관한 법률, 안마사에 관한 규칙. This report and the Generation
+evaluation report split questions into 10 finer-grained `domain` labels for
+per-topic reporting granularity; 2 of the 10 are not separate statutes but
+topical subsets of one of the 8 above, confirmed by checking the actual
+statute each domain's source chunks resolve to: every `미용법`-labelled
+question's source chunk is in 공중위생관리법 (or its 시행령/시행규칙), and
+every `무면허의료행위`-labelled question's source chunk is a 의료법 제27조
+precedent. Both splits existed from this test set's first construction
+pass; recorded here because a 2026-08-18 review of an external count of 8
+statutes found this report's "10 domains" phrasing potentially misleading
+without it.
+
 56 questions total: 42 answerable (4 per legal domain across the 10
 domains this project covers, plus one each in 의료기기법 and 미용법 from
 the 2026-08-18 relabelling below), 9 unanswerable

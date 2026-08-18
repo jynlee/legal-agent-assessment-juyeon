@@ -75,7 +75,13 @@ otherwise well-supported answer. Two real examples:
   quoted was correctly grounded, but the outcome characterization was not.
 
 **Per-domain grounding** (not required by SUBMISSION.md for this report,
-included since it comes free from data already collected):
+included since it comes free from data already collected). These 10
+`domain` labels are a reporting split, not 10 separate statutes -- the
+corpus's actual governing law is 8 statutes; `미용법` and `무면허의료행위`
+are topical subsets of 공중위생관리법 and 의료법 respectively. See the
+[Retrieval evaluation report](retrieval-evaluation-report.md)'s
+"Composition" section for the full statute list and how the split was
+confirmed:
 
 | Domain | grounded | partially_grounded | unsupported | n |
 | --- | --- | --- | --- | --- |
