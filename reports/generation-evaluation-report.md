@@ -35,6 +35,25 @@ retrieval change altering which chunks generation sees;
 `insufficient_evidence_refusal_accuracy` is unchanged at 0.5556 — the
 over-answering root cause (see below) is independent of retrieval quality.
 
+**2026-08-18, third update (same day).** A semantic reranking stage was
+added to retrieval (Retrieval evaluation report's "Reranking"), raising
+Recall@10 further (0.5714→0.5952). Every number below is from the real
+re-run made after reranking, and after a real regression it introduced
+(every `out_of_scope` question started failing; found, root-caused, and
+fixed via TDD before this run) was fixed. This update's net effect is
+mixed, not uniformly positive, and is reported as such:
+`answered_status_match_rate` reached a perfect 1.0 and `false_refusal_count`
+dropped to 0, but `insufficient_evidence_refusal_accuracy` *fell* from
+0.5556 to **0.3333** and `insufficient_evidence_misclassified_as_answered`
+*rose* from 4 to **6** — reranking, by successfully surfacing more
+topically-relevant candidates from a wider pool, appears to have handed the
+model *more* plausible-but-not-dispositive evidence for exactly the
+insufficient_evidence questions where this project's already-documented
+over-answering bug (see "insufficient_evidence refusal accuracy" below)
+gets triggered, making that specific weakness worse rather than better.
+This was not the intended effect and is disclosed plainly rather than
+buried under the improved headline numbers.
+
 ## Methodology, restated briefly
 
 Every one of the 56 questions runs through the real, production
@@ -52,22 +71,23 @@ practice showed.
 
 ## Grounding
 
-Of the 45 responses that came back `answered` (41 of the 42
-`expected_status: "answered"` questions, the other 1 having been falsely
-refused instead — see "False refusals" below — plus 4 questions expected
+Of the 48 responses that came back `answered` (all 42
+`expected_status: "answered"` questions, since `false_refusal_count` is now
+0 — see "False refusals" below — plus 6 questions expected
 `insufficient_evidence` that were over-answered instead — see
 "insufficient_evidence refusal accuracy" below), the judge classified:
 
 | Verdict | Count | Share of judged answers |
 | --- | --- | --- |
-| `grounded` | 14 | 31.1% |
-| `partially_grounded` | 31 | 68.9% |
+| `grounded` | 12 | 25.0% |
+| `partially_grounded` | 36 | 75.0% |
 | `unsupported` | 0 | 0.0% |
 | `judge_parse_error` | 0 | — |
 
 **Zero `unsupported` answers** — the judge never classified an answer as
-making claims the cited excerpts do not support at all. But
-**`partially_grounded` is the large majority (68.9%), not the exception** —
+making claims the cited excerpts do not support at all, across all three
+real runs so far. But
+**`partially_grounded` is the large majority (75.0%), not the exception** —
 this is disclosed as the headline finding here, not smoothed over by the
 absence of outright `unsupported` verdicts. Reading the judge's
 justification text for the `partially_grounded` cases shows a consistent
@@ -97,12 +117,12 @@ confirmed:
 
 | Domain | grounded | partially_grounded | unsupported | n |
 | --- | --- | --- | --- | --- |
+| 공중위생법 | 3 | 2 | 0 | 5 |
 | 미용법 | 3 | 2 | 0 | 5 |
 | 안마사법 | 3 | 2 | 0 | 5 |
-| 공중위생법 | 3 | 2 | 0 | 5 |
-| 의료법 | 2 | 1 | 0 | 3 |
-| 약사법 | 2 | 2 | 0 | 4 |
-| 표시광고법 | 1 | 4 | 0 | 5 |
+| 의료법 | 1 | 3 | 0 | 4 |
+| 약사법 | 1 | 4 | 0 | 5 |
+| 표시광고법 | 1 | 5 | 0 | 6 |
 | 개인정보보호법 | 0 | 4 | 0 | 4 |
 | 무면허의료행위 | 0 | 4 | 0 | 4 |
 | 의료기기법 | 0 | 5 | 0 | 5 |
@@ -112,25 +132,27 @@ No domain has every answer fully `grounded` this run; four domains
 (개인정보보호법, 무면허의료행위, 의료기기법, 화장품법) had zero fully
 `grounded` answers — every one of their answered questions drew at least
 one judge-flagged overreach. This is the *third* different zero-grounded
-domain set across this project's three real full runs (an earlier 4-domain
-set: 의료법, 표시광고법, 화장품법, 개인정보보호법; then a 3-domain set:
-의료기기법, 화장품법, 개인정보보호법; now this 4-domain set) —
-consistent with this section's own point that per-domain grounding is
-disclosed as each run's real result, not asserted as a stable property
-without a larger sample (see "future work" below). Only 화장품법,
-의료기기법, and 개인정보보호법 appear as zero-grounded in more than one of
-the three runs; 표시광고법, 의료법, and now 무면허의료행위 have each
-appeared in exactly one such list, consistent with sampling noise on a
-4-5-question-per-domain sample rather than a domain-specific defect. 공중위생법's own count
-includes id
-53 (the new insufficient_evidence question this domain over-answered —
-judged `grounded` even though the status itself was wrong, since the
-judge only checks whether prose matches citations, not whether refusal
-was the correct status). This is disclosed as a real, domain-correlated
-pattern in this run, not investigated further here (a larger sample per
-domain, or a second judge pass, would be needed to say whether it is a
-stable per-domain property or this run's noise — named as future work
-below).
+domain set across this project's real, officially-reported full runs (an
+earlier 4-domain set: 의료법, 표시광고법, 화장품법, 개인정보보호법; then a
+3-domain set: 의료기기법, 화장품법, 개인정보보호법; now this run's
+4-domain set) — consistent with this section's own point that per-domain
+grounding is disclosed as each run's real result, not asserted as a stable
+property without a larger sample (see "future work" below). 화장품법,
+의료기기법, and 개인정보보호법 now appear as zero-grounded across all
+three reported runs; 무면허의료행위 newly joins this run, while 표시광고법
+and 의료법 (zero-grounded in the earlier runs) each now have exactly 1
+fully-grounded answer — consistent with sampling noise on a 4-6-
+question-per-domain sample rather than a stable domain-specific defect,
+though the 3-domain persistence (화장품법/의료기기법/개인정보보호법) across
+every run so far is worth treating as a real signal, not purely noise, if
+a larger sample becomes available. 공중위생법's own count includes id 53
+(the insufficient_evidence question this domain over-answered — judged
+`grounded` even though the status itself was wrong, since the judge only
+checks whether prose matches citations, not whether refusal was the
+correct status). This is disclosed as a real, domain-correlated pattern in
+this run, not investigated further here (a larger sample per domain, or a
+second judge pass, would be needed to say whether it is a stable
+per-domain property or this run's noise — named as future work below).
 
 **Method limitation, disclosed plainly.** This is a single-model,
 single-pass, automated classification (`reports/decisions/2026-08-14-
@@ -196,17 +218,20 @@ its cited excerpts specifically say.
 
 ## insufficient_evidence refusal accuracy
 
-**0.5556 (5 of 9 correct).** The category grew from 5 to 9 questions on
-2026-08-18 (see the Retrieval evaluation report's "Composition" and
-"Test-query sources and construction method" for the 6 new questions'
-construction and domain-coverage rationale) and 2 of the original 5 (ids
-43, 54) were found to be mislabelled and moved out of this category — see
-"Two gold-label errors found and corrected" below before reading this
-number as a trend against the original 0.4.
+**0.3333 (3 of 9 correct) after reranking, worse than 0.5556 before it.**
+The category grew from 5 to 9 questions on 2026-08-18 (see the Retrieval
+evaluation report's "Composition" and "Test-query sources and construction
+method" for the 6 new questions' construction and domain-coverage
+rationale) and 2 of the original 5 (ids 43, 54) were found to be
+mislabelled and moved out of this category — see "Two gold-label errors
+found and corrected" below before reading this number as a trend against
+the original 0.4. The table below is the current, post-reranking run; see
+"Reranking made this worse, not better" at the end of this section for the
+pre-reranking comparison (0.5556, 5/9) and why.
 
 | id | domain | question | actual status | correct? |
 | --- | --- | --- | --- | --- |
-| 41 | 표시광고법 | "피부 노화가 되돌아간다"고 광고해도 되나요? | `insufficient_evidence` | ✅ |
+| 41 | 표시광고법 | "피부 노화가 되돌아간다"고 광고해도 되나요? | `answered` | ❌ |
 | 42 | 화장품법 | "식약처 인증 성분 사용" 문구를 써도 되나요? | `answered` | ❌ |
 | 44 | 표시광고법 | "100% 만족 보장" 문구를 붙여도 되나요? | `answered` | ❌ |
 | 45 | 표시광고법 | "피부과 전문의가 추천"했다고 광고해도 되나요? | `insufficient_evidence` | ✅ |
@@ -214,7 +239,7 @@ number as a trend against the original 0.4.
 | 52 | 무면허의료행위 | 바늘 없는 속눈썹 펌도 무면허의료행위인가요? | `insufficient_evidence` | ✅ |
 | 53 | 공중위생법 | 개인 유튜브 촬영을 위한 출장 시술도 되나요? | `answered` | ❌ |
 | 55 | 안마사법 | 무자격 직원의 발마사지 시술도 되나요? | `answered` | ❌ |
-| 56 | 약사법 | SNS 체험단 무상 증정도 '판매'로 규제받나요? | `insufficient_evidence` | ✅ |
+| 56 | 약사법 | SNS 체험단 무상 증정도 '판매'로 규제받나요? | `answered` | ❌ |
 
 **Two gold-label errors found and corrected, disclosed in full rather than
 quietly fixed.** Ids 43 and 54 were originally built into this test set
@@ -239,21 +264,24 @@ throughout (see the Work report's blocker log) — a bad gold label is a
 defect in the evaluation, not a defect in the model, and treating the two
 differently is exactly the discipline "measure, don't assume" requires.
 
-**The failure mode, on the 4 confirmed-genuine failures (42, 44, 53,
-55).** All 4 questions retrieved a full 10 hits — not a retrieval gap.
-Three (42, 44, 55) reason by analogy from a real but not-dispositive
-source: a general prohibition, a related precedent about a different
-specific phrase, or a related precedent about a different specific
-service. The fourth, id 53, is the most direct evidence of the actual
-mechanism: the model's own answer text states **"'방송 등의 촬영'이 개인
-유튜브 채널 촬영을 포함하는지 여부는 제공된 자료만으로는 명확히 판단하기
-어렵습니다... 불분명합니다"** — the model explicitly recognizes the gap in
-its own reasoning — and then still returns `status: "answered"` anyway.
-This means the failure is not primarily that the model fails to notice
-insufficient evidence; id 53 shows it can notice and say so in prose. The
-failure is a **disconnect between the model's own stated uncertainty and
-its final status decision**. `insufficient_evidence_misclassified_as_answered: 4`
-in the committed aggregate records the confirmed count.
+**The failure mode, on the 6 confirmed-genuine failures (41, 42, 44, 53,
+55, 56) after reranking (was 4: 42, 44, 53, 55, before it).** All 6
+questions retrieved real, reranker-selected candidates — not a retrieval
+gap, and the reranker did its own job correctly (selecting genuinely
+topical candidates). The mechanism is the same one already identified
+before reranking existed: several reason by analogy from a real but
+not-dispositive source (a general prohibition, a related precedent about a
+different specific phrase or service), and id 53 remains the clearest
+direct evidence of it: the model's own answer text states **"'방송 등의
+촬영'이 개인 유튜브 채널 촬영을 포함하는지 여부는 제공된 자료만으로는
+명확히 판단하기 어렵습니다... 불분명합니다"** — the model explicitly
+recognizes the gap in its own reasoning — and then still returns `status:
+"answered"` anyway. This means the failure is not primarily that the model
+fails to notice insufficient evidence; id 53 shows it can notice and say
+so in prose. The failure is a **disconnect between the model's own stated
+uncertainty and its final status decision**.
+`insufficient_evidence_misclassified_as_answered: 6` in the committed
+aggregate records the confirmed count.
 
 **Separately, `insufficient_evidence_misclassified_as_out_of_scope: 0`.**
 This is the deferred risk from item 7/8's final review (the concern that
@@ -261,9 +289,10 @@ the `out_of_scope` prompt instruction, having no explicit domain list,
 might misclassify a genuinely in-scope-but-unanswerable question as
 `out_of_scope` instead). This evaluation is the first real, empirical
 check of that risk, and it did not materialize — confirmed identically
-across three independent real runs now (the original `fd810f1`/`ff85ab8`
-runs, and this 2026-08-18 run against a larger and corrected question
-set). No prompt change is needed for that specific risk.
+across four independent real runs now (the original `fd810f1`/`ff85ab8`
+runs, the 2026-08-18 fusion-weight-fix run, and this reranking run against
+a larger and corrected question set). No prompt change is needed for that
+specific risk.
 
 **Three revisions were tried and reverted, using three different
 mechanisms.** `prompt-v3` added an explicit anti-analogy instruction; a
@@ -319,46 +348,64 @@ separate, narrowly-scoped Bedrock call, in its own context, asked only
 whether a specific source resolves a specific question — not bundled into
 the same call already committed to producing an answer.
 
+**Reranking made this worse, not better (2026-08-18, same day as the three
+attempts above).** A semantic reranking stage (Retrieval evaluation
+report's "Reranking") was added afterward for a different reason entirely
+-- raising Recall@10 -- and was not intended to touch this failure mode at
+all. Before reranking:
+`insufficient_evidence_refusal_accuracy` was 0.5556 (5/9),
+`insufficient_evidence_misclassified_as_answered` was 4 (ids 42, 44, 53,
+55). After: 0.3333 (3/9), misclassified count 6 (ids 41, 42, 44, 53, 55,
+56) -- two new failures (41, 56) that were answered correctly before. This
+is read as the over-answering mechanism being fed by a wider net, not a
+new mechanism: reranking's whole design pulls in more genuinely
+*topically*-relevant candidates from a widened top-25 pool instead of the
+old top-10, which is exactly more raw material for "reason by analogy from
+a real but not-dispositive source" to work with. This was not anticipated
+before implementing reranking and is disclosed here rather than only in
+the top-of-report update block, since a reader focused specifically on
+this failure mode needs the connection made explicit: **the fourth attempt
+this project made at fixing over-answering (reranking, aimed at a
+different problem) made it measurably worse, joining the first three
+(v3/v4/v5) as evidence this failure mode needs the judge.py-style
+separate-call fix named above, not further changes to what generation
+retrieves.**
+
 ## False refusals
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct
 of running all 56 questions and reported here because it is a real,
-non-obvious finding. **2026-08-18 update, after the fusion-weight and
-JSON-parsing fixes:** 1 of the 42 answerable questions is now incorrectly
-refused (`false_refusal_count: 1`, `answered_status_match_rate: 0.9762`,
-improved from 2 and 0.9524 in the pre-fix run this section originally
-reported on).
-
-| id | domain | question | actual status |
-| --- | --- | --- | --- |
-| 8 | 의료법 | 저희 매장도 병원처럼 손님 시술 기록을 남기고 보관해야 하는 법적 의무가 있나요? | `insufficient_evidence` |
-
-Cross-referenced against the Retrieval evaluation report's own per-question
-results: **the required-positive chunk is present in the fused top-10**
-(`recall_at_10: 1`, rank 7 — this exact question is the one whose kNN-only
-rank-7 hit the fusion-weight fix promoted into the top-10, see "Fusion
-weighting" in the Retrieval evaluation report). Retrieval now delivers the
-correct source chunk to generation; generation still declines to answer.
-This is a genuine generation-side over-caution finding, not a retrieval
-failure — the opposite failure direction from the insufficient_evidence
-section above (there, the model answers when it should refuse; here, it
-refuses when it has what it needs to answer). `limitations_count: 0`
-confirms this is a genuine refusal, not a caught total-fabrication attempt
-in disguise (see "Citation integrity" above). The originally-reported ids
-11 and 22 (pre-fix run) are no longer false refusals in the current run;
-not investigated further here, named as a candidate for follow-up in the
-Work report alongside the still-unresolved over-answering direction (three
-independent prompt/structural attempts at that direction were tried and
-reverted — see the insufficient_evidence section above and the Work
-report's blocker log).
+non-obvious finding. **2026-08-18 update, after reranking:**
+`false_refusal_count: 0` — every one of the 42 answerable questions is now
+correctly answered, improved from 1 (id 8) after the fusion-weight/
+JSON-parsing fixes and 2 before those. Unlike the insufficient_evidence
+regression above, reranking helped this specific metric: a wider,
+reranked candidate pool means fewer answerable questions land with weak or
+borderline retrieval support, so generation has less reason to
+under-refuse. No table is shown here since there is nothing left to list.
 
 ## out_of_scope refusal accuracy
 
-**1.0 (5 of 5 correct).** All 5 non-legal/meta questions (ids 46-50)
-correctly returned `out_of_scope`, with no false positives among the
-answerable or insufficient_evidence questions either
+**1.0 (5 of 5 correct)**, confirmed on this real run after a real
+regression was caught and fixed the same day. Reranking's first real
+56-question run scored **0.0 (0 of 5)** — every out_of_scope question
+failed. Root cause (full story in the Retrieval evaluation report's
+"Reranking"): the implementation returned `INSUFFICIENT_EVIDENCE` directly
+whenever the reranker selected zero candidates, which skipped the real
+generation call entirely for every out_of_scope question (the reranker
+correctly finds nothing relevant for an off-topic question, since nothing
+retrieved *is* relevant) — but out_of_scope classification is that
+generation call's own judgment on the question itself, independent of
+retrieval, and skipping the call meant the model was never asked. Fixed
+via TDD, confirmed by this real re-run: all 5 non-legal/meta questions
+(ids 46-50) correctly returned `out_of_scope` again, with no false
+positives among the answerable or insufficient_evidence questions either
 (`insufficient_evidence_misclassified_as_out_of_scope: 0`, and no
-answerable question returned `out_of_scope` in this run's data).
+answerable question returned `out_of_scope` in this run's data). Included
+here rather than only in the Retrieval evaluation report because this
+metric is this report's own named bullet, and a reader checking only this
+report for out_of_scope accuracy should not have to cross-reference to
+learn it briefly regressed to zero.
 
 ## Latency
 
@@ -368,25 +415,30 @@ own response latency, but this evaluation's per-question `latency_ms` is
 measured around the whole loop iteration including it, so the two
 `answered`-path numbers below are judge-inclusive):
 
+**After reranking** (adds a real Bedrock round-trip to every question,
+refusal or not, unlike before):
+
 | | n | min | median | max |
 | --- | --- | --- | --- | --- |
-| All 56 questions | 56 | 1,388.4 ms | 14,375.0 ms | 22,344.7 ms |
-| `answered` only | 45 | 7,917.2 ms | 15,179.4 ms | 22,344.7 ms |
-| Refusal (`insufficient_evidence`/`out_of_scope`) | 11 | 1,388.4 ms | 1,803.8 ms | 2,493.9 ms |
+| All 56 questions | 56 | 2,661.1 ms | 18,811.4 ms | 32,684.0 ms |
+| `answered` only | 48 | 8,164.5 ms | 19,567.2 ms | 32,684.0 ms |
+| Refusal (`insufficient_evidence`/`out_of_scope`) | 8 | 2,661.1 ms | 3,074.6 ms | 5,325.6 ms |
 
 | Percentile (all 56) | Latency |
 | --- | --- |
-| p50 | 14,375.0 ms |
-| p95 | 19,264.1 ms |
-| p99 | 20,588.5 ms |
+| p50 | 18,811.4 ms |
+| p95 | 25,509.5 ms |
+| p99 | 26,553.7 ms |
 
-Refusals are consistently fast (~1.4-1.9s) — the model reaches a
-no-evidence or out-of-scope decision quickly. `answered` responses take an
-order of magnitude longer (median ~14.5s), dominated by the judge call
-(a second real Bedrock round-trip) stacked on top of the generation call
-itself; the deliverable's own single-call latency (generation only, no
-judge) is not separately isolated in this run's instrumentation and would
-need a small follow-up measurement to report precisely.
+Median latency for a refusal rose from ~1.4-1.9s (before reranking) to
+~3.1s — still fast, but no longer near-instant, since even a refusal now
+makes a real rerank call before generation can decide there is nothing to
+answer from. `answered` responses rose from a median ~14.5s to ~19.6s,
+still dominated by the judge call stacked on top of generation, now with
+the rerank call added before both. The deliverable's own single-call
+latency (generation only, no judge) is not separately isolated in this
+run's instrumentation and would need a small follow-up measurement to
+report precisely.
 
 ## Token use and cost
 
@@ -399,17 +451,23 @@ returns — not reconstructed afterward).
 | | Value |
 | --- | --- |
 | Embed tokens (estimated, query embedding only) | 2,148 |
-| Generation input tokens (real, answer + judge calls) | 502,278 |
-| Generation output tokens (real, answer + judge calls) | 35,041 |
-| **Estimated cost** | **$2.032707** |
-| Wall-clock elapsed (full 56-question run) | 714.53 s (~11.9 min) |
+| Generation input tokens (real, rerank + answer + judge calls) | 1,273,104 |
+| Generation output tokens (real, rerank + answer + judge calls) | 46,076 |
+| **Estimated cost** | **$4.51071** |
+| Wall-clock elapsed (full 56-question run) | 968.04 s (~16.1 min) |
 
-Numbers above are from the 2026-08-18 run made after the fusion-weight fix
-and the JSON-parsing crash fix (both in "Fusion weighting" cross-referenced
-below and the Work report's Blocker log items 11–13). An earlier attempt at
-this same re-verification crashed mid-run on the parsing bug and cost a
-real, separately-disclosed $0.395997 before failing — see the Work report's
-"AWS use."
+Numbers above are from the 2026-08-18 run made after reranking (Retrieval
+evaluation report's "Reranking") and its out_of_scope regression fix (Work
+report's Blocker log). Cost more than doubled versus the pre-reranking run
+($2.032707 → $4.51071) and wall-clock time grew ~35% (714.53s → 968.04s) —
+the rerank call's own prompt is large (full candidate excerpts, up to 25
+per question), a real and permanent cost/latency increase for every future
+real query, not a one-time evaluation expense. A discarded first attempt
+at this run (before the out_of_scope fix) cost a real, separately-disclosed
+$4.574664 producing numbers that were never reported as final — see the
+Work report's "AWS use." An earlier crashed attempt (the JSON-parsing bug,
+before reranking existed) cost a real, separately-disclosed $0.395997
+before failing — also in "AWS use."
 
 Per-question token counts are recorded in the committed results file
 (`reports/eval/generation_evaluation_results.json`, `embed_estimated_tokens`

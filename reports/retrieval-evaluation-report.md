@@ -25,6 +25,18 @@ from 0.4524 to **0.5714** and MRR from 0.2437 to **0.2809** with no reindex.
 Full diagnosis, the fix, and its honest limits are in "Fusion weighting"
 and the updated "Failed-query analysis" below.
 
+**2026-08-18, third update (same day).** A semantic reranking stage was
+added on top of the fusion-weight fix: the fused pool widened from top-10
+to top-25, and a real Claude Sonnet call selects only the genuinely
+relevant candidates from that pool before generation ever sees them. This
+raised Recall@10 further, from 0.5714 to **0.5952**, and MRR from 0.2809 to
+**0.3355** — a smaller gain than estimated beforehand (recall was expected
+to reach roughly 70-80%; see "Reranking" below for why the gap is real, not
+a measurement error) and at real, permanent per-query cost and latency,
+not the earlier two free fixes. A real regression was introduced and
+caught during this change (every `out_of_scope` question started failing)
+before being shipped — full story, also in "Reranking" below.
+
 ## Test-query sources and construction method
 
 Each of the 40 answerable questions was drafted from one real, specific
@@ -258,39 +270,91 @@ against a larger sample if one becomes available.
 No reindex was needed -- this changes only how the two already-computed
 rankings are combined, not the chunks, embeddings, or index themselves.
 
+## Reranking
+
+**Design.** `retrieval.py`'s existing fused top-10 became a top-25 *pool*
+(`agent.py`'s `_RERANK_POOL_SIZE`); a new module, `rerank.py`, builds a
+prompt listing that pool's candidates and asks the same fixed Claude Sonnet
+model (the `judge.py` pattern this project already uses for a separate,
+narrowly-scoped Bedrock call) to select only the candidates genuinely
+relevant to the question, ordered by relevance, capped at 10. Only its
+selection reaches the answer-generation prompt. `scripts/evaluate_retrieval.py`
+was updated to call the same rerank step for the same reason the
+fusion-weight fix required updating it: this report's Recall@10 must
+measure exactly what `LegalAgent.answer_sync` does, not a stale
+approximation of it.
+
+**Real cost, higher than estimated beforehand.** A single real demo call
+cost $0.076 for the rerank step alone (`generation_input_tokens: 21,649`) --
+the design uses each candidate's full excerpt (up to 2,000 characters) in
+the rerank prompt, not a truncated snippet, so the prompt is large. A full
+56-question run costs roughly $2.50 for retrieval+reranking alone (see "AWS
+use" in the Work report), on top of the embedding-only cost every earlier
+retrieval evaluation had. This is disclosed as a real, permanent increase
+to every future real query's cost and latency, not a one-time evaluation
+expense -- unlike the fusion-weight fix, which was free.
+
+**A real regression, found and fixed before being reported as final.** The
+first real 56-question run after adding reranking returned
+`out_of_scope_refusal_accuracy: 0.0` -- every one of the 5 out-of-scope
+questions failed, down from a perfect 1.0 before reranking. Root cause: the
+implementation returned `INSUFFICIENT_EVIDENCE` directly whenever the
+reranker selected zero candidates, without ever calling the real
+answer-generation model -- but *out_of_scope* is the generation model's own
+judgment call on the question itself ("is this even a legal question"),
+independent of what retrieval found, and skipping that call meant the
+model was never asked. Fixed via TDD (a test reproducing this exact
+scenario) by removing the early return: an empty reranker selection now
+still reaches generation with zero citations, exactly like it always did
+before reranking existed. A second real full run after the fix confirmed
+`out_of_scope_refusal_accuracy` back at 1.0. The numbers throughout this
+report are from that second, fixed run.
+
+**Recall@10 rose less than estimated beforehand.** Before implementing,
+the expected range was roughly 70-80% recall, reasoned from a theoretical
+ceiling of 85.7% (a question's gold chunk present in *either* retriever's
+raw top-50). The real result, 59.5%, is well short of that. This is not a
+measurement error -- reranking can only select among candidates retrieval
+already found; it cannot recover the ~14% of questions where neither BM25
+nor kNN found the gold chunk within their own top-50 at all (see "Failed
+query analysis" below), and it evidently does not perfectly identify every
+genuinely relevant candidate among the ones it is offered either. The gap
+between the estimate and the real result is itself useful evidence: this
+project's own established norm is to report the real number, not the
+estimate, once a real run exists.
+
 ## Aggregate and per-domain results
 
 Real run, 2026-08-18, against the unchanged production index (7,887
 chunks, 182 judgements + 1,625 statutes), 56-question corrected test set.
-**Before/after the fusion-weight fix above, same run day:**
+**Three stages, same run day:**
 
-| Metric | Before (equal weight) | After (kNN×3) |
-| --- | --- | --- |
-| Recall@10 (42 answerable) | 0.4524 | **0.5714** |
-| MRR (42 answerable) | 0.2437 | **0.2809** |
+| Metric | Baseline (equal-weight RRF) | + Fusion weight (kNN×3) | + Reranking |
+| --- | --- | --- | --- |
+| Recall@10 (42 answerable) | 0.4524 | 0.5714 | **0.5952** |
+| MRR (42 answerable) | 0.2437 | 0.2809 | **0.3355** |
 
-All numbers below and in the rest of this report are **after** the fix.
+All numbers below and in the rest of this report are from the final,
+reranked pipeline.
 
 | Domain | Recall@10 | MRR | n |
 | --- | --- | --- | --- |
-| 안마사법 | 1.00 | 0.561 | 4 |
-| 미용법 | 0.80 | 0.367 | 5 |
-| 약사법 | 0.75 | 0.134 | 4 |
-| 개인정보보호법 | 0.75 | 0.361 | 4 |
-| 공중위생법 | 0.75 | 0.417 | 4 |
-| 화장품법 | 0.50 | 0.375 | 4 |
-| 무면허의료행위 | 0.50 | 0.500 | 4 |
-| **의료법** | **0.25** | **0.036** | 4 |
-| **표시광고법** | **0.25** | **0.025** | 4 |
-| 의료기기법 | 0.20 | 0.067 | 5 |
+| 안마사법 | 1.00 | 0.688 | 4 |
+| 미용법 | 0.80 | 0.507 | 5 |
+| 약사법 | 0.75 | 0.271 | 4 |
+| 의료기기법 | 0.60 | 0.317 | 5 |
+| 의료법 | 0.50 | 0.250 | 4 |
+| 개인정보보호법 | 0.50 | 0.286 | 4 |
+| 화장품법 | 0.50 | 0.167 | 4 |
+| 무면허의료행위 | 0.50 | 0.333 | 4 |
+| 공중위생법 | 0.50 | 0.375 | 4 |
+| **표시광고법** | **0.25** | **0.125** | 4 |
 
-의료기기법 remains the weakest domain (0.20) even after the fix -- its 4
-misses (ids 13, 14, 16, 43) include 2 of the 6 questions whose gold chunk is
-absent from *both* retrievers' top-50 entirely (see "Failed-query analysis"),
-which no fusion-weight change can recover. The 14 unanswerable/out-of-scope
-questions are retrieved against for transparency (what generation would have
-seen) but excluded from these metrics by design — there is no positive
-judgement to recall against for a question with no source chunk.
+표시광고법 is now the weakest domain (was 의료기기법 before reranking).
+The 14 unanswerable/out-of-scope questions are retrieved against for
+transparency (what generation would have seen) but excluded from these
+metrics by design — there is no positive judgement to recall against for a
+question with no source chunk.
 
 **A disclosed nuance on id 43 specifically.** Its assigned required
 positive (의료기기법 제26조 제7항) does not appear in this question's
@@ -368,10 +432,22 @@ weight — id 14 in particular (kNN rank 9, same rank id 8 held before it
 flipped to a hit) shows the outcome depends on the competing chunks' own
 scores in each specific question, not the gold chunk's rank alone.
 
+**2026-08-18, after reranking: 17 misses (down from 18), a smaller
+reduction than reranking's design intent would suggest.** id 43 now hits
+(reranking recovered it; it was one of the "present but too deep" fusion
+cases above), and ids 11 and 30 newly miss where they previously hit --
+consistent with the same "real regression, found and fixed" story in
+"Reranking" above and this project's disclosed norm that a real pipeline
+change is not expected to only ever improve individual questions. The 6
+"neither retriever" questions from the fusion-stage analysis (ids 6, 16,
+19, 20, 21, 32) are unchanged and still miss: reranking selects among
+retrieved candidates, so it structurally cannot recover a chunk neither
+retriever found in the first place.
+
 ## Latency percentiles, index size, index build time, and rebuild count
 
-**Per-question retrieval latency** (embed + BM25 search + k-NN search,
-wall-clock, all 56 questions, the fusion-weight-fix run):
+**Per-question retrieval latency, before reranking** (embed + BM25 search +
+k-NN search, wall-clock, all 56 questions, the fusion-weight-fix run):
 
 | Percentile | Latency |
 | --- | --- |
@@ -388,6 +464,22 @@ very start of the script; every other question in the same run, including
 the rest of that same domain, is in the 300–1200ms range consistent with
 the pre-fix run's percentiles. Weighting two already-fetched rank lists is
 O(n) over at most 100 ids and adds no measurable latency on its own.
+
+**Per-question retrieval latency, after reranking** (adds one real Bedrock
+round-trip per question -- no longer free):
+
+| Percentile | Latency |
+| --- | --- |
+| min | 1,370.7 ms |
+| p50 (median) | 4,496.4 ms |
+| p95 | 6,645.7 ms |
+| p99 | 7,353.5 ms |
+| max | 8,227.4 ms |
+
+Median latency rose roughly 8.5x (525ms → 4.5s) — a real, permanent cost
+of reranking on every future real query, not an artifact. This is the same
+trade-off named before implementation: reranking was approved knowing it
+would add real per-query latency in exchange for higher Recall@10.
 
 No single outlier dominates this run — the tightest of the three real
 retrieval-eval runs so far, consistent with a warm, stable local

@@ -49,6 +49,7 @@ from legal_agent_assessment.judge import (
     parse_judge_response,
 )
 from legal_agent_assessment.opensearch_index import CHUNKING_VERSION, INDEX_VERSION, index_name
+from legal_agent_assessment.rerank import RERANK_PROMPT_VERSION
 
 # Same rates as scripts/serve_legal_agent.py -- restated here rather than
 # imported, matching scripts/evaluate_retrieval.py's own precedent of
@@ -169,6 +170,7 @@ def main() -> None:
         embedding_model=embedding_model_id,
         generation_model=generation_model_id,
         prompt=PROMPT_VERSION,
+        rerank=RERANK_PROMPT_VERSION,
     )
     agent = LegalAgent(
         opensearch_client=opensearch_client,

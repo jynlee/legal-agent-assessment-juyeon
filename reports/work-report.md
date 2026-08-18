@@ -229,9 +229,61 @@ integration:**
     `json.loads` for `json.JSONDecoder().raw_decode`, which parses only the
     first JSON value and ignores trailing content, the same tolerance the
     parser already gives an opening code fence. Confirmed by a clean real
-    re-run of all 56 questions with no crash (the numbers throughout this
-    report and the Retrieval/Generation evaluation reports are from this
-    re-run).
+    re-run of all 56 questions with no crash.
+
+**A real production feature added, with a real regression caught and
+fixed before being reported as final:**
+
+14. **Semantic reranking added on top of the fusion-weight fix.** Approved
+    after an explicit cost/time/effect estimate (recall was estimated at
+    roughly 70-80%, up from 57.1%). New module `rerank.py` (the `judge.py`
+    pattern: a separate, narrowly-scoped Bedrock call, TDD, 9 new tests),
+    wired into `agent.py` (fused pool widened from top-10 to top-25,
+    reranked down to top-10 before generation) and
+    `scripts/evaluate_retrieval.py` (kept in sync with production for the
+    same reason the fusion-weight fix required it). `RuntimeVersions`
+    gained a `rerank` field, threaded through every construction site (6
+    files) since a rerank prompt is now part of producing a real response,
+    the same reproducibility reasoning `prompt` already had. Real result:
+    Recall@10 0.5714→**0.5952**, well short of the 70-80% estimate — the
+    estimate was optimistic, disclosed as such rather than revised after
+    the fact (Retrieval evaluation report's "Reranking"). Real,
+    **permanent** per-query cost/latency increase, unlike items 11/13
+    above: median retrieval latency rose ~8.5x (525ms→4.5s); a real single
+    demo call's rerank step alone cost $0.076, roughly 3-5x the earlier
+    cost estimate, because the design uses full candidate excerpts (up to
+    2,000 characters each) rather than truncated snippets.
+15. **The first real full run after adding reranking broke every
+    out_of_scope question.** `out_of_scope_refusal_accuracy: 0.0` (0 of 5),
+    down from a perfect 1.0 — found immediately by reading the aggregate
+    before reporting anything as final, not shipped and discovered later.
+    Root cause: the implementation returned `INSUFFICIENT_EVIDENCE`
+    directly whenever the reranker selected zero candidates, which is the
+    reranker's correct behavior for an off-topic question (nothing
+    retrieved *is* relevant) — but skipped the real generation call
+    entirely, and `out_of_scope` classification is that call's own
+    judgment on the question itself, independent of what retrieval found.
+    Fixed via TDD (2 new tests reproducing both the broken and the correct
+    behavior) by removing the early return: an empty reranker selection
+    now still reaches generation with zero citations, restoring the exact
+    behavior every out_of_scope question always relied on before
+    reranking existed. This discarded first run's real cost, $4.574664,
+    produced numbers that were never reported as final (see "AWS use"
+    below) — a real, disclosed cost of catching a real bug before
+    shipping it, not folded silently into the committed totals.
+16. **Reranking made a known weakness worse, not better.** Not a bug —
+    a real, unintended side effect, disclosed in full in the Generation
+    evaluation report's "insufficient_evidence refusal accuracy" section
+    ("Reranking made this worse, not better"). Widening the candidate pool
+    to give the reranker more to select from also gave the model's
+    already-documented over-answering bug more plausible-but-not-
+    dispositive evidence to reason from:
+    `insufficient_evidence_refusal_accuracy` fell from 0.5556 to 0.3333,
+    and `insufficient_evidence_misclassified_as_answered` rose from 4 to
+    6. Every other headline number improved (`answered_status_match_rate`
+    reached a perfect 1.0, `false_refusal_count` reached 0) — reported
+    together, not selectively, so the mixed result is visible rather than
+    obscured by the numbers that happened to improve.
 
 ## Completed, incomplete, and deliberately deferred work
 
@@ -241,7 +293,7 @@ deliverables):
 1. Record-selection and document-kind decisions — done (`reports/decisions/`, record-selection policy).
 2. Normalization, chunking, deterministic identity rules — done (`norm-v1`, `chunk-v1`, statute and judgement chunkers).
 3. Versioned OpenSearch 3.5-compatible index, reproducibly — done (`index-v1`, built twice, byte-identical cost/count both times).
-4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25 as of 2026-08-18 — see Blocker log item 11). Reranking deliberately not implemented (see below).
+4. Query embedding, retrieval, fusion, reranking — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25; a real Claude Sonnet reranking stage over a widened top-25 pool added 2026-08-18 — see Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final).
 5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
@@ -343,7 +395,7 @@ project's own review process, disclosed rather than silently left):
 Self-instrumented from the first real call this project made, per
 SUBMISSION.md's requirement (contributors share one IAM user; no billing
 or CloudTrail record can attribute usage to a specific contributor).
-Source: every file in `reports/usage/` (gitignored; 35 files, one per real
+Source: every file in `reports/usage/` (gitignored; 41 files, one per real
 script invocation that made at least one real AWS call). This total
 includes every real run made after this report's numbers were first
 drafted on 08-14: the `prompt-v3`, `prompt-v4`, and `prompt-v5` trials (all
@@ -354,21 +406,24 @@ below), a 2026-08-18 re-verification pass against the local container to
 confirm the committed numbers reproduce, the test-set expansion/correction
 work (real retrieval and generation evaluation runs against the
 growing/corrected 56-question set), the `agent.py` citation-integrity
-fix's own real validation run, six further single-question demo calls made
-the same day to spot-check individual response behavior across all four
-contract states, the fusion-weight fix's real retrieval re-run, and the
-JSON-parsing crash's real crashed attempt plus its real clean re-run
-(Blocker log items 11–13) -- every real call is recorded from the first one
-onward per this section's requirement, confirmation-only and crashed calls
-included.
+fix's own real validation run, the fusion-weight fix's real retrieval
+re-run, the JSON-parsing crash's real crashed attempt plus its real clean
+re-run, and reranking's own real cost: a real demo smoke-test call, two
+real retrieval-evaluation runs (rerank kept `evaluate_retrieval.py` in
+sync with production), and two real full generation-evaluation runs (a
+discarded first run that shipped with the out_of_scope regression still
+live, then the real clean re-run after the fix) — Blocker log items 11–16
+cover this in full. Every real call is recorded from the first one onward
+per this section's requirement, confirmation-only, crashed, and discarded
+calls included.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
 | Index builds (`index_chunks.py`) | 2 | 7,280,846 | — | — | $0.8738 |
-| Retrieval evaluations (`evaluate_retrieval.py`) | 7 | 13,967 | — | — | $0.001675 |
-| Generation evaluations (`evaluate_generation.py`) | 17 (11 succeeded, 6 failed) | 24,399 | 5,924,508 | 374,794 | $23.398360 |
-| Real demo calls (`serve_legal_agent.py`) | 9 (2 without token capture) | 166 | 36,487 | 1,823 | $0.136825 |
-| **Total, fully instrumented** | **35** | **7,319,378** | **5,960,995** | **376,617** | **$24.410660** |
+| Retrieval evaluations (`evaluate_retrieval.py`, incl. rerank calls) | 9 | 18,263 | 1,577,010 | 14,493 | $4.950616 |
+| Generation evaluations (`evaluate_generation.py`) | 19 (13 completed, 6 crashed; 1 of the 13 discarded for the out_of_scope regression) | 28,695 | 8,485,594 | 468,234 | $32.483734 |
+| Real demo calls (`serve_legal_agent.py`) | 11 (2 without token capture) | 203 | 65,014 | 2,613 | $0.234260 |
+| **Total, fully instrumented** | **41** | **7,328,007** | **10,127,618** | **485,340** | **$38.542410** |
 
 Plus, disclosed separately rather than folded into the total above
 (see Blocker log items 7–9, 12): **~$0.00001** from 6 untracked pre-
@@ -398,29 +453,34 @@ OpenSearch domain was never actually queried this project (see
 
 In priority order, most valuable first:
 
-1. **Fix the two opposite-direction refusal-accuracy failures with a
-   structurally different mechanism than the three already tried.**
-   `prompt-v3` (blanket instruction), `prompt-v4` (contrastive example),
-   and `prompt-v5` (a code-checked `source_directly_resolves` field the
-   model must commit to inside the same generation call) were all tried
-   and reverted against the identical pre-registered bar — all three
-   produced the same trade-off (less over-answering costs more false
-   refusal, net negative), which is read as evidence the fix does not
-   live inside the single generation call at all, regardless of its
-   internal wording or output schema. The next attempt should split
+1. **Fix the over-answering failure with a structurally different
+   mechanism than the four already tried.** `prompt-v3` (blanket
+   instruction), `prompt-v4` (contrastive example), `prompt-v5` (a
+   code-checked `source_directly_resolves` field the model must commit to
+   inside the same generation call), and now **reranking** (2026-08-18 —
+   approved for a different reason, Recall@10, but it widened the
+   candidate pool and measurably made this exact failure mode worse:
+   `insufficient_evidence_refusal_accuracy` 0.5556→0.3333,
+   `insufficient_evidence_misclassified_as_answered` 4→6) were all tried
+   and either reverted or, in reranking's case, kept for its own real
+   benefit despite this side effect — four independent mechanisms, four
+   pieces of evidence that the fix does not live inside the single
+   generation call at all, regardless of its internal wording, output
+   schema, or what it is handed to read. The next attempt should split
    resolution-checking into its **own, separate Bedrock call** — the same
    pattern `judge.py` already uses for post-hoc grounding verification,
    applied before finalizing status instead of after: a narrowly-scoped
    call given only the question and the specific cited source, asked
    only "does this source state the specific rule that resolves this
    exact question," in a context not already committed to producing an
-   answer. This roughly doubles generation-path Bedrock cost and latency
-   (an extra real call per `answered` response, similar in shape to the
-   existing judge call) but is structurally different from all three
-   failed attempts in a way none of them were from each other. Re-run the
-   Generation evaluation to confirm without regressing
-   `out_of_scope_refusal_accuracy` (currently a clean 1.0) or the
-   domain-coverage risk (currently confirmed resolved).
+   answer. This adds further real Bedrock cost and latency on top of
+   what reranking already added (an extra real call per `answered`
+   response, similar in shape to the existing judge call) but is
+   structurally different from all four prior attempts in a way none of
+   them were from each other. Re-run the Generation evaluation to confirm
+   without regressing `out_of_scope_refusal_accuracy` (currently a clean
+   1.0, after its own real 2026-08-18 regression-and-fix) or
+   `false_refusal_count` (currently a clean 0).
 2. **A second, independent grounding check** — either a genuinely
    different judge model (would require sourcing and verifying a second
    Kit-approved model id) or a human-reviewed spot-check of a sample of
@@ -429,13 +489,14 @@ In priority order, most valuable first:
    independent review. (The `agent.py` citation-integrity gap named in
    an earlier version of this list has since been fixed within this
    submission — see "Found and fixed within this submission" above.)
-3. **Isolate generation-only latency** from the judge call's added
-   latency in the `answered`-path numbers, and investigate whether the
-   per-domain grounding pattern (공중위생법 fully grounded, three other
-   domains with zero fully-grounded answers this run — the specific
-   3-domain set itself already shifted once between two real runs, per
-   the Generation evaluation report's "Grounding" section) is a stable
-   property or sampling noise, with a larger per-domain sample.
+3. **Isolate generation-only latency** from the judge call's *and now the
+   rerank call's* added latency in the `answered`-path numbers (median
+   rose from ~14.5s to ~19.6s after reranking), and investigate whether
+   the per-domain grounding pattern (no domain fully grounded in the
+   latest run; the zero-grounded domain set has now shifted across all
+   three real reported runs — see the Generation evaluation report's
+   "Grounding" section) is a stable property or sampling noise, with a
+   larger per-domain sample.
 4. **Complete the managed-domain (SigV4/SSM) connectivity verification**
    once a real managed-domain endpoint and app-EC2 instance id are
    available, including the now-permission-cleared Nori analyzer's actual

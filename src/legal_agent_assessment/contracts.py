@@ -59,6 +59,7 @@ class RuntimeVersions(ContractModel):
     embedding_model: str = Field(min_length=1)
     generation_model: str = Field(min_length=1)
     prompt: str = Field(min_length=1)
+    rerank: str = Field(min_length=1)
 
 
 class GeneralLegalResponse(ContractModel):

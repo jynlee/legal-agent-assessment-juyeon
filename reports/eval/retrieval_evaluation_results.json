@@ -1,58 +1,58 @@
 {
   "aggregate": {
-    "recall_at_10": 0.5714285714285714,
-    "mrr": 0.28093348450491307,
+    "recall_at_10": 0.5952380952380952,
+    "mrr": 0.3355442176870748,
     "answerable_count": 42
   },
   "per_domain": {
     "약사법": {
       "recall_at_10": 0.75,
-      "mrr": 0.13392857142857142,
+      "mrr": 0.2708333333333333,
       "count": 4
     },
     "의료법": {
-      "recall_at_10": 0.25,
-      "mrr": 0.03571428571428571,
+      "recall_at_10": 0.5,
+      "mrr": 0.25,
       "count": 4
     },
     "개인정보보호법": {
-      "recall_at_10": 0.75,
-      "mrr": 0.3611111111111111,
+      "recall_at_10": 0.5,
+      "mrr": 0.2857142857142857,
       "count": 4
     },
     "의료기기법": {
-      "recall_at_10": 0.2,
-      "mrr": 0.06666666666666667,
+      "recall_at_10": 0.6,
+      "mrr": 0.31666666666666665,
       "count": 5
     },
     "표시광고법": {
       "recall_at_10": 0.25,
-      "mrr": 0.025,
+      "mrr": 0.125,
       "count": 4
     },
     "화장품법": {
       "recall_at_10": 0.5,
-      "mrr": 0.375,
+      "mrr": 0.16666666666666666,
       "count": 4
     },
     "무면허의료행위": {
       "recall_at_10": 0.5,
-      "mrr": 0.5,
+      "mrr": 0.3333333333333333,
       "count": 4
     },
     "공중위생법": {
-      "recall_at_10": 0.75,
-      "mrr": 0.41666666666666663,
+      "recall_at_10": 0.5,
+      "mrr": 0.375,
       "count": 4
     },
     "미용법": {
       "recall_at_10": 0.8,
-      "mrr": 0.36666666666666664,
+      "mrr": 0.5066666666666666,
       "count": 5
     },
     "안마사법": {
       "recall_at_10": 1.0,
-      "mrr": 0.5607142857142857,
+      "mrr": 0.6875,
       "count": 4
     }
   },
@@ -60,15 +60,15 @@
     {
       "id": 1,
       "domain": "약사법",
-      "latency_ms": 7700.8,
+      "latency_ms": 6835.1,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.14285714285714285,
+      "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "precedent-108043#summary-headnote-000"
     },
     {
       "id": 2,
       "domain": "약사법",
-      "latency_ms": 449.6,
+      "latency_ms": 5830.8,
       "recall_at_10": 1,
       "reciprocal_rank": 0.25,
       "source_chunk_id": "precedent-206398#body-009"
@@ -76,7 +76,7 @@
     {
       "id": 3,
       "domain": "약사법",
-      "latency_ms": 7569.2,
+      "latency_ms": 3813.6,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-190259#body-005"
@@ -84,23 +84,23 @@
     {
       "id": 4,
       "domain": "약사법",
-      "latency_ms": 6125.4,
+      "latency_ms": 3178.1,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.14285714285714285,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-84300#summary-holding-000"
     },
     {
       "id": 5,
       "domain": "의료법",
-      "latency_ms": 622.3,
-      "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "latency_ms": 4557.2,
+      "recall_at_10": 1,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-622115#summary-headnote-000"
     },
     {
       "id": 6,
       "domain": "의료법",
-      "latency_ms": 323.8,
+      "latency_ms": 5080.0,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-622263#summary-headnote-000"
@@ -108,7 +108,7 @@
     {
       "id": 7,
       "domain": "의료법",
-      "latency_ms": 543.4,
+      "latency_ms": 4276.1,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-99684#summary-holding-000"
@@ -116,23 +116,23 @@
     {
       "id": 8,
       "domain": "의료법",
-      "latency_ms": 749.5,
+      "latency_ms": 4496.4,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.14285714285714285,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-141548#summary-holding-000"
     },
     {
       "id": 9,
       "domain": "개인정보보호법",
-      "latency_ms": 554.5,
+      "latency_ms": 4591.5,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.1111111111111111,
+      "reciprocal_rank": 0.14285714285714285,
       "source_chunk_id": "precedent-220165#body-039"
     },
     {
       "id": 10,
       "domain": "개인정보보호법",
-      "latency_ms": 342.5,
+      "latency_ms": 5195.5,
       "recall_at_10": 1,
       "reciprocal_rank": 1.0,
       "source_chunk_id": "precedent-614445#body-027"
@@ -140,15 +140,15 @@
     {
       "id": 11,
       "domain": "개인정보보호법",
-      "latency_ms": 407.3,
-      "recall_at_10": 1,
-      "reciprocal_rank": 0.3333333333333333,
+      "latency_ms": 8227.4,
+      "recall_at_10": 0,
+      "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-614445#body-010"
     },
     {
       "id": 12,
       "domain": "개인정보보호법",
-      "latency_ms": 479.7,
+      "latency_ms": 5544.6,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-220165#body-043"
@@ -156,7 +156,7 @@
     {
       "id": 13,
       "domain": "의료기기법",
-      "latency_ms": 599.9,
+      "latency_ms": 5175.9,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-204543#body-013"
@@ -164,15 +164,15 @@
     {
       "id": 14,
       "domain": "의료기기법",
-      "latency_ms": 540.4,
-      "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "latency_ms": 7353.5,
+      "recall_at_10": 1,
+      "reciprocal_rank": 0.25,
       "source_chunk_id": "doc-b32ea63979985827444e4667#body-000"
     },
     {
       "id": 15,
       "domain": "의료기기법",
-      "latency_ms": 392.2,
+      "latency_ms": 3356.2,
       "recall_at_10": 1,
       "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "doc-9ecad433d2e3fb7a5dff96ad#body-000"
@@ -180,7 +180,7 @@
     {
       "id": 16,
       "domain": "의료기기법",
-      "latency_ms": 480.8,
+      "latency_ms": 3097.3,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "doc-f2510c7421cd41afe7d16ccd#body-000"
@@ -188,15 +188,15 @@
     {
       "id": 17,
       "domain": "표시광고법",
-      "latency_ms": 525.2,
+      "latency_ms": 2827.0,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.1,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-207141#summary-holding-001"
     },
     {
       "id": 18,
       "domain": "표시광고법",
-      "latency_ms": 541.7,
+      "latency_ms": 3187.3,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-221809#body-020"
@@ -204,7 +204,7 @@
     {
       "id": 19,
       "domain": "표시광고법",
-      "latency_ms": 558.8,
+      "latency_ms": 4653.7,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-220369#body-010"
@@ -212,7 +212,7 @@
     {
       "id": 20,
       "domain": "표시광고법",
-      "latency_ms": 468.0,
+      "latency_ms": 3190.1,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-220843#body-008"
@@ -220,7 +220,7 @@
     {
       "id": 21,
       "domain": "화장품법",
-      "latency_ms": 328.5,
+      "latency_ms": 4795.0,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-85430#body-008"
@@ -228,15 +228,15 @@
     {
       "id": 22,
       "domain": "화장품법",
-      "latency_ms": 442.8,
+      "latency_ms": 5281.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.5,
+      "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "doc-84719cca9a1d779c854080c0#body-000"
     },
     {
       "id": 23,
       "domain": "화장품법",
-      "latency_ms": 498.8,
+      "latency_ms": 4550.3,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "doc-468e683a08a513121b891499#body-000"
@@ -244,15 +244,15 @@
     {
       "id": 24,
       "domain": "화장품법",
-      "latency_ms": 542.2,
+      "latency_ms": 6645.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "doc-19df8956ba4711806d5a3c00#body-000"
     },
     {
       "id": 25,
       "domain": "무면허의료행위",
-      "latency_ms": 587.2,
+      "latency_ms": 4695.2,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-173261#body-014"
@@ -260,7 +260,7 @@
     {
       "id": 26,
       "domain": "무면허의료행위",
-      "latency_ms": 504.9,
+      "latency_ms": 3402.4,
       "recall_at_10": 1,
       "reciprocal_rank": 1.0,
       "source_chunk_id": "precedent-216061#summary-headnote-001"
@@ -268,15 +268,15 @@
     {
       "id": 27,
       "domain": "무면허의료행위",
-      "latency_ms": 529.5,
+      "latency_ms": 4238.8,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "precedent-83069#summary-headnote-001"
     },
     {
       "id": 28,
       "domain": "무면허의료행위",
-      "latency_ms": 464.7,
+      "latency_ms": 5150.8,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-600433#body-015"
@@ -284,31 +284,31 @@
     {
       "id": 29,
       "domain": "공중위생법",
-      "latency_ms": 520.6,
+      "latency_ms": 6263.3,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "doc-bb3d1f9eaf8e4300d7ac3e98#body-000"
     },
     {
       "id": 30,
       "domain": "공중위생법",
-      "latency_ms": 545.1,
-      "recall_at_10": 1,
-      "reciprocal_rank": 0.3333333333333333,
+      "latency_ms": 4771.4,
+      "recall_at_10": 0,
+      "reciprocal_rank": 0.0,
       "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-032"
     },
     {
       "id": 31,
       "domain": "공중위생법",
-      "latency_ms": 413.4,
+      "latency_ms": 4202.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
       "source_chunk_id": "precedent-80695#body-004"
     },
     {
       "id": 32,
       "domain": "공중위생법",
-      "latency_ms": 520.0,
+      "latency_ms": 3599.2,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "precedent-160636#body-013"
@@ -316,15 +316,15 @@
     {
       "id": 33,
       "domain": "미용법",
-      "latency_ms": 524.7,
+      "latency_ms": 5762.8,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.16666666666666666,
+      "reciprocal_rank": 0.2,
       "source_chunk_id": "doc-53f90adbd0bc23656fb2cfdc#body-027"
     },
     {
       "id": 34,
       "domain": "미용법",
-      "latency_ms": 529.3,
+      "latency_ms": 4607.7,
       "recall_at_10": 1,
       "reciprocal_rank": 0.3333333333333333,
       "source_chunk_id": "doc-88efda1b60dfe93bd7341326#body-000"
@@ -332,7 +332,7 @@
     {
       "id": 35,
       "domain": "미용법",
-      "latency_ms": 526.9,
+      "latency_ms": 3287.5,
       "recall_at_10": 1,
       "reciprocal_rank": 1.0,
       "source_chunk_id": "doc-c7eba9168dcc608ed6eb1934#body-000"
@@ -340,7 +340,7 @@
     {
       "id": 36,
       "domain": "미용법",
-      "latency_ms": 417.7,
+      "latency_ms": 3711.3,
       "recall_at_10": 0,
       "reciprocal_rank": 0.0,
       "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-026"
@@ -348,15 +348,15 @@
     {
       "id": 37,
       "domain": "안마사법",
-      "latency_ms": 498.8,
+      "latency_ms": 4959.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.1,
+      "reciprocal_rank": 1.0,
       "source_chunk_id": "doc-40bb91a38251e6988a4de8c5#body-000"
     },
     {
       "id": 38,
       "domain": "안마사법",
-      "latency_ms": 556.4,
+      "latency_ms": 5029.9,
       "recall_at_10": 1,
       "reciprocal_rank": 1.0,
       "source_chunk_id": "precedent-83065#summary-headnote-000"
@@ -364,285 +364,201 @@
     {
       "id": 39,
       "domain": "안마사법",
-      "latency_ms": 630.8,
+      "latency_ms": 3814.0,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.14285714285714285,
+      "reciprocal_rank": 0.25,
       "source_chunk_id": "precedent-143905#body-006"
     },
     {
       "id": 40,
       "domain": "안마사법",
-      "latency_ms": 588.4,
+      "latency_ms": 3325.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-170159#body-007"
     },
     {
       "id": 41,
       "domain": "표시광고법",
-      "latency_ms": 620.1,
+      "latency_ms": 4175.2,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
+        "precedent-144207#summary-holding-001",
+        "precedent-144207#body-007",
         "precedent-99106#summary-holding-000",
-        "precedent-99106#summary-headnote-000",
-        "precedent-119223#summary-holding-000",
-        "precedent-191892#summary-holding-002",
+        "precedent-143372#summary-headnote-000",
         "precedent-143372#summary-holding-002",
+        "doc-25595c1981014ca6c7df7e47#body-002",
+        "doc-05bafa93d55fe89f63a65358#body-002",
         "doc-0ed4c289302a6aecb9804986#body-004",
-        "precedent-172870#body-009",
-        "precedent-78365#body-005",
-        "doc-c477f35d6c47c8f46be9dd73#body-022",
-        "doc-05bafa93d55fe89f63a65358#body-006"
+        "precedent-94170#summary-headnote-000"
       ]
     },
     {
       "id": 42,
       "domain": "화장품법",
-      "latency_ms": 563.8,
+      "latency_ms": 3980.6,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
-        "doc-19df8956ba4711806d5a3c00#body-009",
-        "doc-252cded24ea6f8e7166da75f#body-005",
-        "doc-0a939a5d8cd4b05e66536a82#body-000",
-        "doc-252cded24ea6f8e7166da75f#body-002",
         "doc-95cc9aeb4aaac55fad99c8fa#body-000",
-        "doc-252cded24ea6f8e7166da75f#body-011",
         "doc-83fbf3feefb708dc56e4514f#body-000",
-        "precedent-116360#summary-holding-001",
-        "doc-252cded24ea6f8e7166da75f#body-021",
         "doc-8e8e6b727bffcb0336d34bb7#body-000"
       ]
     },
     {
       "id": 43,
       "domain": "의료기기법",
-      "latency_ms": 386.7,
-      "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "latency_ms": 4642.8,
+      "recall_at_10": 1,
+      "reciprocal_rank": 1.0,
       "source_chunk_id": "doc-ac717535b26f12f4584398ca#body-007"
     },
     {
       "id": 44,
       "domain": "표시광고법",
-      "latency_ms": 368.2,
+      "latency_ms": 3520.6,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
         "precedent-144262#body-009",
-        "precedent-176359#body-007",
-        "precedent-68717#summary-headnote-000",
-        "doc-5d9539b7896ca86923bf31e7#body-028",
-        "precedent-143372#summary-headnote-002",
-        "precedent-146672#summary-headnote-001",
-        "precedent-78365#body-005",
+        "precedent-143372#summary-holding-001",
         "precedent-143372#summary-holding-002",
-        "precedent-118985#summary-headnote-000",
-        "precedent-78365#body-013"
+        "precedent-143372#summary-headnote-002",
+        "doc-05bafa93d55fe89f63a65358#body-006",
+        "precedent-78365#body-005"
       ]
     },
     {
       "id": 45,
       "domain": "표시광고법",
-      "latency_ms": 514.9,
+      "latency_ms": 3351.3,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
-        "precedent-183211#body-033",
-        "precedent-99106#summary-headnote-000",
-        "precedent-94170#summary-holding-000",
-        "precedent-99106#summary-holding-000",
-        "precedent-94170#summary-headnote-000",
-        "precedent-191892#summary-holding-002",
-        "precedent-119223#summary-holding-000",
+        "precedent-144207#summary-headnote-001",
+        "doc-25595c1981014ca6c7df7e47#body-002",
+        "precedent-143372#summary-headnote-001",
+        "precedent-143372#summary-holding-002",
         "precedent-128300#body-011",
-        "doc-c477f35d6c47c8f46be9dd73#body-022",
-        "precedent-68795#body-006"
+        "precedent-94170#summary-holding-000",
+        "precedent-94170#summary-headnote-000"
       ]
     },
     {
       "id": 46,
       "domain": null,
-      "latency_ms": 506.4,
+      "latency_ms": 1370.7,
       "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "precedent-179916#body-149",
-        "doc-b97d6db63bad15bfe31e23b1#body-014",
-        "precedent-99013#body-001",
-        "precedent-151666#body-001",
-        "precedent-125078#body-010",
-        "precedent-179916#body-105",
-        "precedent-179916#body-108",
-        "doc-b97d6db63bad15bfe31e23b1#body-007",
-        "doc-b20a0650415b0eb01c7ca21b#body-007",
-        "doc-0b2c6da3f7c6ac5702ed3075#body-006"
-      ]
+      "fused_top_10": []
     },
     {
       "id": 47,
       "domain": null,
-      "latency_ms": 566.8,
+      "latency_ms": 3214.6,
       "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "doc-c477f35d6c47c8f46be9dd73#body-025",
-        "doc-38bed02afc21171186da3e07#body-000",
-        "precedent-234541#body-369",
-        "doc-ab4855a98c6174843b03daa6#body-007",
-        "doc-ab4855a98c6174843b03daa6#body-026",
-        "doc-d514af799b2e288726444409#body-007",
-        "doc-0e8b9501ddae711546da3fd8#body-000",
-        "doc-6c57fbd6feac3a9576608073#body-003",
-        "doc-7783a9dd2044613b4901c70b#body-002",
-        "doc-0629368b099863c1e1a416dc#body-006"
-      ]
+      "fused_top_10": []
     },
     {
       "id": 48,
       "domain": null,
-      "latency_ms": 452.4,
+      "latency_ms": 1541.6,
       "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "doc-6c87e2a1b2b3798145b4644d#body-015",
-        "precedent-145368#body-003",
-        "doc-68c734f8fb77eab66b151588#body-000",
-        "doc-41caa252a94922f73716c7ef#body-000",
-        "doc-541aa5e6a52d397eb2a135df#body-000",
-        "doc-79e2b3ff04131ce708f19fd6#body-028",
-        "doc-6c87e2a1b2b3798145b4644d#body-016",
-        "doc-9ad55fea6f36f78f15545c8c#body-000",
-        "doc-76655674008e1a6bb06c789c#body-000",
-        "doc-10b05d8f1222c2fcc13866f4#body-000"
-      ]
+      "fused_top_10": []
     },
     {
       "id": 49,
       "domain": null,
-      "latency_ms": 1176.8,
+      "latency_ms": 1611.7,
       "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "doc-c477f35d6c47c8f46be9dd73#body-025",
-        "doc-c477f35d6c47c8f46be9dd73#body-015",
-        "doc-53f90adbd0bc23656fb2cfdc#body-017",
-        "doc-2b12bf3bab69bf7f13847a79#body-000",
-        "doc-b88d61df0b58c47f95cd5735#body-005",
-        "doc-53f90adbd0bc23656fb2cfdc#body-025",
-        "doc-c477f35d6c47c8f46be9dd73#body-010",
-        "doc-9800110c64405573e1778e04#body-000",
-        "doc-38bed02afc21171186da3e07#body-000",
-        "doc-055d4b19f74e17b32d8838ce#body-023"
-      ]
+      "fused_top_10": []
     },
     {
       "id": 50,
       "domain": null,
-      "latency_ms": 548.8,
+      "latency_ms": 1712.5,
       "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "precedent-123497#body-001",
-        "doc-aafaa325da0273103fbcfee6#body-009",
-        "doc-618c128193dfd147e86eb748#body-006",
-        "doc-98f42139494767cda44f4afa#body-013",
-        "doc-fef74e9fa5504e977cc13098#body-000",
-        "precedent-607619#body-016",
-        "precedent-607619#body-015",
-        "doc-aafaa325da0273103fbcfee6#body-007",
-        "doc-65df97683f45267bb6e7578b#body-006",
-        "doc-8859c79408ab8af2f3ce45ff#body-000"
-      ]
+      "fused_top_10": []
     },
     {
       "id": 51,
       "domain": "무면허의료행위",
-      "latency_ms": 524.8,
+      "latency_ms": 4066.6,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
+        "precedent-622115#body-007",
+        "precedent-622115#body-010",
+        "precedent-622263#summary-holding-000",
         "precedent-191892#body-006",
+        "precedent-191892#summary-holding-002",
+        "precedent-119223#summary-holding-000",
         "precedent-216061#body-006",
-        "precedent-191857#summary-headnote-002",
-        "precedent-81196#summary-headnote-001",
-        "precedent-216061#summary-holding-002",
-        "precedent-216061#summary-headnote-002",
-        "precedent-81196#summary-holding-001",
-        "precedent-68717#summary-headnote-001",
-        "precedent-622263#body-009",
-        "precedent-78365#body-017"
+        "doc-7d2bd1e785c7913ef6cfeb1d#body-000",
+        "precedent-622115#summary-headnote-000"
       ]
     },
     {
       "id": 52,
       "domain": "무면허의료행위",
-      "latency_ms": 601.7,
+      "latency_ms": 3620.4,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
-        "precedent-216061#body-006",
-        "precedent-622115#body-006",
-        "precedent-622263#body-005",
-        "precedent-78365#body-004",
-        "precedent-191892#body-006",
-        "precedent-191857#summary-headnote-002",
-        "precedent-78351#body-005",
-        "precedent-216061#summary-holding-002",
-        "precedent-191892#summary-holding-002",
-        "precedent-622115#summary-holding-001"
+        "precedent-622115#body-010",
+        "precedent-622115#summary-headnote-000",
+        "precedent-622115#body-016",
+        "precedent-622115#summary-holding-001",
+        "precedent-622115#summary-headnote-001",
+        "precedent-622263#body-009",
+        "precedent-622263#summary-headnote-001",
+        "precedent-622263#summary-holding-001",
+        "precedent-602353#summary-holding-000",
+        "precedent-216061#body-006"
       ]
     },
     {
       "id": 53,
       "domain": "공중위생법",
-      "latency_ms": 485.5,
+      "latency_ms": 4402.2,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
-        "precedent-119223#summary-holding-000",
+        "doc-fbe48fe3e65bc0503d5c2597#body-000",
         "doc-03a2c4d3a912ff0950271863#body-000",
-        "doc-4b166e9df3bc2e4bd60d2357#body-005",
-        "precedent-119223#body-005",
-        "precedent-118985#summary-headnote-000",
-        "doc-7648fa6e4745b143accc482a#body-000",
-        "doc-6d094327f28abf48ace735c7#body-004",
-        "precedent-233445#body-004",
-        "doc-53f90adbd0bc23656fb2cfdc#body-021",
-        "doc-53c0b68666567e592409b7fd#body-013"
+        "doc-4b166e9df3bc2e4bd60d2357#body-005"
       ]
     },
     {
       "id": 54,
       "domain": "미용법",
-      "latency_ms": 303.2,
+      "latency_ms": 5162.1,
       "recall_at_10": 1,
-      "reciprocal_rank": 0.3333333333333333,
+      "reciprocal_rank": 1.0,
       "source_chunk_id": "doc-16c1049fc291c33c561d0e7e#body-000"
     },
     {
       "id": 55,
       "domain": "안마사법",
-      "latency_ms": 447.3,
+      "latency_ms": 6197.1,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
+        "doc-40bb91a38251e6988a4de8c5#body-000",
         "precedent-83065#summary-headnote-000",
         "precedent-83065#summary-holding-000",
-        "precedent-193392#summary-holding-001",
-        "doc-40bb91a38251e6988a4de8c5#body-000",
-        "doc-4eb0877944d4f1c0e9e6034e#body-000",
+        "precedent-83065#body-004",
+        "precedent-83069#summary-holding-000",
+        "precedent-80622#summary-holding-000",
         "doc-6d094327f28abf48ace735c7#body-007",
-        "precedent-134362#summary-holding-002",
-        "precedent-143905#summary-holding-000",
         "precedent-70816#body-006",
-        "precedent-83065#body-004"
+        "precedent-134362#body-006",
+        "precedent-134362#summary-holding-002"
       ]
     },
     {
       "id": 56,
       "domain": "약사법",
-      "latency_ms": 567.4,
+      "latency_ms": 5307.1,
       "note": "no positive judgement -- retrieved for transparency only",
       "fused_top_10": [
-        "doc-cd7e72d371d0dc8ff756f067#body-000",
-        "precedent-108043#body-005",
-        "precedent-230583#body-011",
-        "precedent-123172#summary-holding-000",
-        "precedent-108043#summary-holding-000",
-        "precedent-123172#body-005",
-        "doc-3ec03294617a60b3a675de44#body-010",
-        "precedent-78670#body-004",
-        "precedent-118895#summary-holding-000",
-        "precedent-68795#summary-headnote-001"
+        "doc-b83dba5572007203055a31c5#body-000",
+        "doc-5cd9861fd37d4f67e6253f39#body-000",
+        "doc-0ed4c289302a6aecb9804986#body-018",
+        "doc-cd7e72d371d0dc8ff756f067#body-000"
       ]
     }
   ],
