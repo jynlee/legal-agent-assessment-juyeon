@@ -48,14 +48,14 @@ refused instead — see "False refusals" below — plus 4 questions expected
 
 | Verdict | Count | Share of judged answers |
 | --- | --- | --- |
-| `grounded` | 13 | 29.5% |
-| `partially_grounded` | 31 | 70.5% |
+| `grounded` | 16 | 36.4% |
+| `partially_grounded` | 28 | 63.6% |
 | `unsupported` | 0 | 0.0% |
 | `judge_parse_error` | 0 | — |
 
 **Zero `unsupported` answers** — the judge never classified an answer as
 making claims the cited excerpts do not support at all. But
-**`partially_grounded` is the large majority (78%), not the exception** —
+**`partially_grounded` is the large majority (63.6%), not the exception** —
 this is disclosed as the headline finding here, not smoothed over by the
 absence of outright `unsupported` verdicts. Reading the judge's
 justification text for the `partially_grounded` cases shows a consistent
@@ -80,20 +80,25 @@ included since it comes free from data already collected):
 | Domain | grounded | partially_grounded | unsupported | n |
 | --- | --- | --- | --- | --- |
 | 공중위생법 | 5 | 0 | 0 | 5 |
+| 의료법 | 3 | 1 | 0 | 4 |
 | 미용법 | 2 | 3 | 0 | 5 |
 | 안마사법 | 2 | 3 | 0 | 5 |
 | 약사법 | 2 | 2 | 0 | 4 |
-| 의료기기법 | 1 | 4 | 0 | 5 |
+| 표시광고법 | 1 | 4 | 0 | 5 |
 | 무면허의료행위 | 1 | 3 | 0 | 4 |
-| 의료법 | 0 | 4 | 0 | 4 |
-| 표시광고법 | 0 | 5 | 0 | 5 |
+| 의료기기법 | 0 | 5 | 0 | 5 |
 | 화장품법 | 0 | 4 | 0 | 4 |
 | 개인정보보호법 | 0 | 3 | 0 | 3 |
 
-공중위생법 is the only domain with every answer fully `grounded`; four
-domains (의료법, 표시광고법, 화장품법, 개인정보보호법) had zero fully
-`grounded` answers this run — every one of their answered questions drew
-at least one judge-flagged overreach. 공중위생법's own count includes id
+공중위생법 is the only domain with every answer fully `grounded`; three
+domains (의료기기법, 화장품법, 개인정보보호법) had zero fully `grounded`
+answers this run — every one of their answered questions drew at least
+one judge-flagged overreach. This 3-domain set differs from an earlier
+run's 4-domain set (의료법, 표시광고법, 화장품법, 개인정보보호법) —
+consistent with this section's own point that per-domain grounding is
+disclosed as this run's real result, not asserted as a stable property
+without a larger sample (see "future work" below). 공중위생법's own count
+includes id
 53 (the new insufficient_evidence question this domain over-answered —
 judged `grounded` even though the status itself was wrong, since the
 judge only checks whether prose matches citations, not whether refusal
@@ -123,23 +128,32 @@ fabricating one. Across all 56 real calls this run, **`limitations_fired_count:
 0`** — the guard never had to intervene on a *partial* fabrication (some
 cited ids real, some not).
 
-**Disclosed gap, found during this evaluation's own final code review, not
-asserted away.** `agent.py` has a second, separate fabricated-citation
-path that this metric cannot see: if the model claims `status: "answered"`
+**Gap found during an earlier evaluation's final code review, closed on
+2026-08-18.** `agent.py` used to have a second, separate fabricated-citation
+path this metric could not see: if the model claimed `status: "answered"`
 but *none* of its cited ids were actually retrieved (total fabrication,
-not partial), the response is downgraded to a bare `insufficient_evidence`
-with an *empty* `limitations` field — indistinguishable, in this run's
-data, from the model honestly saying "I don't have enough evidence."
-Concretely: questions 11 and 22 both came back `insufficient_evidence`
-with `citation_count: 0`, and this evaluation's committed data cannot tell
-whether that was an honest refusal or a caught total-fabrication attempt
-(see "False refusals" below — the retrieval evaluation's own data suggests
-the honest-refusal reading is more likely for these two, but the response
-contract does not currently make this provable either way). Closing this
-gap needs a production change to `agent.py`'s response contract exposing
-the total-fabrication case distinctly, which is out of scope for this
-evaluation and named under "What one more week would allow" in the Work
-report — not attempted here.
+not partial), the response downgraded to a bare `insufficient_evidence`
+with an *empty* `limitations` field — indistinguishable from the model
+honestly saying "I don't have enough evidence." Fixed by extending the
+same `limitations`-surfacing pattern already used for partial fabrication
+to this total-fabrication path too, so the two cases are now
+distinguishable in the response itself: an honest refusal (the model's
+own `status` was already `insufficient_evidence`) always carries an empty
+`limitations`; a caught total-fabrication attempt (`status: "answered"`
+downgraded because zero cited ids were real) always carries exactly one
+`limitations` entry naming what was claimed.
+
+**This closed a real, previously-disclosed unknown, not just a
+hypothetical one.** Questions 11 and 22 (see "False refusals" below) both
+came back `insufficient_evidence` with `citation_count: 0` in every real
+run of this evaluation, including this one, and the fix now makes their
+nature provable rather than merely likely: both have `limitations_count:
+0` in this run's committed data — **honest refusals, not caught
+fabrication attempts.** `limitations_fired_count: 0` across all 56
+questions confirms no total-fabrication case occurred anywhere in this
+run either. The retrieval-evaluation-informed guess in the prior version
+of this report (that the honest-refusal reading was "more likely") is
+now a measured fact rather than an inference.
 
 ## Unsupported citation / hallucination
 
@@ -227,31 +241,59 @@ across three independent real runs now (the original `fd810f1`/`ff85ab8`
 runs, and this 2026-08-18 run against a larger and corrected question
 set). No prompt change is needed for that specific risk.
 
-**Two prompt revisions were tried and reverted, both before the
-gold-label errors above were found.** `prompt-v3` added an explicit
-anti-analogy instruction; a real re-run showed
-`insufficient_evidence_misclassified_as_answered` improve from 3 to 2 but
-`false_refusal_count` worsen from 2 to 8 (net status errors 5→10).
-`prompt-v4` replaced that with a contrastive worked example in an
-unrelated hypothetical domain; a real re-run showed no improvement on the
-target metric (stayed at 3) while `false_refusal_count` still worsened
-(2→6). Both were reverted against a pre-registered bar (target-metric
-improvement with no increase in false refusals); `prompt-v2` remains in
-production. **Caveat, disclosed rather than silently carried forward:**
-both v3 and v4 were measured against the original 5-question
-`insufficient_evidence` set, which included the 2 now-corrected mislabels
-(43, 54) — so their "3 misclassified" baseline was partly inflated by bad
-labels, not purely model error. Neither experiment was rerun against the
-corrected set; the qualitative conclusion (a blanket instruction or a
-single contrastive example both trade over-answers for false refusals
-without net improvement) is still the best available evidence, but the
-exact before/after counts for v3/v4 should be read as measured against
-the uncorrected baseline, not the current one. The root cause surfaced
-after both attempts — id 53's prose/status disconnect — was not
-available when either was designed, and points toward a structural fix
-(forcing an explicit, code-checked "does a source directly resolve this"
-field rather than trusting the model's own status field) as the next
-candidate, not a third prompt-wording iteration.
+**Three revisions were tried and reverted, using three different
+mechanisms.** `prompt-v3` added an explicit anti-analogy instruction; a
+real re-run showed `insufficient_evidence_misclassified_as_answered`
+improve from 3 to 2 but `false_refusal_count` worsen from 2 to 8 (net
+status errors 5→10). `prompt-v4` replaced that with a contrastive worked
+example in an unrelated hypothetical domain; no improvement on the target
+metric (stayed at 3), `false_refusal_count` 2→6. **Caveat on v3/v4:** both
+were measured against the original 5-question `insufficient_evidence`
+set, which included the 2 now-corrected mislabels (43, 54) — their "3
+misclassified" baseline was partly inflated by bad labels, not purely
+model error; neither was rerun against the corrected set, so their exact
+counts should be read against the uncorrected baseline, not the current
+one.
+
+`prompt-v5` (2026-08-18, against the corrected 9-question set, so its
+counts are directly comparable to this report's other numbers) tried a
+structural mechanism instead of a wording change: an explicit
+`source_directly_resolves: true | false` field the model must commit to
+before `status`, with `parse_answer_response` overriding `status` to
+`insufficient_evidence` whenever that field is not `true` — regardless of
+what `status` itself claimed. This directly targeted id 53's disconnect
+between stated reasoning and final status. Its first real run crashed
+instead of completing: on id 53 itself, the model emitted one complete
+JSON object (`source_directly_resolves: false`, correctly refusing), then
+"Wait, let me reconsider...", then a second, contradictory JSON object
+(`source_directly_resolves: true`, answering) — `json.loads` raised on the
+trailing content and the run stopped at question 53 of 56. Fixed two ways
+before retrying: `parse_answer_response` now parses only the first JSON
+value in the text (`json.JSONDecoder.raw_decode`) rather than raising on
+trailing content, and the prompt's closing instruction was strengthened to
+explicitly forbid "reasoning, commentary, reconsideration" after the JSON
+object. The repaired v5 completed a full real run:
+`insufficient_evidence_misclassified_as_answered` stayed at 4 (no
+improvement — id 53 itself was answered incorrectly again, this time
+without crashing) and `false_refusal_count` rose to 6. Reverted against
+the same pre-registered bar as v3/v4; `prompt-v2` remains in production.
+
+**Conclusion after three independent attempts.** A blanket instruction, a
+contrastive example, and a structural code-checked field are three
+meaningfully different mechanisms, and all three produced the same
+trade-off: any intervention that reduces over-answering increases false
+refusals by more than it fixes, with no net improvement. This is read as
+evidence that the fix this specific failure mode needs is not at the
+prompt-wording or response-schema level at all — three attempts is enough
+to stop, per this project's own "measure, don't assume" discipline, rather
+than iterate a fourth variation on the same mechanism class. A genuinely
+different category of fix (see the Work report's "What one additional
+week would allow") would need to stop asking the same generation call to
+both answer and self-certify; the existing `judge.py` post-hoc grounding
+check already demonstrates this project's own pattern for that: a
+separate, narrowly-scoped Bedrock call, in its own context, asked only
+whether a specific source resolves a specific question — not bundled into
+the same call already committed to producing an answer.
 
 ## False refusals
 
@@ -274,10 +316,15 @@ still declined to answer. This is a genuine generation-side over-caution
 finding, not a retrieval failure — the opposite failure direction from the
 insufficient_evidence section above (there, the model answered when it
 should have refused; here, it refused when it had what it needed to
-answer). Both directions are real and disclosed; neither is investigated
-to a root cause beyond what is stated here, and both are named as
-candidates for prompt-tuning follow-up in the Work report rather than
-guessed at and changed here.
+answer). The "Citation integrity" section above confirms, from real
+response data rather than inference, that both refusals are genuine —
+neither has a `limitations` entry, so neither is a caught total-fabrication
+attempt in disguise. Both directions are real and disclosed; neither is
+investigated to a root cause beyond what is stated here, and both are
+named as candidates for follow-up in the Work report rather than guessed
+at and changed here (three independent prompt/structural attempts at the
+over-answering direction were tried and reverted — see the
+insufficient_evidence section above and the Work report's blocker log).
 
 ## out_of_scope refusal accuracy
 
@@ -326,10 +373,10 @@ returns — not reconstructed afterward).
 | | Value |
 | --- | --- |
 | Embed tokens (estimated, query embedding only) | 2,148 |
-| Generation input tokens (real, answer + judge calls) | 520,256 |
-| Generation output tokens (real, answer + judge calls) | 32,962 |
-| **Estimated cost** | **$2.055456** |
-| Wall-clock elapsed (full 56-question run) | 676.54 s (~11.3 min) |
+| Generation input tokens (real, answer + judge calls) | 522,315 |
+| Generation output tokens (real, answer + judge calls) | 32,739 |
+| **Estimated cost** | **$2.058288** |
+| Wall-clock elapsed (full 56-question run) | 698.96 s (~11.6 min) |
 
 Per-question token counts are recorded in the committed results file
 (`reports/eval/generation_evaluation_results.json`, `embed_estimated_tokens`

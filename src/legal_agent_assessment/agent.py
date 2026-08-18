@@ -237,11 +237,29 @@ class LegalAgent:
             # Claimed ANSWERED but cited nothing this agent actually
             # retrieved -- contracts.py requires >=1 real citation for
             # ANSWERED, and fabricating one from an unlisted chunk_id would
-            # be worse than refusing.
+            # be worse than refusing. Surfaced through `limitations`, not
+            # left empty: an empty tuple here would be indistinguishable
+            # from an honest, model-initiated insufficient_evidence refusal
+            # (the branch above, which never sets limitations) -- a real
+            # gap found during the Generation evaluation's final review
+            # (reports/generation-evaluation-report.md, "Citation
+            # integrity"). `fabricated_ids` is deliberately not folded into
+            # the identical-looking dropped_ids case below: that branch
+            # answers on its *real* citations and reports what it also
+            # discarded, while this one answers on nothing and reports
+            # what it discarded instead of an answer.
+            fabricated_ids = sorted(set(parsed.cited_chunk_ids))
+            detail = (
+                f"claimed chunk_id(s) never retrieved: {', '.join(fabricated_ids)}"
+                if fabricated_ids
+                else "claimed no chunk_id(s) at all"
+            )
+            limitation = f"Model claimed status=answered with zero real citations ({detail})."
             return GeneralLegalResponse(
                 request_id=request.request_id,
                 status=AnswerStatus.INSUFFICIENT_EVIDENCE,
                 retrieval_hits=retrieval_hits,
+                limitations=(limitation,),
                 versions=self._versions,
             )
 

@@ -203,6 +203,12 @@ def test_answer_returns_answered_with_citations_when_generation_grounds_the_resp
 
 
 def test_answer_returns_insufficient_evidence_when_generation_declines_despite_hits() -> None:
+    """Honest refusal (the model itself said insufficient_evidence) must
+    carry no limitations entry -- the total-fabrication tests above prove
+    the opposite case does, and this is what makes the two distinguishable
+    in the response itself, closing the gap named in the Generation
+    evaluation report's "Citation integrity" section."""
+
     bm25_hits = [_hit("c1", "doc1")]
     opensearch = _FakeOpenSearchClient(bm25_hits, [])
     generation_text = json.dumps(
@@ -230,9 +236,14 @@ def test_answer_returns_insufficient_evidence_when_generation_declines_despite_h
     # Retrieval diagnostics are still reported -- only answer/citations are
     # constrained by contracts.py's validator.
     assert len(response.retrieval_hits) == 1
+    assert response.limitations == ()
 
 
 def test_answer_falls_back_to_insufficient_evidence_when_claude_cites_nothing_retrieved() -> None:
+    """Total fabrication: status=answered but every cited id is fake. This
+    must be distinguishable from an honest refusal, not silently identical
+    to one -- see the limitations assertion below."""
+
     bm25_hits = [_hit("c1", "doc1")]
     opensearch = _FakeOpenSearchClient(bm25_hits, [])
     # Claims ANSWERED but cites a chunk_id this agent never retrieved --
@@ -257,6 +268,37 @@ def test_answer_falls_back_to_insufficient_evidence_when_claude_cites_nothing_re
     assert response.status is AnswerStatus.INSUFFICIENT_EVIDENCE
     assert response.answer is None
     assert response.citations == ()
+    assert len(response.limitations) == 1
+    assert "never-retrieved" in response.limitations[0]
+
+
+def test_answer_reports_no_limitation_when_claude_never_claimed_a_citation_at_all() -> None:
+    """Same total-fabrication branch, but cited_chunk_ids was empty from the
+    start rather than naming a fake id -- still worth a limitations entry,
+    with a different detail than the fabricated-id case above."""
+
+    bm25_hits = [_hit("c1", "doc1")]
+    opensearch = _FakeOpenSearchClient(bm25_hits, [])
+    generation_text = json.dumps(
+        {"status": "answered", "answer": "지어낸 답변", "cited_chunk_ids": []}
+    )
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
+
+    assert response.status is AnswerStatus.INSUFFICIENT_EVIDENCE
+    assert len(response.limitations) == 1
+    assert "no chunk_id" in response.limitations[0]
 
 
 def test_answer_sends_search_query_input_type_never_search_document() -> None:

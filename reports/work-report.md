@@ -190,7 +190,7 @@ deliverables):
 5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
-8. Verifiable citations, `insufficient_evidence`, `out_of_scope`, `dependency_unavailable` — done, all 4 response states implemented and covered by both unit tests and the real Generation evaluation run.
+8. Verifiable citations, `insufficient_evidence`, `out_of_scope`, `dependency_unavailable` — done, all 4 response states implemented and covered by both unit tests and the real Generation evaluation run. A citation-integrity blind spot found during the Generation evaluation's final code review (total-fabrication citations were indistinguishable from an honest refusal) was closed on 2026-08-18 — see "Incomplete / found but not fixed" below for what changed and how it was verified.
 9. Single-turn, stateless application-service contract — done (`GeneralLegalRequest`/`GeneralLegalResponse`, `async def answer`).
 10. Tests, reproducible commands, architecture decisions, limitations, effort/time/cost evidence — done: 229 tests passing; non-interactive `verify_release.py`, `index_chunks.py`, `evaluate_retrieval.py`, `evaluate_generation.py`, `serve_legal_agent.py`; Architecture, Retrieval evaluation, and Generation evaluation reports committed; this Work report.
 
@@ -220,42 +220,64 @@ silently skipped):
   in practice and reproduced the same status-decision pattern, reported
   as evidence of stability, not a substitute for a formal variance study.
 
+**Found and fixed within this submission, not deferred:**
+
+- **`agent.py`'s "total fabrication" citation path was invisible to
+  `limitations_fired_count`.** Found during the Generation evaluation's
+  final code review: if the model claimed `answered` with zero
+  actually-retrieved cited ids, the response downgraded to a bare
+  `insufficient_evidence` with an empty `limitations` field —
+  indistinguishable from an honest refusal. Originally judged out of
+  scope for an evaluation-tooling fix round and deferred to "one more
+  week" in an earlier version of this report; revisited and fixed on
+  2026-08-18 once judged a small, contained, low-risk change (it changes
+  response *visibility*, not model behavior or any accuracy metric) —
+  `agent.py`'s existing partial-fabrication `limitations` pattern was
+  extended to the total-fabrication case too. Verified by TDD (2 new
+  unit tests plus assertions added to 2 existing tests, confirmed failing
+  before the fix and passing after) and by one real full re-run, which
+  resolved a real, previously-disclosed unknown rather than a
+  hypothetical one: questions 11 and 22 (the false-refusal pair below)
+  both show `limitations_count: 0` in the real committed data, proving
+  they are honest refusals, not caught fabrication — see the Generation
+  evaluation report's "Citation integrity" section for the full data.
+
 **Incomplete / found but not fixed** (real gaps, surfaced by this
 project's own review process, disclosed rather than silently left):
 
-- **`agent.py`'s "total fabrication" citation path is invisible to
-  `limitations_fired_count`.** If the model claims `answered` with zero
-  actually-retrieved cited ids, the response downgrades to a bare
-  `insufficient_evidence` with an empty `limitations` field —
-  indistinguishable, in the current response contract, from an honest
-  refusal. Found during the Generation-evaluation final code review;
-  fixing it needs a production change to the response contract, judged
-  out of scope for an evaluation-tooling fix round under this deadline.
-  Disclosed in the Generation evaluation report's "Citation integrity"
-  section.
-- **Two real, opposite-direction refusal-accuracy failures; two prompt
-  fixes attempted and reverted; root cause now identified but not yet
-  fixed**: 2 of 42 answerable questions are falsely refused despite
-  successful retrieval (`insufficient_evidence refusal accuracy`
-  section's mirror finding), and 4 of 9 `insufficient_evidence`-expected
-  questions are answered instead of refused (corrected count, after
-  removing 2 gold-label errors from this bucket — see Blocker log item
-  10). Two targeted fixes were tried against the pre-correction baseline,
-  both reverted against a pre-registered bar: `prompt-v3` (a blanket
-  instruction against answering by analogy) improved the over-answering
-  direction (3→2) but worsened false refusals more (2→8); `prompt-v4` (a
-  contrastive worked example) did not improve the over-answering
-  direction at all and still worsened false refusals (2→6). Both
-  reverted; `prompt-v2` remains in production. **Root cause found on
-  2026-08-18, after both attempts**: reading the actual generated answer
-  for one over-answer case (id 53) shows the model's own prose explicitly
-  states the source is ambiguous ("...개인 유튜브 채널 촬영을 포함하는지
-  여부는... 불분명합니다") and then still returns `status: "answered"`
-  anyway — the failure is not that the model fails to recognize
-  insufficient evidence, but a disconnect between its own stated
-  uncertainty and its final status decision. This points to a structural
-  fix (a code-checked explicit resolution field, not another prompt
-  instruction) as the next candidate, not attempted this submission.
+- **Two real, opposite-direction refusal-accuracy failures; three
+  independent fix attempts, three different mechanisms, all reverted**:
+  2 of 42 answerable questions are falsely refused despite successful
+  retrieval (`insufficient_evidence refusal accuracy` section's mirror
+  finding), and 4 of 9 `insufficient_evidence`-expected questions are
+  answered instead of refused (corrected count, after removing 2
+  gold-label errors from this bucket — see Blocker log item 10).
+  `prompt-v3` (a blanket instruction against answering by analogy)
+  improved the over-answering direction (3→2, against the uncorrected
+  baseline) but worsened false refusals more (2→8). `prompt-v4` (a
+  contrastive worked example instead of a blanket instruction) improved
+  nothing and still worsened false refusals (2→6). `prompt-v5`
+  (2026-08-18, against the corrected 9-question set): an explicit
+  `source_directly_resolves` field the model must commit to before
+  `status`, code-checked rather than trusted — directly targeting a real
+  root cause found after v3/v4 (id 53's own answer text states its source
+  is ambiguous and still returns `status: "answered"` anyway, a
+  disconnect between stated reasoning and final decision, not a failure
+  to notice the gap). Its first real run crashed on question 53 itself
+  (the model emitted a correct JSON verdict, then "Wait, let me
+  reconsider...", then a second, contradictory one — an unhandled
+  parsing case, fixed: `parse_answer_response` now takes only the first
+  JSON value in the text, and the prompt now explicitly forbids
+  reconsideration text). The repaired v5's real re-run: no improvement
+  (still 4; id 53 itself was answered incorrectly again, without
+  crashing) and false refusals rose to 6. Reverted; `prompt-v2` remains in
+  production. **All three attempts reverted against the same
+  pre-registered bar.** Three independently-mechanized attempts producing
+  the identical trade-off (less over-answering always costs more false
+  refusal, net negative) is read as evidence the fix does not live at the
+  prompt-wording or response-schema level — not attempted a fourth time
+  this submission; see "What one additional week would allow" for the
+  next, structurally different candidate.
 - **Generation-only latency is not isolated from the judge call's added
   latency** in the Generation evaluation report's `answered`-path
   numbers — the deliverable's own single-call response time was not
@@ -266,23 +288,26 @@ project's own review process, disclosed rather than silently left):
 Self-instrumented from the first real call this project made, per
 SUBMISSION.md's requirement (contributors share one IAM user; no billing
 or CloudTrail record can attribute usage to a specific contributor).
-Source: every file in `reports/usage/` (gitignored; 25 files, one per real
+Source: every file in `reports/usage/` (gitignored; 28 files, one per real
 script invocation that made at least one real AWS call). This total
 includes every real run made after this report's numbers were first
-drafted on 08-14: the `prompt-v3` and `prompt-v4` trials (both tried, then
-reverted — `prompt-v2` is what shipped), a 2026-08-18 re-verification pass
-against the local container to confirm the committed numbers reproduce,
-and the test-set expansion/correction work (real retrieval and generation
-evaluation runs against the growing/corrected 56-question set, including
-one run made before the 2 gold-label corrections and one after).
+drafted on 08-14: the `prompt-v3`, `prompt-v4`, and `prompt-v5` trials (all
+tried, then reverted — `prompt-v2` is what shipped; `prompt-v5`'s first
+attempt crashed mid-run on a real parsing bug, itself fixed, and its
+second, completed attempt is the 5th "failed" generation-evaluation run
+below), a 2026-08-18 re-verification pass against the local container to
+confirm the committed numbers reproduce, the test-set expansion/correction
+work (real retrieval and generation evaluation runs against the
+growing/corrected 56-question set), and the `agent.py` citation-integrity
+fix's own real validation run.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
 | Index builds (`index_chunks.py`) | 2 | 7,280,846 | — | — | $0.8738 |
 | Retrieval evaluations (`evaluate_retrieval.py`) | 6 | 11,819 | — | — | $0.001417 |
-| Generation evaluations (`evaluate_generation.py`) | 12 (8 succeeded, 4 failed) | 15,618 | 3,827,691 | 247,114 | $15.191655 |
+| Generation evaluations (`evaluate_generation.py`) | 15 (10 succeeded, 5 failed) | 21,924 | 5,323,959 | 333,010 | $20.969656 |
 | Real demo calls (`serve_legal_agent.py`) | 5 (2 without token capture) | 74 | 18,444 | 858 | $0.06821 |
-| **Total, fully instrumented** | **25** | **7,308,357** | **3,846,135** | **247,972** | **$16.135082** |
+| **Total, fully instrumented** | **28** | **7,314,663** | **5,342,403** | **333,868** | **$21.913083** |
 
 Plus, disclosed separately rather than folded into the total above
 (see Blocker log items 7–9): **~$0.00001** from 6 untracked pre-
@@ -311,42 +336,49 @@ OpenSearch domain was never actually queried this project (see
 
 In priority order, most valuable first:
 
-1. **Fix the two opposite-direction refusal-accuracy failures with the
-   now-identified structural mechanism.** Two prompt-level attempts
-   (`prompt-v3`, `prompt-v4`) were tried and reverted before root cause
-   was known. The root cause is now identified (see "Incomplete / found
-   but not fixed" above): the model can state a source is ambiguous in
-   its own prose and still choose `status: "answered"` — a disconnect
-   between stated reasoning and final decision, not a failure to
-   recognize the gap. The next attempt should force an explicit,
-   code-checked intermediate field ("does a source directly resolve this
-   exact question: yes/no") and derive `status` from that field rather
-   than trusting the model's own status choice directly, then re-run the
+1. **Fix the two opposite-direction refusal-accuracy failures with a
+   structurally different mechanism than the three already tried.**
+   `prompt-v3` (blanket instruction), `prompt-v4` (contrastive example),
+   and `prompt-v5` (a code-checked `source_directly_resolves` field the
+   model must commit to inside the same generation call) were all tried
+   and reverted against the identical pre-registered bar — all three
+   produced the same trade-off (less over-answering costs more false
+   refusal, net negative), which is read as evidence the fix does not
+   live inside the single generation call at all, regardless of its
+   internal wording or output schema. The next attempt should split
+   resolution-checking into its **own, separate Bedrock call** — the same
+   pattern `judge.py` already uses for post-hoc grounding verification,
+   applied before finalizing status instead of after: a narrowly-scoped
+   call given only the question and the specific cited source, asked
+   only "does this source state the specific rule that resolves this
+   exact question," in a context not already committed to producing an
+   answer. This roughly doubles generation-path Bedrock cost and latency
+   (an extra real call per `answered` response, similar in shape to the
+   existing judge call) but is structurally different from all three
+   failed attempts in a way none of them were from each other. Re-run the
    Generation evaluation to confirm without regressing
    `out_of_scope_refusal_accuracy` (currently a clean 1.0) or the
    domain-coverage risk (currently confirmed resolved).
-2. **Close the `agent.py` total-fabrication citation-integrity gap** —
-   make the response contract distinguish "the model honestly had no
-   evidence" from "the model claimed an answer with zero real citations
-   and was caught" — a real production change, not an evaluation-tooling
-   fix, so it needs its own design/review cycle.
-3. **A second, independent grounding check** — either a genuinely
+2. **A second, independent grounding check** — either a genuinely
    different judge model (would require sourcing and verifying a second
    Kit-approved model id) or a human-reviewed spot-check of a sample of
    the 44 judged answers, to test whether the single-model,
    single-pass judge's `partially_grounded` calls hold up under
-   independent review.
-4. **Isolate generation-only latency** from the judge call's added
+   independent review. (The `agent.py` citation-integrity gap named in
+   an earlier version of this list has since been fixed within this
+   submission — see "Found and fixed within this submission" above.)
+3. **Isolate generation-only latency** from the judge call's added
    latency in the `answered`-path numbers, and investigate whether the
-   per-domain grounding pattern (공중위생법 fully grounded, four other
-   domains with zero fully-grounded answers this run) is a stable
-   property or this run's sampling noise, with a larger per-domain
-   sample.
-5. **Complete the managed-domain (SigV4/SSM) connectivity verification**
+   per-domain grounding pattern (공중위생법 fully grounded, three other
+   domains with zero fully-grounded answers this run — the specific
+   3-domain set itself already shifted once between two real runs, per
+   the Generation evaluation report's "Grounding" section) is a stable
+   property or sampling noise, with a larger per-domain sample.
+4. **Complete the managed-domain (SigV4/SSM) connectivity verification**
    once a real managed-domain endpoint and app-EC2 instance id are
    available, including the now-permission-cleared Nori analyzer's actual
    mechanical behavior on that domain.
-6. **A formal repeated-trial variance study** for generation — running a
+5. **A formal repeated-trial variance study** for generation — running a
    subset of questions several times each to characterize answer-to-
-   answer variance under the fixed prompt, beyond the two full runs'
-   informal reproduction already reported.
+   answer variance under the fixed prompt, beyond the several full-run
+   informal reproductions already reported.
