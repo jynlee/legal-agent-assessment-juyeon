@@ -9,17 +9,26 @@ cost — with deterministic retrieval measurement kept separate (see the
 necessarily stochastic generation measurements below.
 
 All numbers are from a real, full-pipeline run of `LegalAgent.answer_sync`
-(retrieval + real Bedrock generation) against all 50 questions in
-`reports/eval/retrieval_test_set.json`, committed at `ff85ab8`
-(`reports/eval/generation_evaluation_results.json`). Method is fixed by
+(retrieval + real Bedrock generation) against all 56 questions in
+`reports/eval/retrieval_test_set.json` (`reports/eval/
+generation_evaluation_results.json`). Method is fixed by
 `reports/decisions/2026-08-14-generation-evaluation-design.md`.
+
+**2026-08-18 update.** The test set grew from 50 to 56 questions, and 2 of
+the original 5 `insufficient_evidence` questions (ids 43, 54) were found
+to have incorrect gold labels on real re-verification — both are directly
+resolved by a real statute provision the original construction pass's
+search terms missed — and were relabelled `answered`. All numbers below
+are from the real re-run against the corrected 56-question set. See
+"insufficient_evidence refusal accuracy" below for the full story and why
+it changes this report's central finding.
 
 ## Methodology, restated briefly
 
-Every one of the 50 questions runs through the real, production
+Every one of the 56 questions runs through the real, production
 `LegalAgent.answer_sync` once — the same method
 `scripts/serve_legal_agent.py` uses for one real question, run here over
-all 50, making no separate evaluation-only pipeline. For every response
+all 56, making no separate evaluation-only pipeline. For every response
 that comes back `answered`, a second real Bedrock call (the same fixed
 Sonnet model, `legal_agent_assessment.judge`) classifies whether the
 answer's actual prose content is supported by its own cited excerpts:
@@ -31,13 +40,16 @@ practice showed.
 
 ## Grounding
 
-Of the 41 responses that came back `answered` (see "insufficient_evidence
-refusal accuracy" below for why 41 and not 40), the judge classified:
+Of the 44 responses that came back `answered` (40 of the 42
+`expected_status: "answered"` questions, the other 2 having been falsely
+refused instead — see "False refusals" below — plus 4 questions expected
+`insufficient_evidence` that were over-answered instead — see
+"insufficient_evidence refusal accuracy" below), the judge classified:
 
 | Verdict | Count | Share of judged answers |
 | --- | --- | --- |
-| `grounded` | 9 | 22.0% |
-| `partially_grounded` | 32 | 78.0% |
+| `grounded` | 13 | 29.5% |
+| `partially_grounded` | 31 | 70.5% |
 | `unsupported` | 0 | 0.0% |
 | `judge_parse_error` | 0 | — |
 
@@ -67,25 +79,29 @@ included since it comes free from data already collected):
 
 | Domain | grounded | partially_grounded | unsupported | n |
 | --- | --- | --- | --- | --- |
-| 공중위생법 | 4 | 0 | 0 | 4 |
+| 공중위생법 | 5 | 0 | 0 | 5 |
+| 미용법 | 2 | 3 | 0 | 5 |
+| 안마사법 | 2 | 3 | 0 | 5 |
+| 약사법 | 2 | 2 | 0 | 4 |
 | 의료기기법 | 1 | 4 | 0 | 5 |
-| 의료법 | 1 | 3 | 0 | 4 |
-| 미용법 | 1 | 3 | 0 | 4 |
-| 안마사법 | 1 | 3 | 0 | 4 |
-| 개인정보보호법 | 1 | 2 | 0 | 3 |
-| 약사법 | 0 | 4 | 0 | 4 |
+| 무면허의료행위 | 1 | 3 | 0 | 4 |
+| 의료법 | 0 | 4 | 0 | 4 |
 | 표시광고법 | 0 | 5 | 0 | 5 |
 | 화장품법 | 0 | 4 | 0 | 4 |
-| 무면허의료행위 | 0 | 4 | 0 | 4 |
+| 개인정보보호법 | 0 | 3 | 0 | 3 |
 
 공중위생법 is the only domain with every answer fully `grounded`; four
-domains (약사법, 표시광고법, 화장품법, 무면허의료행위) had zero fully
+domains (의료법, 표시광고법, 화장품법, 개인정보보호법) had zero fully
 `grounded` answers this run — every one of their answered questions drew
-at least one judge-flagged overreach. This is disclosed as a real,
-domain-correlated pattern in this run, not investigated further here (a
-larger sample per domain, or a second judge pass, would be needed to say
-whether it is a stable per-domain property or this run's noise — named as
-future work below).
+at least one judge-flagged overreach. 공중위생법's own count includes id
+53 (the new insufficient_evidence question this domain over-answered —
+judged `grounded` even though the status itself was wrong, since the
+judge only checks whether prose matches citations, not whether refusal
+was the correct status). This is disclosed as a real, domain-correlated
+pattern in this run, not investigated further here (a larger sample per
+domain, or a second judge pass, would be needed to say whether it is a
+stable per-domain property or this run's noise — named as future work
+below).
 
 **Method limitation, disclosed plainly.** This is a single-model,
 single-pass, automated classification (`reports/decisions/2026-08-14-
@@ -103,7 +119,7 @@ was attempted here.
 `agent.py`'s existing logic already discards any cited `chunk_id` that was
 not actually retrieved in that call, surfacing the discard through the
 response's `limitations` field rather than silently dropping or
-fabricating one. Across all 50 real calls this run, **`limitations_fired_count:
+fabricating one. Across all 56 real calls this run, **`limitations_fired_count:
 0`** — the guard never had to intervene on a *partial* fabrication (some
 cited ids real, some not).
 
@@ -142,39 +158,64 @@ its cited excerpts specifically say.
 
 ## insufficient_evidence refusal accuracy
 
-**0.4 (2 of 5 correct).** Of the 5 questions with `expected_status:
-"insufficient_evidence"` (ids 41-45, targeting the documented gap where
-the official guidance documents that would resolve certain
-advertising-phrase questions are absent from every release on licence
-grounds — DATASET.md, and see the Retrieval evaluation report's "Test-query
-sources and construction method"):
+**0.5556 (5 of 9 correct).** The category grew from 5 to 9 questions on
+2026-08-18 (see the Retrieval evaluation report's "Composition" and
+"Test-query sources and construction method" for the 6 new questions'
+construction and domain-coverage rationale) and 2 of the original 5 (ids
+43, 54) were found to be mislabelled and moved out of this category — see
+"Two gold-label errors found and corrected" below before reading this
+number as a trend against the original 0.4.
 
 | id | domain | question | actual status | correct? |
 | --- | --- | --- | --- | --- |
 | 41 | 표시광고법 | "피부 노화가 되돌아간다"고 광고해도 되나요? | `insufficient_evidence` | ✅ |
 | 42 | 화장품법 | "식약처 인증 성분 사용" 문구를 써도 되나요? | `answered` | ❌ |
-| 43 | 의료기기법 | "의료기기 수준의 효과"라고 홍보해도 되나요? | `answered` | ❌ |
 | 44 | 표시광고법 | "100% 만족 보장" 문구를 붙여도 되나요? | `answered` | ❌ |
 | 45 | 표시광고법 | "피부과 전문의가 추천"했다고 광고해도 되나요? | `insufficient_evidence` | ✅ |
+| 51 | 무면허의료행위 | 왁싱으로 제모해도 무면허의료행위인가요? | `insufficient_evidence` | ✅ |
+| 52 | 무면허의료행위 | 바늘 없는 속눈썹 펌도 무면허의료행위인가요? | `insufficient_evidence` | ✅ |
+| 53 | 공중위생법 | 개인 유튜브 촬영을 위한 출장 시술도 되나요? | `answered` | ❌ |
+| 55 | 안마사법 | 무자격 직원의 발마사지 시술도 되나요? | `answered` | ❌ |
+| 56 | 약사법 | SNS 체험단 무상 증정도 '판매'로 규제받나요? | `insufficient_evidence` | ✅ |
 
-**The failure mode, investigated rather than left as a bare number.** All
-5 questions retrieved a full 10 hits (`retrieval_hit_count: 10`) — this is
-not a retrieval gap, retrieval is doing its job and surfacing real,
-on-topic statute and precedent chunks. The 3 misclassified questions (42,
-43, 44) each received a generation-model answer built from those real,
-on-topic chunks, reasoning by analogy to a related but not dispositive
-precedent — the judge's own grounding verdicts for these three
-(`partially_grounded`, `grounded`, `partially_grounded`) confirm the
-answers are largely faithful to what was retrieved. The model is not
-hallucinating law; it is **answering a specific-fact judgment call the
-retrieved evidence does not actually resolve**, rather than recognizing
-the gap and refusing. This is exactly the corpus gap the test set's design
-intentionally targets (DATASET.md's withdrawn-guide gap): the model has
-enough context to sound authoritative but not enough to be correct with
-certainty, and its current prompt does not push it toward refusing in that
-specific situation strongly enough.
-`insufficient_evidence_misclassified_as_answered: 3` in the committed
-aggregate records this directly.
+**Two gold-label errors found and corrected, disclosed in full rather than
+quietly fixed.** Ids 43 and 54 were originally built into this test set
+(43 on 8/13, 54 earlier on 8/18) as `insufficient_evidence` questions and
+both were among the "misclassified" failures this report first recorded.
+Root-causing those failures — reading the model's actual cited sources
+line by line, not just the aggregate number — surfaced that both were
+wrong: id 43's question ("의료기기 수준의 효과가 있다고 홍보해도
+되나요?") is directly and almost verbatim resolved by 의료기기법 제26조
+제7항 ("누구든지 의료기기가 아닌 것의... 의료기기와 유사한 성능이나 효능
+및 효과 등이 있는 것으로 잘못 인식될 우려가 있는... 광고를 하여서는 아니
+된다"); id 54's question (면허 대여) is directly resolved by
+공중위생관리법 제6조 제3항 ("면허증을... 빌려주어서는 아니 되고...
+빌려서는 아니 된다"). Both provisions exist in the corpus and were missed
+by the original construction/verification search terms (a lexical search
+for "대여" does not match "빌려주다/빌리다," a related but different
+Korean verb). Both were relabelled `answered` with the real resolving
+chunk as their required positive, and both were then re-checked in a real
+generation run: the model answered both correctly with real, relevant
+citations. This is the same standard this project has applied to itself
+throughout (see the Work report's blocker log) — a bad gold label is a
+defect in the evaluation, not a defect in the model, and treating the two
+differently is exactly the discipline "measure, don't assume" requires.
+
+**The failure mode, on the 4 confirmed-genuine failures (42, 44, 53,
+55).** All 4 questions retrieved a full 10 hits — not a retrieval gap.
+Three (42, 44, 55) reason by analogy from a real but not-dispositive
+source: a general prohibition, a related precedent about a different
+specific phrase, or a related precedent about a different specific
+service. The fourth, id 53, is the most direct evidence of the actual
+mechanism: the model's own answer text states **"'방송 등의 촬영'이 개인
+유튜브 채널 촬영을 포함하는지 여부는 제공된 자료만으로는 명확히 판단하기
+어렵습니다... 불분명합니다"** — the model explicitly recognizes the gap in
+its own reasoning — and then still returns `status: "answered"` anyway.
+This means the failure is not primarily that the model fails to notice
+insufficient evidence; id 53 shows it can notice and say so in prose. The
+failure is a **disconnect between the model's own stated uncertainty and
+its final status decision**. `insufficient_evidence_misclassified_as_answered: 4`
+in the committed aggregate records the confirmed count.
 
 **Separately, `insufficient_evidence_misclassified_as_out_of_scope: 0`.**
 This is the deferred risk from item 7/8's final review (the concern that
@@ -182,26 +223,42 @@ the `out_of_scope` prompt instruction, having no explicit domain list,
 might misclassify a genuinely in-scope-but-unanswerable question as
 `out_of_scope` instead). This evaluation is the first real, empirical
 check of that risk, and it did not materialize — confirmed identically
-across two independent real runs (this committed run, and the earlier
-run before this report's code fixes, `fd810f1`). No prompt change is
-needed for that specific risk.
+across three independent real runs now (the original `fd810f1`/`ff85ab8`
+runs, and this 2026-08-18 run against a larger and corrected question
+set). No prompt change is needed for that specific risk.
 
-**A prompt revision was tried and reverted based on this finding.**
-`prompt-v3` added an explicit anti-analogy instruction telling the model
-not to answer by reasoning from a related-but-not-dispositive precedent.
-Re-running all 50 questions showed `insufficient_evidence_misclassified_as_answered`
-improved from 3 to 2, but `false_refusal_count` (see below) worsened
-from 2 to 8 and `answered_status_match_rate` dropped from 0.95 to 0.8 —
-a net worsening from 5 to 10 total status errors. `prompt-v3` was
-reverted; `prompt-v2` (this report's committed numbers) remains in
-production.
+**Two prompt revisions were tried and reverted, both before the
+gold-label errors above were found.** `prompt-v3` added an explicit
+anti-analogy instruction; a real re-run showed
+`insufficient_evidence_misclassified_as_answered` improve from 3 to 2 but
+`false_refusal_count` worsen from 2 to 8 (net status errors 5→10).
+`prompt-v4` replaced that with a contrastive worked example in an
+unrelated hypothetical domain; a real re-run showed no improvement on the
+target metric (stayed at 3) while `false_refusal_count` still worsened
+(2→6). Both were reverted against a pre-registered bar (target-metric
+improvement with no increase in false refusals); `prompt-v2` remains in
+production. **Caveat, disclosed rather than silently carried forward:**
+both v3 and v4 were measured against the original 5-question
+`insufficient_evidence` set, which included the 2 now-corrected mislabels
+(43, 54) — so their "3 misclassified" baseline was partly inflated by bad
+labels, not purely model error. Neither experiment was rerun against the
+corrected set; the qualitative conclusion (a blanket instruction or a
+single contrastive example both trade over-answers for false refusals
+without net improvement) is still the best available evidence, but the
+exact before/after counts for v3/v4 should be read as measured against
+the uncorrected baseline, not the current one. The root cause surfaced
+after both attempts — id 53's prose/status disconnect — was not
+available when either was designed, and points toward a structural fix
+(forcing an explicit, code-checked "does a source directly resolve this"
+field rather than trusting the model's own status field) as the next
+candidate, not a third prompt-wording iteration.
 
 ## False refusals
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct
-of running all 50 questions and reported here because it is a real,
-non-obvious finding: **2 of the 40 answerable questions were incorrectly
-refused** (`false_refusal_count: 2`, `answered_status_match_rate: 0.95`).
+of running all 56 questions and reported here because it is a real,
+non-obvious finding: **2 of the 42 answerable questions were incorrectly
+refused** (`false_refusal_count: 2`, `answered_status_match_rate: 0.9524`).
 
 | id | domain | question | actual status |
 | --- | --- | --- | --- |
@@ -240,15 +297,15 @@ measured around the whole loop iteration including it, so the two
 
 | | n | min | median | max |
 | --- | --- | --- | --- | --- |
-| All 50 questions | 50 | 1,445.8 ms | 13,931.0 ms | 24,510.8 ms |
-| `answered` only | 41 | 7,610.4 ms | 14,477.1 ms | 24,510.8 ms |
-| Refusal (`insufficient_evidence`/`out_of_scope`) | 9 | 1,445.8 ms | 1,740.9 ms | 1,902.6 ms |
+| All 56 questions | 56 | 1,509.3 ms | 14,243.7 ms | 26,662.1 ms |
+| `answered` only | 44 | 7,463.5 ms | 15,451.8 ms | 26,662.1 ms |
+| Refusal (`insufficient_evidence`/`out_of_scope`) | 12 | 1,509.3 ms | 1,666.3 ms | 1,857.1 ms |
 
-| Percentile (all 50) | Latency |
+| Percentile (all 56) | Latency |
 | --- | --- |
-| p50 | 13,931.0 ms |
-| p95 | 19,067.2 ms |
-| p99 | 22,031.1 ms |
+| p50 | 14,243.7 ms |
+| p95 | 18,393.1 ms |
+| p99 | 19,689.4 ms |
 
 Refusals are consistently fast (~1.4-1.9s) — the model reaches a
 no-evidence or out-of-scope decision quickly. `answered` responses take an
@@ -268,11 +325,11 @@ returns — not reconstructed afterward).
 
 | | Value |
 | --- | --- |
-| Embed tokens (estimated, query embedding only) | 1,887 |
-| Generation input tokens (real, answer + judge calls) | 465,591 |
-| Generation output tokens (real, answer + judge calls) | 29,958 |
-| **Estimated cost** | **$1.846369** |
-| Wall-clock elapsed (full 50-question run) | 610.82 s (~10.2 min) |
+| Embed tokens (estimated, query embedding only) | 2,148 |
+| Generation input tokens (real, answer + judge calls) | 520,256 |
+| Generation output tokens (real, answer + judge calls) | 32,962 |
+| **Estimated cost** | **$2.055456** |
+| Wall-clock elapsed (full 56-question run) | 676.54 s (~11.3 min) |
 
 Per-question token counts are recorded in the committed results file
 (`reports/eval/generation_evaluation_results.json`, `embed_estimated_tokens`
@@ -325,9 +382,9 @@ history).
 
 ## Storage and reproduction
 
-`reports/eval/generation_evaluation_results.json` (committed, `ff85ab8`) —
+`reports/eval/generation_evaluation_results.json` (committed) —
 full per-question results including answer text, citations, grounding
-verdict and justification, and token/latency figures for all 50 questions.
+verdict and justification, and token/latency figures for all 56 questions.
 Real per-run usage logs (gitignored, per this project's shared-IAM
 instrumentation convention) are in `reports/usage/`. Rerun with:
 
@@ -337,6 +394,6 @@ uv run python scripts/evaluate_generation.py --contributor <your-contributor-id>
 ```
 
 against a rebuilt index (see the Retrieval evaluation report's index-build
-instructions) — this is a real-cost script (~$1.85 per full run), not
+instructions) — this is a real-cost script (~$2.06 per full run), not
 exercised by the automated test suite, matching `scripts/evaluate_retrieval.py`'s
 own convention.

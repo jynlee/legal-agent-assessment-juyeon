@@ -57,10 +57,10 @@ _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS = 0.12
 
 
 def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
-    """Read the 50-question test set."""
+    """Read the 56-question test set."""
 
     data: list[dict[str, Any]] = json.loads(path.read_text(encoding="utf-8"))
-    assert len(data) == 50, f"expected 50 test-set entries, got {len(data)}"
+    assert len(data) == 56, f"expected 56 test-set entries, got {len(data)}"
     return data
 
 

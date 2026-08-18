@@ -1,5 +1,5 @@
 """Full generation-pipeline evaluation: refusal accuracy, citation
-integrity, and grounding, against the frozen 50-question test set.
+integrity, and grounding, against the frozen 56-question test set.
 
     OPENSEARCH_URL=http://localhost:9201 \
     uv run python scripts/evaluate_generation.py --contributor jynlee
@@ -7,15 +7,17 @@ integrity, and grounding, against the frozen 50-question test set.
 Runs every question in reports/eval/retrieval_test_set.json through the
 real LegalAgent.answer_sync (retrieval + generation) once each -- the same
 method scripts/serve_legal_agent.py uses for one real question, run here
-over all 50. For every response that comes back "answered", a second real
+over all 56. For every response that comes back "answered", a second real
 Bedrock call judges whether the answer is actually supported by its own
 cited excerpts (legal_agent_assessment.judge, same fixed Sonnet 4.6
 model). Implements reports/decisions/2026-08-14-generation-evaluation-design.md
 in full.
 
-This makes ~50 real generation calls plus ~40 real judge calls -- a real,
-budgeted cost (estimated $1.5-2 for a full run, per the design doc's own
-estimate from one real demo call). Writes a per-run usage log to
+This makes ~56 real generation calls plus real judge calls for every
+"answered" response -- a real, budgeted cost (estimated $1.5-2 for a full
+run at 50 questions, per the design doc's own estimate from one real demo
+call; scales up modestly with the larger insufficient_evidence sample).
+Writes a per-run usage log to
 reports/usage/ and a committed results snapshot to
 reports/eval/generation_evaluation_results.json.
 """
@@ -71,10 +73,10 @@ def estimated_cost_usd(
 
 
 def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
-    """Read the 50-question test set."""
+    """Read the 56-question test set."""
 
     data: list[dict[str, Any]] = json.loads(path.read_text(encoding="utf-8"))
-    assert len(data) == 50, f"expected 50 test-set entries, got {len(data)}"
+    assert len(data) == 56, f"expected 56 test-set entries, got {len(data)}"
     return data
 
 
@@ -98,7 +100,7 @@ def call_judge(
     reasoning instead of the requested bare JSON object) returns
     `(None, input_tokens, output_tokens, str(error))` instead of raising,
     so one malformed judge response records as a `judge_parse_error` for
-    that question rather than crashing the entire 50-question run --
+    that question rather than crashing the entire run --
     real, real-cost failure mode observed on 2026-08-14.
     """
 
@@ -140,7 +142,7 @@ def call_judge(
 
 
 def main() -> None:
-    """Run the full generation evaluation once, over all 50 questions."""
+    """Run the full generation evaluation once, over all questions."""
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contributor", required=True)
@@ -289,7 +291,7 @@ def main() -> None:
             result["latency_ms"] = round((time.perf_counter() - question_start) * 1000, 1)
             per_question_results.append(result)
             print(
-                f">>> [{entry['id']:>2}/50] {entry['domain'] or '(out_of_scope)'}: "
+                f">>> [{entry['id']:>2}/{len(questions)}] {entry['domain'] or '(out_of_scope)'}: "
                 f"{result['status']} (expected {expected_status}) "
                 f"{result['latency_ms']:.0f}ms"
             )

@@ -359,21 +359,23 @@ a caller as a generic infrastructure outage.
 prompt instruction does not give the model an explicit list of the ten
 legal domains this assistant covers, so there was a real, once-unverified
 risk that a question genuinely within scope but unresolvable by this
-corpus — the exact case the retrieval evaluation's test set includes five
+corpus — the exact case the retrieval evaluation's test set includes
 questions to exercise, expecting `insufficient_evidence` — could instead
 be misclassified as `out_of_scope`. This was flagged here as a named,
 deliberately deferred risk rather than fixed speculatively, with a plan to
 verify it empirically before relying on any `out_of_scope` numbers in the
 Generation evaluation report. That verification has since happened: the
 Generation evaluation report's real, full-pipeline run measured
-`insufficient_evidence_misclassified_as_out_of_scope: 0` against all five
-of those questions, confirmed identically across two independent real
-runs. The risk did not materialize; no prompt change was made in
-response, since there was nothing to fix. (What the same run did find,
-in the opposite direction — 3 of those 5 questions were answered instead
-of refused at all — is a different, real finding disclosed in the
-Generation evaluation report's "insufficient_evidence refusal accuracy"
-section, not a domain-coverage problem.)
+`insufficient_evidence_misclassified_as_out_of_scope: 0`, confirmed
+identically across three independent real runs (the original 5-question
+`insufficient_evidence` set, and the 2026-08-18 run against the corrected,
+9-question set). The risk did not materialize; no prompt change was made
+in response, since there was nothing to fix. (What the same runs did find,
+in the opposite direction — real over-answers instead of refusals on some
+of those questions, and 2 of the original 5 having been mislabelled
+outright, found and corrected on 2026-08-18 — is a different, real finding
+disclosed in the Generation evaluation report's "insufficient_evidence
+refusal accuracy" section, not a domain-coverage problem.)
 
 ## 6. Portability boundaries and known Peitho adaptation work
 

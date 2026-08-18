@@ -5,7 +5,9 @@
     "domain": "약사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-108043#summary-headnote-000",
-    "relevant_chunk_ids": ["precedent-108043#summary-headnote-000"],
+    "relevant_chunk_ids": [
+      "precedent-108043#summary-headnote-000"
+    ],
     "notes": "화장품 원료 소분 = 제조행위 해당 여부를 다룬 판례."
   },
   {
@@ -14,7 +16,9 @@
     "domain": "약사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-206398#body-009",
-    "relevant_chunk_ids": ["precedent-206398#body-009"],
+    "relevant_chunk_ids": [
+      "precedent-206398#body-009"
+    ],
     "notes": "무자격 한약국 개설에 대한 적용 법조·형 선택."
   },
   {
@@ -23,7 +27,9 @@
     "domain": "약사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-190259#body-005",
-    "relevant_chunk_ids": ["precedent-190259#body-005"],
+    "relevant_chunk_ids": [
+      "precedent-190259#body-005"
+    ],
     "notes": "약사법상 '판매' 개념에 해외 수출 포함 여부 쟁점."
   },
   {
@@ -32,7 +38,9 @@
     "domain": "약사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-84300#summary-holding-000",
-    "relevant_chunk_ids": ["precedent-84300#summary-holding-000"],
+    "relevant_chunk_ids": [
+      "precedent-84300#summary-holding-000"
+    ],
     "notes": "한약조제자격을 가진 약사는 조제기록부 작성·보존의무 조항(약사법 제25조의2) 적용대상이 아니라는 판례."
   },
   {
@@ -41,7 +49,9 @@
     "domain": "의료법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-622115#summary-headnote-000",
-    "relevant_chunk_ids": ["precedent-622115#summary-headnote-000"],
+    "relevant_chunk_ids": [
+      "precedent-622115#summary-headnote-000"
+    ],
     "notes": "통상적인 미용문신행위는 무면허 의료행위에 해당하지 않는다고 본 판례."
   },
   {
@@ -50,7 +60,9 @@
     "domain": "의료법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-622263#summary-headnote-000",
-    "relevant_chunk_ids": ["precedent-622263#summary-headnote-000"],
+    "relevant_chunk_ids": [
+      "precedent-622263#summary-headnote-000"
+    ],
     "notes": "서화문신행위는 무면허 의료행위에 해당하지 않는다고 본 판례."
   },
   {
@@ -59,7 +71,9 @@
     "domain": "의료법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-99684#summary-holding-000",
-    "relevant_chunk_ids": ["precedent-99684#summary-holding-000"],
+    "relevant_chunk_ids": [
+      "precedent-99684#summary-holding-000"
+    ],
     "notes": "지압안마·침술을 무면허 의료행위로 다룬 판례."
   },
   {
@@ -68,7 +82,9 @@
     "domain": "의료법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-141548#summary-holding-000",
-    "relevant_chunk_ids": ["precedent-141548#summary-holding-000"],
+    "relevant_chunk_ids": [
+      "precedent-141548#summary-holding-000"
+    ],
     "notes": "의료법상 진료기록부 작성·보존의무의 범위를 다룬 판례. 의료인 대상 규정이라는 경계를 확인하는 문항."
   },
   {
@@ -77,7 +93,9 @@
     "domain": "개인정보보호법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-220165#body-039",
-    "relevant_chunk_ids": ["precedent-220165#body-039"],
+    "relevant_chunk_ids": [
+      "precedent-220165#body-039"
+    ],
     "notes": "동의 없는 제3자 제공 사례."
   },
   {
@@ -86,7 +104,9 @@
     "domain": "개인정보보호법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-614445#body-027",
-    "relevant_chunk_ids": ["precedent-614445#body-027"],
+    "relevant_chunk_ids": [
+      "precedent-614445#body-027"
+    ],
     "notes": "타 업체 DB 이전·활용에 개인정보보호법상 동의 절차가 필요하다고 본 판단."
   },
   {
@@ -95,7 +115,9 @@
     "domain": "개인정보보호법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-614445#body-010",
-    "relevant_chunk_ids": ["precedent-614445#body-010"],
+    "relevant_chunk_ids": [
+      "precedent-614445#body-010"
+    ],
     "notes": "위탁계약상 개인정보보호법 등 관련 법규 준수 조항."
   },
   {
@@ -104,7 +126,9 @@
     "domain": "개인정보보호법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-220165#body-043",
-    "relevant_chunk_ids": ["precedent-220165#body-043"],
+    "relevant_chunk_ids": [
+      "precedent-220165#body-043"
+    ],
     "notes": "목적 외 이용 금지(개인정보보호법 제19조)를 다룬 판례."
   },
   {
@@ -113,7 +137,9 @@
     "domain": "의료기기법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-204543#body-013",
-    "relevant_chunk_ids": ["precedent-204543#body-013"],
+    "relevant_chunk_ids": [
+      "precedent-204543#body-013"
+    ],
     "notes": "무허가·미신고 수입 의료기기 사용·광고에 대한 처벌."
   },
   {
@@ -122,7 +148,9 @@
     "domain": "의료기기법",
     "expected_status": "answered",
     "source_chunk_id": "doc-b32ea63979985827444e4667#body-000",
-    "relevant_chunk_ids": ["doc-b32ea63979985827444e4667#body-000"],
+    "relevant_chunk_ids": [
+      "doc-b32ea63979985827444e4667#body-000"
+    ],
     "notes": "의료기기법 시행령 별표1 과징금 산정기준. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -131,7 +159,9 @@
     "domain": "의료기기법",
     "expected_status": "answered",
     "source_chunk_id": "doc-9ecad433d2e3fb7a5dff96ad#body-000",
-    "relevant_chunk_ids": ["doc-9ecad433d2e3fb7a5dff96ad#body-000"],
+    "relevant_chunk_ids": [
+      "doc-9ecad433d2e3fb7a5dff96ad#body-000"
+    ],
     "notes": "의료기기법 시행령 별표2 과태료 부과기준. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -140,7 +170,9 @@
     "domain": "의료기기법",
     "expected_status": "answered",
     "source_chunk_id": "doc-f2510c7421cd41afe7d16ccd#body-000",
-    "relevant_chunk_ids": ["doc-f2510c7421cd41afe7d16ccd#body-000"],
+    "relevant_chunk_ids": [
+      "doc-f2510c7421cd41afe7d16ccd#body-000"
+    ],
     "notes": "의료기기법 시행규칙 별표8 행정처분 기준. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -149,7 +181,9 @@
     "domain": "표시광고법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-207141#summary-holding-001",
-    "relevant_chunk_ids": ["precedent-207141#summary-holding-001"],
+    "relevant_chunk_ids": [
+      "precedent-207141#summary-holding-001"
+    ],
     "notes": "배너광고의 구매 개수·시술후기 허위 게시로 표시광고법 위반이 인정된 사례."
   },
   {
@@ -158,7 +192,9 @@
     "domain": "표시광고법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-221809#body-020",
-    "relevant_chunk_ids": ["precedent-221809#body-020"],
+    "relevant_chunk_ids": [
+      "precedent-221809#body-020"
+    ],
     "notes": "'종전거래가격' 허위 표시와 할인광고의 거짓·과장성 판단."
   },
   {
@@ -167,7 +203,9 @@
     "domain": "표시광고법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-220369#body-010",
-    "relevant_chunk_ids": ["precedent-220369#body-010"],
+    "relevant_chunk_ids": [
+      "precedent-220369#body-010"
+    ],
     "notes": "인체 안전 관련 정보 은폐·누락이 기만적 표시·광고에 해당한다고 본 사례."
   },
   {
@@ -176,7 +214,9 @@
     "domain": "표시광고법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-220843#body-008",
-    "relevant_chunk_ids": ["precedent-220843#body-008"],
+    "relevant_chunk_ids": [
+      "precedent-220843#body-008"
+    ],
     "notes": "1+1 광고에서 종전거래가격 허위표시의 거짓·과장성 판단기준."
   },
   {
@@ -185,7 +225,9 @@
     "domain": "화장품법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-85430#body-008",
-    "relevant_chunk_ids": ["precedent-85430#body-008"],
+    "relevant_chunk_ids": [
+      "precedent-85430#body-008"
+    ],
     "notes": "화장품 제조업이 허가제에서 신고제로 바뀐 연혁과 그 의미를 다룬 판례."
   },
   {
@@ -194,7 +236,9 @@
     "domain": "화장품법",
     "expected_status": "answered",
     "source_chunk_id": "doc-84719cca9a1d779c854080c0#body-000",
-    "relevant_chunk_ids": ["doc-84719cca9a1d779c854080c0#body-000"],
+    "relevant_chunk_ids": [
+      "doc-84719cca9a1d779c854080c0#body-000"
+    ],
     "notes": "화장품법 시행규칙 별표1 품질관리기준. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -203,7 +247,9 @@
     "domain": "화장품법",
     "expected_status": "answered",
     "source_chunk_id": "doc-468e683a08a513121b891499#body-000",
-    "relevant_chunk_ids": ["doc-468e683a08a513121b891499#body-000"],
+    "relevant_chunk_ids": [
+      "doc-468e683a08a513121b891499#body-000"
+    ],
     "notes": "화장품법 시행규칙 별표7 행정처분의 기준. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -212,7 +258,9 @@
     "domain": "화장품법",
     "expected_status": "answered",
     "source_chunk_id": "doc-19df8956ba4711806d5a3c00#body-000",
-    "relevant_chunk_ids": ["doc-19df8956ba4711806d5a3c00#body-000"],
+    "relevant_chunk_ids": [
+      "doc-19df8956ba4711806d5a3c00#body-000"
+    ],
     "notes": "화장품법 시행규칙 별표4 화장품 포장의 표시기준 및 표시방법. 근거 청크가 별표 제목 수준으로 얇음."
   },
   {
@@ -221,7 +269,9 @@
     "domain": "무면허의료행위",
     "expected_status": "answered",
     "source_chunk_id": "precedent-173261#body-014",
-    "relevant_chunk_ids": ["precedent-173261#body-014"],
+    "relevant_chunk_ids": [
+      "precedent-173261#body-014"
+    ],
     "notes": "무면허로 보톡스·필러를 시술한 사례에 대한 양형 판단."
   },
   {
@@ -230,7 +280,9 @@
     "domain": "무면허의료행위",
     "expected_status": "answered",
     "source_chunk_id": "precedent-216061#summary-headnote-001",
-    "relevant_chunk_ids": ["precedent-216061#summary-headnote-001"],
+    "relevant_chunk_ids": [
+      "precedent-216061#summary-headnote-001"
+    ],
     "notes": "속눈썹·모발 이식시술행위가 의료행위에 해당한다고 본 판례."
   },
   {
@@ -239,7 +291,9 @@
     "domain": "무면허의료행위",
     "expected_status": "answered",
     "source_chunk_id": "precedent-83069#summary-headnote-001",
-    "relevant_chunk_ids": ["precedent-83069#summary-headnote-001"],
+    "relevant_chunk_ids": [
+      "precedent-83069#summary-headnote-001"
+    ],
     "notes": "이발소에서의 안마행위가 무자격 안마영업에 해당한다고 본 판례."
   },
   {
@@ -248,7 +302,9 @@
     "domain": "무면허의료행위",
     "expected_status": "answered",
     "source_chunk_id": "precedent-600433#body-015",
-    "relevant_chunk_ids": ["precedent-600433#body-015"],
+    "relevant_chunk_ids": [
+      "precedent-600433#body-015"
+    ],
     "notes": "사용인(직원)에게 무면허 의료행위를 지시한 사안의 양형 판단."
   },
   {
@@ -257,7 +313,9 @@
     "domain": "공중위생법",
     "expected_status": "answered",
     "source_chunk_id": "doc-bb3d1f9eaf8e4300d7ac3e98#body-000",
-    "relevant_chunk_ids": ["doc-bb3d1f9eaf8e4300d7ac3e98#body-000"],
+    "relevant_chunk_ids": [
+      "doc-bb3d1f9eaf8e4300d7ac3e98#body-000"
+    ],
     "notes": "공중위생관리법 시행규칙 제23조 위생교육 의무(제3항, 동일 영업자의 복수 미용업 면제 규정). 원래 문항이 어휘 중복(overlap 0.77, HIGH OVERLAP)으로 재작성됨."
   },
   {
@@ -266,7 +324,9 @@
     "domain": "공중위생법",
     "expected_status": "answered",
     "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-032",
-    "relevant_chunk_ids": ["doc-909409c33b448aaa6f49785a#body-032"],
+    "relevant_chunk_ids": [
+      "doc-909409c33b448aaa6f49785a#body-032"
+    ],
     "notes": "공중위생관리법 시행규칙 별표7, 무신고 영업·시설기준 위반 행정처분기준."
   },
   {
@@ -275,7 +335,9 @@
     "domain": "공중위생법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-80695#body-004",
-    "relevant_chunk_ids": ["precedent-80695#body-004"],
+    "relevant_chunk_ids": [
+      "precedent-80695#body-004"
+    ],
     "notes": "영업양도인의 법규위반사실로 양수인에게 행정처분을 할 수 있는지를 다룬 판례."
   },
   {
@@ -284,7 +346,9 @@
     "domain": "공중위생법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-160636#body-013",
-    "relevant_chunk_ids": ["precedent-160636#body-013"],
+    "relevant_chunk_ids": [
+      "precedent-160636#body-013"
+    ],
     "notes": "공중위생(관리)법상 위생접객업 영업 구분(숙박업·목욕장업·이용업·미용업 등) 연혁."
   },
   {
@@ -293,7 +357,9 @@
     "domain": "미용법",
     "expected_status": "answered",
     "source_chunk_id": "doc-53f90adbd0bc23656fb2cfdc#body-027",
-    "relevant_chunk_ids": ["doc-53f90adbd0bc23656fb2cfdc#body-027"],
+    "relevant_chunk_ids": [
+      "doc-53f90adbd0bc23656fb2cfdc#body-027"
+    ],
     "notes": "공중위생관리법 시행규칙 별표1, 미용업 기구 소독 의무."
   },
   {
@@ -302,7 +368,9 @@
     "domain": "미용법",
     "expected_status": "answered",
     "source_chunk_id": "doc-88efda1b60dfe93bd7341326#body-000",
-    "relevant_chunk_ids": ["doc-88efda1b60dfe93bd7341326#body-000"],
+    "relevant_chunk_ids": [
+      "doc-88efda1b60dfe93bd7341326#body-000"
+    ],
     "notes": "공중위생관리법 시행규칙 제14조, 미용사 업무범위."
   },
   {
@@ -311,7 +379,9 @@
     "domain": "미용법",
     "expected_status": "answered",
     "source_chunk_id": "doc-c7eba9168dcc608ed6eb1934#body-000",
-    "relevant_chunk_ids": ["doc-c7eba9168dcc608ed6eb1934#body-000"],
+    "relevant_chunk_ids": [
+      "doc-c7eba9168dcc608ed6eb1934#body-000"
+    ],
     "notes": "공중위생관리법 시행령 제10조의2, 면허 신규신청·재교부 수수료."
   },
   {
@@ -320,7 +390,9 @@
     "domain": "미용법",
     "expected_status": "answered",
     "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-026",
-    "relevant_chunk_ids": ["doc-909409c33b448aaa6f49785a#body-026"],
+    "relevant_chunk_ids": [
+      "doc-909409c33b448aaa6f49785a#body-026"
+    ],
     "notes": "공중위생관리법 시행규칙 별표7 업종 목록 중 '미용업' 항목. 근거 청크가 목차 수준으로 얇음."
   },
   {
@@ -329,7 +401,9 @@
     "domain": "안마사법",
     "expected_status": "answered",
     "source_chunk_id": "doc-40bb91a38251e6988a4de8c5#body-000",
-    "relevant_chunk_ids": ["doc-40bb91a38251e6988a4de8c5#body-000"],
+    "relevant_chunk_ids": [
+      "doc-40bb91a38251e6988a4de8c5#body-000"
+    ],
     "notes": "의료법 제82조, 안마사 자격을 시각장애인으로 제한. 원래 문항이 어휘 중복(overlap 0.68, HIGH OVERLAP)으로 재작성됨."
   },
   {
@@ -338,7 +412,9 @@
     "domain": "안마사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-83065#summary-headnote-000",
-    "relevant_chunk_ids": ["precedent-83065#summary-headnote-000"],
+    "relevant_chunk_ids": [
+      "precedent-83065#summary-headnote-000"
+    ],
     "notes": "스포츠마사지사 자격증 소지자의 시술이 무자격 안마행위에 해당한다고 본 판례."
   },
   {
@@ -347,7 +423,9 @@
     "domain": "안마사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-143905#body-006",
-    "relevant_chunk_ids": ["precedent-143905#body-006"],
+    "relevant_chunk_ids": [
+      "precedent-143905#body-006"
+    ],
     "notes": "허위 졸업장 제출로 안마사 자격인정이 철회된 사례."
   },
   {
@@ -356,7 +434,9 @@
     "domain": "안마사법",
     "expected_status": "answered",
     "source_chunk_id": "precedent-170159#body-007",
-    "relevant_chunk_ids": ["precedent-170159#body-007"],
+    "relevant_chunk_ids": [
+      "precedent-170159#body-007"
+    ],
     "notes": "안마사 자격 없는 자가 명의를 차용해 안마시술소를 운영한 사안."
   },
   {
@@ -381,10 +461,12 @@
     "id": 43,
     "question": "이 기기가 '의료기기 수준의 효과'가 있다고 홍보해도 되나요?",
     "domain": "의료기기법",
-    "expected_status": "insufficient_evidence",
-    "source_chunk_id": null,
-    "relevant_chunk_ids": [],
-    "notes": "철회된 공식 가이드의 구체적 광고 문구 판단 영역을 겨냥."
+    "expected_status": "answered",
+    "source_chunk_id": "doc-ac717535b26f12f4584398ca#body-007",
+    "relevant_chunk_ids": [
+      "doc-ac717535b26f12f4584398ca#body-007"
+    ],
+    "notes": "정정(2026-08-18): 원래 8/13 원본 50문항 제작 시 근거부족으로 설계됐으나, 실제 검색으로 재검증한 결과 의료기기법 제26조 제7항이 '의료기기가 아닌 것에 의료기기와 유사한 성능/효능/효과가 있는 것으로 잘못 인식될 우려가 있는 광고를 금지'한다고 이 질문을 사실상 그대로 직접 해결함(원본 제작 당시 이 조문을 놓친 것으로 추정). answered로 재분류."
   },
   {
     "id": 44,
@@ -448,5 +530,61 @@
     "source_chunk_id": null,
     "relevant_chunk_ids": [],
     "notes": "에이전트 자체에 대한 메타 질문, 법률 질의가 아님."
+  },
+  {
+    "id": 51,
+    "question": "왁싱으로 손님 제모를 해주는 것도 무면허의료행위에 해당하나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "코퍼스 전체(판례 182건)에 '왁싱'/'제모' 관련 판례 없음(실제 검색 total=0, 무관한 오탐 2건 제외). 무면허의료행위 여부는 대법원이 개별 사안마다 판단해온 영역인데, 이 구체적 시술을 다룬 선례가 코퍼스에 없어 의도적으로 근거부족 겨냥."
+  },
+  {
+    "id": 52,
+    "question": "속눈썹을 바늘 없이 약품으로 구부리는 펌(파마) 시술도 무면허의료행위에 해당하나요?",
+    "domain": "무면허의료행위",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "코퍼스에 속눈썹 관련 판례 7건이 있으나 전부 바늘로 색소/모낭을 주입하는 문신·이식 시술이고, 바늘 없이 화학 약품만 쓰는 펌 시술을 직접 다룬 판례는 없음 — 관련은 있지만 이 구체적 시술을 직접 해결하지 않는 전형적 사례로 겨냥."
+  },
+  {
+    "id": 53,
+    "question": "개인 유튜브 채널 콘텐츠 촬영을 위해 미용실 밖에서 출장 시술을 해도 되나요?",
+    "domain": "공중위생법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "공중위생관리법 시행규칙 제13조가 영업소 외 시술 허용 사유를 질병/고령/장애, 혼례, 사회복지시설 봉사활동, 방송 등 촬영, 기타 재량 5가지로 열거하나 '개인 유튜브 촬영'이 '방송 등의 촬영'에 포함되는지는 열거되지 않음. 코퍼스에 '유튜브'/'유튜버'/'개인방송' 관련 내용 전무(검색 total=0) — 관련 조항은 있지만 이 구체적 사례를 직접 해결하지 않는 전형적 사례."
+  },
+  {
+    "id": 54,
+    "question": "미용사 면허를 다른 사람에게 빌려줘서 그 사람이 제 명의로 미용실을 운영해도 되나요?",
+    "domain": "미용법",
+    "expected_status": "answered",
+    "source_chunk_id": "doc-16c1049fc291c33c561d0e7e#body-000",
+    "relevant_chunk_ids": [
+      "doc-16c1049fc291c33c561d0e7e#body-000"
+    ],
+    "notes": "정정(2026-08-18): 원래 근거부족으로 설계했으나, 검증 검색이 '대여'라는 키워드로만 확인해서 실제 조문을 놓침 -- 공중위생관리법 제6조 제3항(2020.4.7 신설)이 '빌려주다/빌리다'라는 다른 표현으로 면허대여를 명시적으로 금지하고 있음(실제 생성 답변이 이 조문과 실제 판례를 정확히 인용해서 밝혀냄). answered로 재분류."
+  },
+  {
+    "id": 55,
+    "question": "발마사지 전문점을 운영하는데, 안마사 자격이 없는 직원이 시술해도 되나요?",
+    "domain": "안마사법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "코퍼스에 스포츠마사지가 무면허 안마행위에 해당한다는 판례는 있어 '수기요법이면 명칭과 무관하게 안마행위로 본다'는 일반 원칙은 확인되나, 발마사지·타이마사지를 구체적으로 다룬 판례는 없음(검색 total=0) — 관련 원칙은 있지만 이 구체적 업종을 직접 해결하지 않는 사례로 겨냥."
+  },
+  {
+    "id": 56,
+    "question": "SNS 체험단에게 화장품을 무료로 나눠주는 것도 화장품법상 '판매'로 봐서 규제를 받나요?",
+    "domain": "약사법",
+    "expected_status": "insufficient_evidence",
+    "source_chunk_id": null,
+    "relevant_chunk_ids": [],
+    "notes": "화장품법 제15·16조는 '판매하거나 판매할 목적으로' 보관·진열하는 행위를 규제하나, 무상 증정(체험단)이 '판매 목적'에 해당하는지를 구체적으로 다룬 판례·법령이 코퍼스에 없음(검색 total=0). 정의 조항은 있지만 이 구체적 사례를 직접 해결하지 않는 경계 사례."
   }
 ]

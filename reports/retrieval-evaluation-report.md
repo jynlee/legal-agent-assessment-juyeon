@@ -1,13 +1,21 @@
 # Retrieval Evaluation Report
 
-Date: 2026-08-14
+Date: 2026-08-14, updated 2026-08-18.
 Covers: SUBMISSION.md's "Retrieval evaluation report" requirements. All
-numbers below are from a real, from-scratch rebuild of the local index and
-a real run of `scripts/evaluate_retrieval.py` against it (commit `a5ec7ec`,
-`reports/eval/retrieval_evaluation_results.json`), not from an earlier
-session's numbers — the rebuild reproduced the earlier baseline closely
-(see "Index build time and rebuild count" below for why a rebuild was
-necessary this late in the project).
+numbers below are from a real run of `scripts/evaluate_retrieval.py`
+against the unchanged production index (`reports/eval/
+retrieval_evaluation_results.json`).
+
+**2026-08-18 update.** The test set grew from 50 to 56 questions (6 new
+`insufficient_evidence` questions added to close a domain-coverage gap —
+see "Composition" below) and 2 of the original 5 `insufficient_evidence`
+questions (ids 43, 54) were found, on real re-verification, to have
+incorrect gold labels — real statute provisions directly resolve both,
+missed by the original construction pass's search terms — and were
+relabelled `answered` with a real required-positive chunk. All numbers in
+this report reflect the corrected 56-question set, not the original 50.
+The mislabelling and its correction are disclosed in full in the Work
+report's blocker log, not smoothed over.
 
 ## Test-query sources and construction method
 
@@ -27,23 +35,46 @@ with the domain's actual governing statute/topic names instead (e.g.
 공중위생관리법 for 미용법) rather than by loosening the domain list or its
 per-domain target.
 
-The 5 unanswerable questions target a specific, already-documented gap in
-this project's corpus: the official guidance documents that would resolve
-certain advertising-phrase or specific-claim questions are absent from
-every release on licence grounds (DATASET.md), so a question shaped like
-"can I use this exact advertising phrase" retrieves real, on-topic statute
-and case chunks that still cannot resolve the specific judgement asked
-for. The 5 out-of-scope questions are non-legal (small talk, unrelated
-business/design advice) or meta (a question about the agent itself),
-exercising the `out_of_scope` path with no real corpus chunk as a target.
+The original 5 unanswerable questions (ids 41-45) target a specific,
+already-documented gap in this project's corpus: the official guidance
+documents that would resolve certain advertising-phrase or specific-claim
+questions are absent from every release on licence grounds (DATASET.md),
+so a question shaped like "can I use this exact advertising phrase"
+retrieves real, on-topic statute and case chunks that still cannot resolve
+the specific judgement asked for. The 5 out-of-scope questions are
+non-legal (small talk, unrelated business/design advice) or meta (a
+question about the agent itself), exercising the `out_of_scope` path with
+no real corpus chunk as a target.
+
+**2026-08-18: 6 more `insufficient_evidence` questions added (ids 51-56),
+one per domain lacking coverage of this category.** The advertising-phrase
+gap above is specific to domains whose corpus involves product/service
+advertising claims (표시광고법, 화장품법, 의료기기법) and does not
+naturally extend to the other 7 domains — confirmed by direct search
+before drafting anything (e.g. 공중위생관리법 and 안마사에 관한 규칙
+contain zero occurrences of "광고" anywhere in the corpus). Each of the 6
+new questions instead targets a *different* kind of real, corpus-specific
+gap, found by searching the live index per domain and confirmed absent
+(0 hits) before drafting: a specific technique/business model with no
+matching precedent despite a related general principle existing (왁싱,
+속눈썹 펌, 발마사지 — 무면허의료행위/안마사법), an enumerated statutory
+exception list that does not name a modern scenario (개인 유튜브 촬영
+vs. "방송 등의 촬영," 공중위생관리법 시행규칙 제13조), and a definitional
+question no provision or precedent addresses (SNS 체험단 무상 증정이
+'판매'에 해당하는지, 화장품법). Two domains (개인정보보호법, 의료법) were
+searched for a comparable gap and found not to have one with reasonable
+effort — 개인정보보호법's governing statute is unusually comprehensive and
+explicit, and no genuine gap could be confirmed without risking a
+fabricated label, so both domains were left without a new question rather
+than forcing one in.
 
 ## Composition
 
-50 questions total: 40 answerable (exactly 4 per legal domain across the
-10 domains this project covers: 약사법, 의료법, 개인정보보호법,
-의료기기법, 표시광고법, 미용법, 화장품법, 무면허의료행위, 공중위생법,
-안마사법), 5 unanswerable (`expected_status: "insufficient_evidence"`), 5
-out-of-scope (`expected_status: "out_of_scope"`).
+56 questions total: 42 answerable (4 per legal domain across the 10
+domains this project covers, plus one each in 의료기기법 and 미용법 from
+the 2026-08-18 relabelling below), 9 unanswerable
+(`expected_status: "insufficient_evidence"`), 5 out-of-scope
+(`expected_status: "out_of_scope"`).
 
 ## Relevance-labelling method and treatment of multiple relevant results
 
@@ -80,7 +111,7 @@ Two controls, one structural and one measured:
    question scoring above 0.5 is a signal the drafting step should have
    caught, not something asserted away in prose.
 
-**Measured overlap, this run** (40 answerable questions): 7 of 40 remain
+**Measured overlap, this run** (42 answerable questions): 8 of 42 remain
 above the 0.5 threshold after one redraft round:
 
 | id | domain | overlap ratio | disposition |
@@ -93,6 +124,17 @@ above the 0.5 threshold after one redraft round:
 | 32 | 공중위생법 | 0.531 | Not redrafted — accepted as-is. |
 | 39 | 안마사법 | 0.535 | Not redrafted — accepted as-is. |
 | 40 | 안마사법 | 0.615 | Not redrafted — accepted as-is. |
+| 54 | 미용법 | 0.60 | Not redrafted — accepted as-is (see below). |
+
+Id 54 is the 2026-08-18 relabelled question (면허 대여, now `answered`).
+Its overlap is high because the statute provision that resolves it
+(공중위생관리법 제6조 제3항, "면허증을... 빌려주어서는 아니 되고...
+빌려서는 아니 된다") uses close to the same everyday verbs ("빌려주다,"
+"빌리다") the question itself naturally uses — unlike the withdrawn-guide
+questions, there was no formal-legal-register alternative phrasing to
+retreat to here without asking something a real shop owner would not
+actually say. Accepted for the same reason id 37 was: forcing a further
+redraft would trade real leakage risk for artificial phrasing.
 
 Of the 8 questions originally flagged in the first drafting pass, 2 (ids
 29 and 37) were redrafted once; id 29 dropped below threshold, id 37
@@ -128,7 +170,7 @@ regression to be explained away.
 
 **Recall@10**: for each answerable question, 1 if its single required
 positive chunk appears anywhere in the fused top 10 results, 0 otherwise;
-averaged over the 40 answerable questions. The cutoff of 10 is not
+averaged over the 42 answerable questions. The cutoff of 10 is not
 arbitrary — it is exactly the number of chunks this project's generation
 step actually receives (`reports/decisions/2026-08-13-retrieval-design.md`),
 so this metric answers "was the real, required-positive chunk among what
@@ -138,7 +180,7 @@ be correctly grounded at all.
 
 **MRR** (Mean Reciprocal Rank): for each answerable question, 1/rank of
 the required positive chunk within the same fused top-10 (0 if absent),
-averaged over the 40 answerable questions — same top-10 cutoff as
+averaged over the 42 answerable questions — same top-10 cutoff as
 Recall@10, not the full top-50 pre-fusion candidate pool, so both metrics
 describe the same thing generation actually sees. MRR is sensitive to
 *where* the positive lands, not just whether it clears the cutoff, and
@@ -167,31 +209,47 @@ measurements, per SUBMISSION.md's own instruction to keep the two apart.
 
 ## Aggregate and per-domain results
 
-Real run, 2026-08-14, against the rebuilt production index (7,887 chunks,
-182 judgements + 1,625 statutes):
+Real run, 2026-08-18, against the unchanged production index (7,887
+chunks, 182 judgements + 1,625 statutes), 56-question corrected test set:
 
 | Metric | Value |
 | --- | --- |
-| Recall@10 (aggregate, 40 answerable questions) | **0.45** |
-| MRR (aggregate, 40 answerable questions) | **0.2517** |
+| Recall@10 (aggregate, 42 answerable questions) | **0.4524** |
+| MRR (aggregate, 42 answerable questions) | **0.2437** |
 
 | Domain | Recall@10 | MRR | n |
 | --- | --- | --- | --- |
+| 미용법 | 0.80 | 0.325 | 5 |
 | 안마사법 | 0.75 | 0.550 | 4 |
-| 미용법 | 0.75 | 0.365 | 4 |
 | 공중위생법 | 0.75 | 0.354 | 4 |
 | 무면허의료행위 | 0.50 | 0.500 | 4 |
 | 화장품법 | 0.50 | 0.313 | 4 |
 | 개인정보보호법 | 0.50 | 0.292 | 4 |
 | 약사법 | 0.50 | 0.108 | 4 |
-| 의료기기법 | 0.25 | 0.036 | 4 |
+| 의료기기법 | 0.20 | 0.029 | 5 |
 | **의료법** | **0.00** | **0.00** | 4 |
 | **표시광고법** | **0.00** | **0.00** | 4 |
 
-The 10 unanswerable/out-of-scope questions are retrieved against for
-transparency (what generation would have seen) but excluded from these
-metrics by design — there is no positive judgement to recall against for
-a question with no source chunk.
+의료기기법 grew to 5 questions (id 43, relabelled `answered`) and its
+Recall@10 dropped slightly (0.25→0.20, one non-hit added); 미용법 grew to
+5 (id 54) and rose (0.75→0.80, one hit added). The 14 unanswerable/
+out-of-scope questions are retrieved against for transparency (what
+generation would have seen) but excluded from these metrics by design —
+there is no positive judgement to recall against for a question with no
+source chunk.
+
+**A disclosed nuance on id 43 specifically.** Its assigned required
+positive (의료기기법 제26조 제7항) does not appear in this question's
+fused top-10 — a genuine Recall@10 miss, included honestly above. Yet the
+real Generation evaluation run still returned the correct `answered`
+status for this question, because the model grounded its answer in a
+*different* real, on-topic precedent (a device-reclassification case,
+`precedent-204543`) that independently supports the same practical
+conclusion. This is a real limitation of a single-required-positive Recall
+metric: a question can have more than one real chunk capable of resolving
+it, and Recall@10 as defined here only credits retrieval for surfacing the
+one recorded at construction time. Recorded as a limitation, not corrected
+by adding a second positive after the fact.
 
 ## Failed-query analysis
 
@@ -238,7 +296,7 @@ if this pattern needs to be addressed (e.g. by domain-specific query
 expansion, or accepting it as a documented retrieval-quality limitation
 of this corpus's size and register range).
 
-**Also notable:** 의료기기법 (0.25/0.036) and 약사법 (0.50/0.108) both
+**Also notable:** 의료기기법 (0.20/0.029) and 약사법 (0.50/0.108) both
 recall at least one correct chunk but rank it far down the fused list
 (low MRR despite non-zero recall) — consistent with the same
 register-gap pattern in a milder form, rather than a domain-specific
@@ -247,18 +305,19 @@ outlier.
 ## Latency percentiles, index size, index build time, and rebuild count
 
 **Per-question retrieval latency** (embed + BM25 search + k-NN search,
-wall-clock, all 50 questions, this run):
+wall-clock, all 56 questions, this run):
 
 | Percentile | Latency |
 | --- | --- |
-| min | 275.5 ms |
-| p50 (median) | 497.95 ms |
-| p95 | 657.0 ms |
-| p99 | 987.4 ms |
-| max | 987.4 ms |
+| min | 274.4 ms |
+| p50 (median) | 475.6 ms |
+| p95 | 593.7 ms |
+| p99 | 617.7 ms |
+| max | 699.1 ms |
 
-The single outlier (987.4 ms, question id 1) is well clear of the next
-highest (753.1 ms); everything else falls at or below 657.0 ms.
+No single outlier dominates this run — the tightest of the three real
+retrieval-eval runs so far, consistent with a warm, stable local
+container.
 
 **Index size.** Raw store size in bytes was attempted (`_stats/store,docs`
 against the local index) but not obtained this session — the local
