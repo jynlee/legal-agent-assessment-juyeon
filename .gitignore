@@ -10,5 +10,6 @@ delivery/
 temp/
 notes/
 docs/superpowers/
+.superpowers/
 reports/usage/
 reports/eval/candidate_source_chunks.json
