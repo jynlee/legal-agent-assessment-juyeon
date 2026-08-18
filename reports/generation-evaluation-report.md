@@ -186,6 +186,16 @@ across two independent real runs (this committed run, and the earlier
 run before this report's code fixes, `fd810f1`). No prompt change is
 needed for that specific risk.
 
+**A prompt revision was tried and reverted based on this finding.**
+`prompt-v3` added an explicit anti-analogy instruction telling the model
+not to answer by reasoning from a related-but-not-dispositive precedent.
+Re-running all 50 questions showed `insufficient_evidence_misclassified_as_answered`
+improved from 3 to 2, but `false_refusal_count` (see below) worsened
+from 2 to 8 and `answered_status_match_rate` dropped from 0.95 to 0.8 —
+a net worsening from 5 to 10 total status errors. `prompt-v3` was
+reverted; `prompt-v2` (this report's committed numbers) remains in
+production.
+
 ## False refusals
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct

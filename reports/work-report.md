@@ -213,13 +213,19 @@ project's own review process, disclosed rather than silently left):
   out of scope for an evaluation-tooling fix round under this deadline.
   Disclosed in the Generation evaluation report's "Citation integrity"
   section.
-- **Two real, opposite-direction refusal-accuracy failures, not yet
-  root-caused to a prompt fix**: 2 of 40 answerable questions were
+- **Two real, opposite-direction refusal-accuracy failures; one prompt
+  fix attempted and reverted**: 2 of 40 answerable questions were
   falsely refused despite successful retrieval (`insufficient_evidence
   refusal accuracy` section's mirror finding), and 3 of 5
   `insufficient_evidence`-expected questions were answered instead of
-  refused. Both are measured and disclosed in the Generation evaluation
-  report; neither has been investigated to a prompt-level fix.
+  refused. One targeted fix was tried: `prompt-v3` added an instruction
+  against answering by analogy to a related-but-not-dispositive
+  precedent. Re-running all 50 questions showed it improved the
+  over-answering direction (3→2) but worsened the false-refusal
+  direction more (2→8; net status errors 5→10) — reverted, `prompt-v2`
+  remains in production. This rules out the simplest tightening as a
+  fix; both directions remain measured and disclosed in the Generation
+  evaluation report, not root-caused to a working fix.
 - **Generation-only latency is not isolated from the judge call's added
   latency** in the Generation evaluation report's `answered`-path
   numbers — the deliverable's own single-call response time was not
@@ -270,9 +276,13 @@ In priority order, most valuable first:
 
 1. **Root-cause the two opposite-direction refusal-accuracy failures**
    (false refusals on answerable questions with successful retrieval;
-   over-answers on questions the corpus cannot specifically resolve) with
-   a targeted prompt revision, then re-run the Generation evaluation to
-   confirm the fix without regressing `out_of_scope_refusal_accuracy`
+   over-answers on questions the corpus cannot specifically resolve). A
+   first attempt (`prompt-v3`, an anti-analogy instruction) was tried
+   and reverted — it improved one direction while worsening the other
+   more (see "Incomplete / found but not fixed" above) — so a real fix
+   likely needs asymmetric handling of the two failure modes rather than
+   moving a single threshold. Re-run the Generation evaluation to
+   confirm any fix without regressing `out_of_scope_refusal_accuracy`
    (currently a clean 1.0) or the domain-coverage risk (currently
    confirmed resolved).
 2. **Close the `agent.py` total-fabrication citation-integrity gap** —
