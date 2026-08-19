@@ -1,6 +1,6 @@
 # Retrieval Evaluation Report
 
-Date: 2026-08-14, updated 2026-08-18.
+Date: 2026-08-14. Last updated: 2026-08-19 (previously updated 2026-08-18).
 Covers: SUBMISSION.md's "Retrieval evaluation report" requirements. All
 numbers below are from a real run of `scripts/evaluate_retrieval.py`
 against the unchanged production index (`reports/eval/
@@ -80,8 +80,10 @@ less trustworthy (statute "right law, wrong article" cases).
 
 ## Test-query sources and construction method
 
-Each of the 40 answerable questions was drafted from one real, specific
-source chunk in the frozen index — never invented independently of the
+Each of the original 40 answerable questions (42 after the 2026-08-18
+relabelling of ids 43 and 54 -- see "Composition" below) was drafted from
+one real, specific source chunk in the frozen index — never invented
+independently of the
 corpus, and never a light rewording of that chunk's own sentence. The
 construction process: a real chunk was surfaced per legal domain from the
 live index via a plain BM25 query on the domain name; a question was then
@@ -160,8 +162,9 @@ required-positive `chunk_id`: the chunk it was drafted from, known by
 construction rather than by separate manual labelling. If a reviewer
 noticed a second chunk that would also genuinely answer a question,
 recording it as an additional positive was permitted but never required —
-this happened for none of the 40 questions in practice, so every
-answerable question in this release has exactly one recorded positive.
+this happened for none of the 42 answerable questions in practice, so
+every answerable question in this release has exactly one recorded
+positive.
 Exhaustively checking all 7,887 chunks against each question to find every
 possible relevant one was explicitly out of scope: it is not required for
 Recall@10/MRR to be well-defined against a documented, non-exhaustive
@@ -225,21 +228,26 @@ uniformly, as the leakage-transparency line SUBMISSION.md asks for — this
 is the intentional venue for that disclosure (a per-entry `notes` field on
 only 2 of the 8 originally-flagged questions would have been an
 inconsistent, harder-to-audit way to say the same thing, so it is
-consolidated here instead). None of these 7 are 1.0 or near it — the
-highest, id 40 at 0.615, still requires more than a third of the
+consolidated here instead). Counting these 6 together with id 37 above
+(redrafted but still above threshold) makes 7 of the original 8 flagged
+questions still above 0.5 (only id 29 cleared it) — **none of these 7**
+are 1.0 or near it — the highest, id 40 at 0.615, still requires more than
+a third of the
 question's own bigrams to be *absent* from the source text — so this
 project treats them as accepted, near-threshold cases in a corpus whose
 Korean legal vocabulary has limited synonym range for these specific
 concepts, not as undetected leakage.
 
 **A leakage-check redraft has a real, measured cost, disclosed honestly
-rather than omitted.** The first real evaluation run, before ids 29/37
-were redrafted, scored aggregate Recall@10 = 0.475 / MRR = 0.2749. After
-the redraft, the committed test set scores Recall@10 = 0.45 / MRR ≈
-0.2517 (this run) — the redraft cost exactly one question's hit (one
-answerable question's correct chunk fell out of the fused top-10 once its
-question was reworded away from its source chunk's own vocabulary). This
-is reported as evidence the leakage check was load-bearing — part of the
+rather than omitted.** The first real evaluation run (2026-08-14, before
+ids 29/37 were redrafted) scored aggregate Recall@10 = 0.475 / MRR =
+0.2749. After the redraft, the committed test set scored Recall@10 = 0.45
+/ MRR ≈ 0.2517 **(the 2026-08-14 run, before the fusion-weight fix and
+every later change -- not this report's current 0.5714 headline)** — the
+redraft cost exactly one question's hit (one answerable question's
+correct chunk fell out of the fused top-10 once its question was
+reworded away from its source chunk's own vocabulary). This is reported
+as evidence the leakage check was load-bearing — part of the
 pre-redraft score really was inflated by lexical overlap — not as a
 regression to be explained away.
 
@@ -292,8 +300,12 @@ measurements, per SUBMISSION.md's own instruction to keep the two apart.
 numbers precede this fix; see "Failed-query analysis" for the follow-up that
 found the cause) replayed the real BM25-top-50 and kNN-top-50 lists for all
 42 answerable questions and found kNN alone held the required chunk within
-its own top-50 for 18 of the 23 original Recall@10 misses, versus BM25's 3
-of 23 -- BM25 essentially fails on this test set's colloquial-register
+its own top-50 for 17 of the 23 original Recall@10 misses, versus BM25's 4
+of 23 (corrected 2026-08-19: an internal inconsistency was found between
+this figure and the same diagnosis's own restatement in "Failed-query
+analysis" below and in the Work report's Blocker log item 11, both of
+which already agreed on 17/4 -- this section's 18/3 was the outlier and is
+corrected to match) -- BM25 essentially fails on this test set's colloquial-register
 questions (see "Failed-query analysis" below), while dense k-NN still finds
 the right chunk, often ranked well, but the original equal-weight RRF
 (`k=60`) let unweighted rank-consensus bury a strong single-retriever hit
@@ -693,8 +705,10 @@ fully deterministic given the same corpus and chunking rules; only wall-clock
 time differed (963.7s vs. 772.5s total), attributable to the same
 environment contention that necessitated the rebuild, not to any change
 in the pipeline. The rebuilt index reproduced the pre-rebuild Recall@10
-exactly (0.45) and MRR within measurement noise (0.2517 vs. a previously
-reported 0.2511), confirming the two builds are retrieval-equivalent.
+exactly (0.45, both figures from the 2026-08-14 era measurement above,
+not this report's current 0.5714 headline) and MRR within measurement
+noise (0.2517 vs. a previously reported 0.2511), confirming the two
+builds are retrieval-equivalent.
 
 ## Dataset, normalization, chunking, embedding, and index versions
 

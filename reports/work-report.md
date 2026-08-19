@@ -1,6 +1,6 @@
 # Work Report
 
-Date: 2026-08-14
+Date: 2026-08-14. Last updated: 2026-08-19.
 Covers: SUBMISSION.md's "Work report" requirements — initial estimate and
 milestone plan, actual time by milestone, blocker log, completed/incomplete/
 deferred work, AWS use, and what one additional week would allow.
@@ -43,8 +43,8 @@ is disclosed as an honest proxy, not a precise timesheet.
 | Item 10: Retrieval evaluation report | 08-14 | 16:02 | `e44a2cc` |
 | Generation-evaluation design, judge module, `max_tokens` fix | 08-14 | 17:47–18:23 | `6b9d09a`..`63638bd` |
 | Generation-evaluation script, real run, final review, fix round, re-run | 08-14 | 20:05–20:41 | `fd810f1`..`ff85ab8` |
-| Item 10: Generation evaluation report | 08-14 | after 20:41 | (this session, pending commit) |
-| Item 10: Work report | 08-14 | after Generation evaluation report | (this document) |
+| Item 10: Generation evaluation report | 08-14 | after 20:41 | `9e11b96` |
+| Item 10: Work report | 08-14 | after Generation evaluation report | `9e11b96` |
 
 **Heaviest single days**: 08-12 (judgement/statute chunking, ~22 commits)
 and 08-13 (indexing through the first retrieval evaluation, ~30 commits,
@@ -364,7 +364,7 @@ fixed before being reported as final:**
     ~$0.000246) and the document-level-Recall@10/ceiling pilot (42
     embedding calls, ~$0.000202) had been run and reported on in
     conversation, but their real cost was not yet in this report. Both
-    now added to "AWS use" above. Combined real cost: ~$0.000448 —
+    now added to "AWS use" below. Combined real cost: ~$0.000448 —
     negligible in dollar terms, same as item 8, but the point of this
     checklist item is completeness of the record, not materiality of the
     amount, so it is disclosed here rather than treated as too small to
@@ -394,12 +394,12 @@ deliverables):
 2. Normalization, chunking, deterministic identity rules — done (`norm-v1`, `chunk-v1`, statute and judgement chunkers).
 3. Versioned OpenSearch 3.5-compatible index, reproducibly — done (`index-v1`, built twice, byte-identical cost/count both times).
 4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25). A real Claude Sonnet reranking stage over a widened top-25 pool was added 2026-08-18 (Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final) and **reverted 2026-08-19** after it was found to measurably worsen `insufficient_evidence_refusal_accuracy` and seven independent direct fixes for that weakness all failed (Blocker log items 19, 21) — reranking is not part of the submitted pipeline.
-5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
+5. Test set and relevance judgements — done (55 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, then to 55 on 2026-08-19 when question 41 was found invalid and removed rather than relabelled -- see Blocker log items 10 and 18, and "Incomplete / found but not fixed" below).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
 8. Verifiable citations, `insufficient_evidence`, `out_of_scope`, `dependency_unavailable` — done, all 4 response states implemented and covered by both unit tests and the real Generation evaluation run. A citation-integrity blind spot found during the Generation evaluation's final code review (total-fabrication citations were indistinguishable from an honest refusal) was closed on 2026-08-18 — see "Incomplete / found but not fixed" below for what changed and how it was verified.
 9. Single-turn, stateless application-service contract — done (`GeneralLegalRequest`/`GeneralLegalResponse`, `async def answer`).
-10. Tests, reproducible commands, architecture decisions, limitations, effort/time/cost evidence — done: 229 tests passing; non-interactive `verify_release.py`, `index_chunks.py`, `evaluate_retrieval.py`, `evaluate_generation.py`, `serve_legal_agent.py`; Architecture, Retrieval evaluation, and Generation evaluation reports committed; this Work report.
+10. Tests, reproducible commands, architecture decisions, limitations, effort/time/cost evidence — done: 233 tests passing (reverified 2026-08-19 after the reranking revert; see Blocker log item 19); non-interactive `verify_release.py`, `index_chunks.py`, `evaluate_retrieval.py`, `evaluate_generation.py`, `serve_legal_agent.py`; Architecture, Retrieval evaluation, and Generation evaluation reports committed; this Work report.
 
 **Deliberately deferred** (named explicitly in the relevant report, not
 silently skipped):
@@ -452,13 +452,23 @@ silently skipped):
 **Incomplete / found but not fixed** (real gaps, surfaced by this
 project's own review process, disclosed rather than silently left):
 
-- **Two real, opposite-direction refusal-accuracy failures; three
-  independent fix attempts, three different mechanisms, all reverted**:
-  2 of 42 answerable questions are falsely refused despite successful
-  retrieval (`insufficient_evidence refusal accuracy` section's mirror
-  finding), and 4 of 9 `insufficient_evidence`-expected questions are
-  answered instead of refused (corrected count, after removing 2
-  gold-label errors from this bucket — see Blocker log item 10).
+- **Two real, opposite-direction refusal-accuracy failures; seven
+  independent fix attempts across five mechanism classes, all reverted or
+  ruled out — current state, not fully fixed.** As of this report's
+  current, committed run: 1 of 42 answerable questions is falsely refused
+  despite successful retrieval (question 8 — see the Generation
+  evaluation report's "False refusals" for the corrected finding that
+  this is a genuine generation-layer inconsistency, not a retrieval
+  failure honestly reported), and 4 of 8 `insufficient_evidence`-expected
+  questions are answered instead of refused (question 41 was found
+  invalid and removed from this category entirely on 2026-08-19 — Blocker
+  log item 18 — so the denominator is 8, not 9). The narrative below is
+  preserved in its original, real order — three prompt/schema attempts on
+  2026-08-14/18, then reranking's own unintended contribution, then two
+  more attempts on 2026-08-19 — because each attempt's reasoning informed
+  the next one, and none of the interim numbers were fabricated after the
+  fact.
+
   `prompt-v3` (a blanket instruction against answering by analogy)
   improved the over-answering direction (3→2, against the uncorrected
   baseline) but worsened false refusals more (2→8). `prompt-v4` (a
@@ -478,13 +488,21 @@ project's own review process, disclosed rather than silently left):
   reconsideration text). The repaired v5's real re-run: no improvement
   (still 4; id 53 itself was answered incorrectly again, without
   crashing) and false refusals rose to 6. Reverted; `prompt-v2` remains in
-  production. **All three attempts reverted against the same
-  pre-registered bar.** Three independently-mechanized attempts producing
-  the identical trade-off (less over-answering always costs more false
-  refusal, net negative) is read as evidence the fix does not live at the
-  prompt-wording or response-schema level — not attempted a fourth time
-  this submission; see "What one additional week would allow" for the
-  next, structurally different candidate.
+  production. Reranking (2026-08-18, approved for a different reason)
+  then measurably worsened the same weakness as an unintended side
+  effect, and was itself reverted 2026-08-19 once six further prompt and
+  self-verification attempts had failed to fix it directly (item 19). Two
+  separate self-verification calls (`verify.py` v1/v2, item 17) and a
+  self-consistency-voting pilot (item 21) followed on 2026-08-19,
+  targeting the same weakness from two more structurally different
+  angles; both failed, the last one with a clean, unambiguous null result
+  (zero disagreement across 18 questions × 3 real runs each). Seven
+  independently-mechanized attempts across five distinct classes producing
+  either no net improvement or a clean null result is read as strong
+  evidence the fix does not live at the prompt-wording, response-schema,
+  retrieval-breadth, or self-judgment level — not attempted an eighth time
+  this submission; see "What one additional week would allow" for what a
+  genuinely different fix would require.
 - **Generation-only latency is not isolated from the judge call's added
   latency** in the Generation evaluation report's `answered`-path
   numbers — the deliverable's own single-call response time was not

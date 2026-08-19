@@ -1,6 +1,6 @@
 # Generation Evaluation Report
 
-Date: 2026-08-14
+Date: 2026-08-14. Last updated: 2026-08-19.
 Covers: SUBMISSION.md's "Generation evaluation report" requirements —
 grounding, citation integrity, unsupported citation/hallucination,
 insufficient-evidence refusal, out-of-scope refusal, latency, token use, and
@@ -215,13 +215,15 @@ downgraded because zero cited ids were real) always carries exactly one
 `limitations` entry naming what was claimed.
 
 **This closed a real, previously-disclosed unknown, not just a
-hypothetical one.** Questions 11 and 22 (see "False refusals" below) both
-came back `insufficient_evidence` with `citation_count: 0` in every real
-run of this evaluation, and the fix makes their nature provable rather
-than merely likely: both have `limitations_count: 0` in this run's
-committed data — **honest refusals, not caught fabrication attempts.**
-`limitations_fired_count: 0` across all 55 questions confirms no
-total-fabrication case occurred anywhere in this run either.
+hypothetical one.** Questions 11 and 22 (see "False refusals" below for
+their current status -- they are correctly answered in this run, not
+false refusals here) came back `insufficient_evidence` with
+`citation_count: 0` in the earlier runs where they did appear in the
+false-refusal bucket, and the fix makes their nature from those runs
+provable rather than merely likely: both had `limitations_count: 0` in
+that committed data — **honest refusals, not caught fabrication
+attempts.** `limitations_fired_count: 0` across all 55 questions in this
+run confirms no total-fabrication case occurred here either.
 
 ## Unsupported citation / hallucination
 
@@ -520,7 +522,12 @@ inside the top-10), and the same run's `generation_evaluation_results.json`
 confirms `retrieval_hit_count: 10` — the model received a full set of 10
 real candidates, including the one that actually resolves the question,
 and still returned `status: insufficient_evidence` with `citation_count: 0`
-rather than citing it. **This is the one case across this project's real
+rather than citing it. Applying the same citation-integrity check used
+throughout this report (see "Citation integrity" above): question 8's own
+`limitations_count: 0` confirms this was not a caught fabrication attempt
+either — the model did not claim, then have discarded, a citation that
+did not resolve the question; it simply never engaged with the evidence
+in front of it. **This is the one case across this project's real
 runs where the model refused despite having the evidence it needed** — the
 opposite failure direction from the `insufficient_evidence` over-answering
 weakness discussed at length above, and disclosed with the same rigor:

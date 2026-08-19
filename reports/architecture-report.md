@@ -1,6 +1,6 @@
 # Architecture Report
 
-Date: 2026-08-14
+Date: 2026-08-14. Last updated: 2026-08-19.
 Covers: SUBMISSION.md's "Architecture report" requirements, against the
 completed implementation of ASSIGNMENT.md items 1-8. This document
 synthesizes the project's `reports/decisions/` notes (each cited by name)
@@ -252,11 +252,17 @@ median retrieval latency 525ms→4.5s) — but it also measurably worsened
 `insufficient_evidence_refusal_accuracy` (0.5556→0.3333 on that day's
 denominator), an unintended side effect: a wider, more semantically
 generous candidate pool gave the generation step more
-plausible-but-not-dispositive material to reason from. After six further
-independent attempts at fixing that weakness directly all failed
-(Generation evaluation report, "insufficient_evidence refusal accuracy"),
-reranking was reverted on 2026-08-19 as the one lever with
-already-measured, zero-additional-cost evidence for its effect —
+plausible-but-not-dispositive material to reason from. Reranking is one
+of seven independent mechanisms this project tried against that same
+weakness, across five mechanism classes (three in-call prompt/schema
+changes, reranking's own wider-net retrieval change, two separate-call
+self-verification variants, and a self-consistency-sampling pilot); all
+seven either failed to improve `insufficient_evidence_refusal_accuracy`
+without a larger false-refusal cost, or -- reranking's case -- actively
+caused the weakness to begin with (Generation evaluation report,
+"insufficient_evidence refusal accuracy"). Reranking was reverted on
+2026-08-19 as the one lever with already-measured, zero-additional-cost
+evidence for its effect —
 `insufficient_evidence_refusal_accuracy` recovered to 50.0%, the best
 value measured across this project, at the cost of giving back the
 Recall@10 gain. Full reasoning for the trade-off direction:
@@ -385,9 +391,11 @@ verify it empirically before relying on any `out_of_scope` numbers in the
 Generation evaluation report. That verification has since happened: the
 Generation evaluation report's real, full-pipeline run measured
 `insufficient_evidence_misclassified_as_out_of_scope: 0`, confirmed
-identically across three independent real runs (the original 5-question
-`insufficient_evidence` set, and the 2026-08-18 run against the corrected,
-9-question set). The risk did not materialize; no prompt change was made
+identically across every independent real run of this project to date
+(the original `fd810f1`/`ff85ab8` runs, the 2026-08-18 fusion-weight-fix
+run, and the reranking run later reverted 2026-08-19 -- four real runs in
+total, corrected here 2026-08-19 to match the Generation evaluation
+report's own count). The risk did not materialize; no prompt change was made
 in response, since there was nothing to fix. (What the same runs did find,
 in the opposite direction — real over-answers instead of refusals on some
 of those questions, and 2 of the original 5 having been mislabelled
@@ -491,8 +499,8 @@ against directly rather than relied on retries to absorb.
    any Windows contributor who hits the same block.
 2. *`out_of_scope` domain-coverage risk* — see §5. Named, deliberately
    deferred pending empirical verification, and since resolved: the
-   Generation evaluation report's real run confirmed, across two
-   independent executions, that the risk did not materialize
+   Generation evaluation report's real run confirmed, across four
+   independent real executions to date, that the risk did not materialize
    (`insufficient_evidence_misclassified_as_out_of_scope: 0`).
 3. *1536-dimension embedding bug, caught before it reached production.*
    The embedding endpoint's default, unrequested output dimension (1024)
