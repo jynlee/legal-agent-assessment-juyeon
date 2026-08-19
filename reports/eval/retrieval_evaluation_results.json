@@ -51,7 +51,7 @@
       "count": 5
     },
     "안마사법": {
-      "recall_at_10": 1.0,
+      "recall_at_10": 1,
       "mrr": 0.6875,
       "count": 4
     }
@@ -78,7 +78,7 @@
       "domain": "약사법",
       "latency_ms": 3813.6,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-190259#body-005"
     },
     {
@@ -100,9 +100,9 @@
     {
       "id": 6,
       "domain": "의료법",
-      "latency_ms": 5080.0,
+      "latency_ms": 5080,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-622263#summary-headnote-000"
     },
     {
@@ -110,7 +110,7 @@
       "domain": "의료법",
       "latency_ms": 4276.1,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-99684#summary-holding-000"
     },
     {
@@ -134,7 +134,7 @@
       "domain": "개인정보보호법",
       "latency_ms": 5195.5,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "precedent-614445#body-027"
     },
     {
@@ -142,7 +142,7 @@
       "domain": "개인정보보호법",
       "latency_ms": 8227.4,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-614445#body-010"
     },
     {
@@ -150,7 +150,7 @@
       "domain": "개인정보보호법",
       "latency_ms": 5544.6,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-220165#body-043"
     },
     {
@@ -158,7 +158,7 @@
       "domain": "의료기기법",
       "latency_ms": 5175.9,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-204543#body-013"
     },
     {
@@ -182,13 +182,13 @@
       "domain": "의료기기법",
       "latency_ms": 3097.3,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "doc-f2510c7421cd41afe7d16ccd#body-000"
     },
     {
       "id": 17,
       "domain": "표시광고법",
-      "latency_ms": 2827.0,
+      "latency_ms": 2827,
       "recall_at_10": 1,
       "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-207141#summary-holding-001"
@@ -198,7 +198,7 @@
       "domain": "표시광고법",
       "latency_ms": 3187.3,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-221809#body-020"
     },
     {
@@ -206,7 +206,7 @@
       "domain": "표시광고법",
       "latency_ms": 4653.7,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-220369#body-010"
     },
     {
@@ -214,15 +214,15 @@
       "domain": "표시광고법",
       "latency_ms": 3190.1,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-220843#body-008"
     },
     {
       "id": 21,
       "domain": "화장품법",
-      "latency_ms": 4795.0,
+      "latency_ms": 4795,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-85430#body-008"
     },
     {
@@ -238,7 +238,7 @@
       "domain": "화장품법",
       "latency_ms": 4550.3,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "doc-468e683a08a513121b891499#body-000"
     },
     {
@@ -254,7 +254,7 @@
       "domain": "무면허의료행위",
       "latency_ms": 4695.2,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-173261#body-014"
     },
     {
@@ -262,7 +262,7 @@
       "domain": "무면허의료행위",
       "latency_ms": 3402.4,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "precedent-216061#summary-headnote-001"
     },
     {
@@ -278,7 +278,7 @@
       "domain": "무면허의료행위",
       "latency_ms": 5150.8,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-600433#body-015"
     },
     {
@@ -294,7 +294,7 @@
       "domain": "공중위생법",
       "latency_ms": 4771.4,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-032"
     },
     {
@@ -302,7 +302,7 @@
       "domain": "공중위생법",
       "latency_ms": 4202.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "precedent-80695#body-004"
     },
     {
@@ -310,7 +310,7 @@
       "domain": "공중위생법",
       "latency_ms": 3599.2,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "precedent-160636#body-013"
     },
     {
@@ -334,7 +334,7 @@
       "domain": "미용법",
       "latency_ms": 3287.5,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "doc-c7eba9168dcc608ed6eb1934#body-000"
     },
     {
@@ -342,7 +342,7 @@
       "domain": "미용법",
       "latency_ms": 3711.3,
       "recall_at_10": 0,
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 0,
       "source_chunk_id": "doc-909409c33b448aaa6f49785a#body-026"
     },
     {
@@ -350,7 +350,7 @@
       "domain": "안마사법",
       "latency_ms": 4959.7,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "doc-40bb91a38251e6988a4de8c5#body-000"
     },
     {
@@ -358,13 +358,13 @@
       "domain": "안마사법",
       "latency_ms": 5029.9,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "precedent-83065#summary-headnote-000"
     },
     {
       "id": 39,
       "domain": "안마사법",
-      "latency_ms": 3814.0,
+      "latency_ms": 3814,
       "recall_at_10": 1,
       "reciprocal_rank": 0.25,
       "source_chunk_id": "precedent-143905#body-006"
@@ -376,23 +376,6 @@
       "recall_at_10": 1,
       "reciprocal_rank": 0.5,
       "source_chunk_id": "precedent-170159#body-007"
-    },
-    {
-      "id": 41,
-      "domain": "표시광고법",
-      "latency_ms": 4175.2,
-      "note": "no positive judgement -- retrieved for transparency only",
-      "fused_top_10": [
-        "precedent-144207#summary-holding-001",
-        "precedent-144207#body-007",
-        "precedent-99106#summary-holding-000",
-        "precedent-143372#summary-headnote-000",
-        "precedent-143372#summary-holding-002",
-        "doc-25595c1981014ca6c7df7e47#body-002",
-        "doc-05bafa93d55fe89f63a65358#body-002",
-        "doc-0ed4c289302a6aecb9804986#body-004",
-        "precedent-94170#summary-headnote-000"
-      ]
     },
     {
       "id": 42,
@@ -410,7 +393,7 @@
       "domain": "의료기기법",
       "latency_ms": 4642.8,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "doc-ac717535b26f12f4584398ca#body-007"
     },
     {
@@ -528,7 +511,7 @@
       "domain": "미용법",
       "latency_ms": 5162.1,
       "recall_at_10": 1,
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 1,
       "source_chunk_id": "doc-16c1049fc291c33c561d0e7e#body-000"
     },
     {

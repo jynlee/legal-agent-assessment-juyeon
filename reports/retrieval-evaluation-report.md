@@ -37,6 +37,19 @@ not the earlier two free fixes. A real regression was introduced and
 caught during this change (every `out_of_scope` question started failing)
 before being shipped — full story, also in "Reranking" below.
 
+**2026-08-19 update.** Question 41 was found invalid on direct review of
+its cited sources (Generation evaluation report, "A test-set construction
+defect: question 41") and removed from the test set (56 → 55 questions;
+`insufficient_evidence`: 9 → 8). **This report's own numbers are
+unaffected**: question 41 was an `insufficient_evidence` question and was
+never part of the Recall@10/MRR denominator (only `expected_status:
+"answered"` questions are scored — see "Methodology" below) — Recall@10
+(0.5952) and MRR (0.3355) are identical before and after. Full reasoning,
+including why the question could not simply be relabelled `answered`
+(it would make its own `Recall@10` contribution true by construction,
+since no independently-identified required-positive chunk exists for it),
+is in `reports/decisions/2026-08-19-question-41-invalidation.md`.
+
 ## Test-query sources and construction method
 
 Each of the 40 answerable questions was drafted from one real, specific
@@ -106,11 +119,11 @@ pass; recorded here because a 2026-08-18 review of an external count of 8
 statutes found this report's "10 domains" phrasing potentially misleading
 without it.
 
-56 questions total: 42 answerable (4 per legal domain across the 10
-domains this project covers, plus one each in 의료기기법 and 미용법 from
-the 2026-08-18 relabelling below), 9 unanswerable
-(`expected_status: "insufficient_evidence"`), 5 out-of-scope
-(`expected_status: "out_of_scope"`).
+55 questions total (56 until 2026-08-19; see the update above): 42
+answerable (4 per legal domain across the 10 domains this project covers,
+plus one each in 의료기기법 and 미용법 from the 2026-08-18 relabelling
+below), 8 unanswerable (`expected_status: "insufficient_evidence"`), 5
+out-of-scope (`expected_status: "out_of_scope"`).
 
 ## Relevance-labelling method and treatment of multiple relevant results
 

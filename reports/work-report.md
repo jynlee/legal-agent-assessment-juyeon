@@ -284,6 +284,50 @@ fixed before being reported as final:**
     reached a perfect 1.0, `false_refusal_count` reached 0) — reported
     together, not selectively, so the mixed result is visible rather than
     obscured by the numbers that happened to improve.
+17. **A fifth over-answering fix mechanism was piloted cheaply and also
+    failed (2026-08-19).** The Generation evaluation report's own
+    conclusion (after v3/v4/v5) named a separate, `judge.py`-style Bedrock
+    call as the untried category of fix. Before spending a full real
+    pipeline run building it, a new `verify.py` module (two prompt
+    variants) was piloted against 16 already-saved answers/citations from
+    the committed `generation_evaluation_results.json` — no pipeline
+    re-run, no production code touched, real Bedrock calls only against
+    data already on disk. v1 (shows the answer, asks a lenient sufficiency
+    question) caught 0 of 6 known failures; v2 (hides the answer, asks an
+    independent stricter question) caught 1 of 6. Neither cleared the
+    >=4/6 bar set before starting. **Not adopted — `verify.py` and
+    `tests/test_verify.py` were never committed**, `agent.py` and
+    `contracts.py` were never touched. Full account:
+    Generation evaluation report, "insufficient_evidence refusal
+    accuracy" → "A fifth mechanism was tried." Real cost: $0.396321, 32
+    Bedrock calls (`temp/pilot_verify.py`, gitignored, not committed).
+18. **A test-set construction defect found on human review; question 41
+    invalidated, not relabelled (2026-08-19).** Reviewing all 6
+    confirmed-genuine `insufficient_evidence` failures' cited sources line
+    by line (the same standard already used for ids 43/54) found question
+    41's cited source states a *general* principle that covers its claim
+    on its face, not by the analogical extension the other 5 failures
+    share — making it an invalid `insufficient_evidence` example. Unlike
+    ids 43/54, it could not be relabelled `answered`: it was never drafted
+    from a specific source chunk, and assigning one now from what the
+    model itself cited would make its `Recall@10` contribution true by
+    construction — a self-grading risk, not a legitimate correction.
+    Removed from the test set entirely (56 → 55 questions;
+    `insufficient_evidence`: 9 → 8). Full reasoning, the pre-registered
+    review criterion applied identically to all 6 cases, and why the
+    structurally-closest case (question 44) was reviewed and deliberately
+    *not* reclassified, is in `reports/decisions/2026-08-19-question-41-
+    invalidation.md`. Effect: `insufficient_evidence_refusal_accuracy`
+    0.3333→0.375; combined non-answer-classification figure
+    (`insufficient_evidence` + `out_of_scope`) 57.1%→61.5% — **both
+    figures are reported side by side** in the Generation evaluation
+    report, not just the corrected one. `reports/eval/
+    generation_evaluation_results.json` and `reports/eval/
+    retrieval_evaluation_results.json` were recomputed/pruned from the
+    already-stored per-question data, not re-run (Recall@10/MRR are
+    unaffected — question 41 was never in that denominator).
+    `scripts/evaluate_generation.py` and `scripts/evaluate_retrieval.py`
+    hardcoded question-count assertions updated 56→55.
 
 ## Completed, incomplete, and deliberately deferred work
 
@@ -425,14 +469,25 @@ calls included.
 | Real demo calls (`serve_legal_agent.py`) | 11 (2 without token capture) | 203 | 65,014 | 2,613 | $0.234260 |
 | **Total, fully instrumented** | **41** | **7,328,007** | **10,127,618** | **485,340** | **$38.542410** |
 
+**Reconciling note (2026-08-19, Blocker log item 18):** the table's
+Generation-evaluations row above still includes the real cost of question
+41's own retrieval+generation+judge calls — this table reports every real
+dollar actually spent, regardless of what any evaluation report later
+excludes from its own metrics. The Generation evaluation report's own
+"Token use and cost" table was recomputed after question 41's invalidation
+and shows a ~$0.0436 lower total ($4.51071→$4.467164) for that reason —
+the two figures are expected to differ, not a discrepancy.
+
 Plus, disclosed separately rather than folded into the total above
-(see Blocker log items 7–9, 12): **~$0.00001** from 6 untracked pre-
+(see Blocker log items 7–9, 12, 17): **~$0.00001** from 6 untracked pre-
 instrumentation dev calls, **~$0.000315** from the 65 real embedding calls
-made by 2026-08-18's uninstrumented retrieval-miss diagnostic script, and
-an **unknown, likely small** amount of real partial spend from the 4
-original failed Generation-evaluation attempts whose cost was zeroed by
-the since-fixed accounting bug (their real elapsed time, 19–31 seconds
-each, is the only surviving evidence they made real calls at all).
+made by 2026-08-18's uninstrumented retrieval-miss diagnostic script,
+**$0.396321** from the 32 real calls made by 2026-08-19's `verify.py`
+pilot (two prompt variants tested against already-saved data, neither
+adopted), and an **unknown, likely small** amount of real partial spend
+from the 4 original failed Generation-evaluation attempts whose cost was
+zeroed by the since-fixed accounting bug (their real elapsed time, 19–31
+seconds each, is the only surviving evidence they made real calls at all).
 
 **OpenSearch usage.** One versioned index
 (`legal-kit-assessment-jynlee-chunk-v1-index-v1`, `index-v1`), 7,887
@@ -453,34 +508,39 @@ OpenSearch domain was never actually queried this project (see
 
 In priority order, most valuable first:
 
-1. **Fix the over-answering failure with a structurally different
-   mechanism than the four already tried.** `prompt-v3` (blanket
-   instruction), `prompt-v4` (contrastive example), `prompt-v5` (a
-   code-checked `source_directly_resolves` field the model must commit to
-   inside the same generation call), and now **reranking** (2026-08-18 —
-   approved for a different reason, Recall@10, but it widened the
-   candidate pool and measurably made this exact failure mode worse:
+1. **Fix the over-answering failure — five mechanisms tried, all failed;
+   the next one needs a different model identity or a human, not another
+   prompt.** `prompt-v3` (blanket instruction), `prompt-v4` (contrastive
+   example), `prompt-v5` (a code-checked `source_directly_resolves` field
+   inside the same generation call), **reranking** (2026-08-18 — approved
+   for a different reason, Recall@10, but widened the candidate pool and
+   measurably made this exact failure mode worse:
    `insufficient_evidence_refusal_accuracy` 0.5556→0.3333,
-   `insufficient_evidence_misclassified_as_answered` 4→6) were all tried
-   and either reverted or, in reranking's case, kept for its own real
-   benefit despite this side effect — four independent mechanisms, four
-   pieces of evidence that the fix does not live inside the single
-   generation call at all, regardless of its internal wording, output
-   schema, or what it is handed to read. The next attempt should split
-   resolution-checking into its **own, separate Bedrock call** — the same
-   pattern `judge.py` already uses for post-hoc grounding verification,
-   applied before finalizing status instead of after: a narrowly-scoped
-   call given only the question and the specific cited source, asked
-   only "does this source state the specific rule that resolves this
-   exact question," in a context not already committed to producing an
-   answer. This adds further real Bedrock cost and latency on top of
-   what reranking already added (an extra real call per `answered`
-   response, similar in shape to the existing judge call) but is
-   structurally different from all four prior attempts in a way none of
-   them were from each other. Re-run the Generation evaluation to confirm
-   without regressing `out_of_scope_refusal_accuracy` (currently a clean
-   1.0, after its own real 2026-08-18 regression-and-fix) or
-   `false_refusal_count` (currently a clean 0).
+   `insufficient_evidence_misclassified_as_answered` 4→6), and now a
+   **separate self-verification call** (2026-08-19 — `verify.py`, piloted
+   in two variants against 16 already-saved answers before touching
+   production code, per this section's own prior recommendation to try
+   exactly this: a lenient variant caught 0 of 6 known failures, a strict
+   variant that hid the answer text caught 1 of 6; neither adopted, real
+   pilot cost $0.396321) have all been tried and failed to fix this
+   without a larger false-refusal cost. The fifth attempt specifically
+   tested this section's own prior recommendation — a narrowly-scoped,
+   separate Bedrock call, the same pattern `judge.py` uses — and it still
+   failed, on both a lenient and a strict prompt. The pilot's own
+   diagnostic evidence (v1's verifier re-stated the original answer's
+   analogical reasoning back as if it were sufficient; v2's id 53 showed
+   the verifier's own justification text arguing "insufficient" while its
+   structured field said `true`) points at a **structural** limit, not a
+   remaining wording problem: the same model, asked to certify its own
+   style of reasoning, tends to confirm it even in an independent call
+   with no memory of the original one. What one more week would need to
+   try instead is a genuinely different check — either a second,
+   independently-sourced-and-verified model identity (this project's
+   `.env.example` names only one verified Sonnet id; sourcing and
+   verifying a second was out of scope here per the Fixed-constraints
+   discipline this project has followed throughout), or a human-reviewed
+   spot-check gate, neither of which fits this submission's two-week,
+   single-contributor, single-verified-model-id budget.
 2. **A second, independent grounding check** — either a genuinely
    different judge model (would require sourcing and verifying a second
    Kit-approved model id) or a human-reviewed spot-check of a sample of

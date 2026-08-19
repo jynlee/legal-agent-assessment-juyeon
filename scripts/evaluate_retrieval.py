@@ -10,8 +10,10 @@ BM25 top-50 + k-NN top-50, RRF fuse (k=60), top-10 -- the same constants
 reports/decisions/2026-08-13-retrieval-design.md fixed.
 
 Recall@10/MRR are computed only for questions with expected_status
-"answered" (a real required-positive chunk_id exists to recall). The 10
-unanswerable/out-of-scope questions are still retrieved against (for
+"answered" (a real required-positive chunk_id exists to recall). The 13
+unanswerable/out-of-scope questions (8 insufficient_evidence, 5
+out_of_scope -- corrected 2026-08-19 from a stale "10" left over from the
+original 50-question test set) are still retrieved against (for
 transparency: what would generation have seen), but no metric is computed
 for them -- there is no positive to recall.
 
@@ -90,10 +92,14 @@ def _estimated_cost_usd(
 
 
 def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
-    """Read the 56-question test set."""
+    """Read the 55-question test set.
+
+    Was 56 until 2026-08-19: question 41 was invalidated and removed, not
+    relabelled -- see reports/decisions/2026-08-19-question-41-invalidation.md.
+    """
 
     data: list[dict[str, Any]] = json.loads(path.read_text(encoding="utf-8"))
-    assert len(data) == 56, f"expected 56 test-set entries, got {len(data)}"
+    assert len(data) == 55, f"expected 55 test-set entries, got {len(data)}"
     return data
 
 

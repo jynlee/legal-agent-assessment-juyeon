@@ -1,23 +1,23 @@
 {
   "aggregate": {
-    "question_count": 56,
-    "answered_status_match_rate": 1.0,
-    "insufficient_evidence_refusal_accuracy": 0.3333333333333333,
-    "out_of_scope_refusal_accuracy": 1.0,
+    "question_count": 55,
+    "answered_status_match_rate": 1,
+    "insufficient_evidence_refusal_accuracy": 0.375,
+    "out_of_scope_refusal_accuracy": 1,
     "insufficient_evidence_misclassified_as_out_of_scope": 0,
-    "insufficient_evidence_misclassified_as_answered": 6,
+    "insufficient_evidence_misclassified_as_answered": 5,
     "false_refusal_count": 0,
     "dependency_unavailable_count": 0,
     "limitations_fired_count": 0,
-    "judged_answer_count": 48,
-    "grounded_count": 12,
+    "judged_answer_count": 47,
+    "grounded_count": 11,
     "partially_grounded_count": 36,
     "unsupported_count": 0,
     "judge_parse_error_count": 0,
-    "embed_estimated_tokens": 2148,
-    "generation_input_tokens": 1273104,
-    "generation_output_tokens": 46076,
-    "estimated_cost_usd": 4.51071
+    "embed_estimated_tokens": 2115,
+    "generation_input_tokens": 1262740,
+    "generation_output_tokens": 45246,
+    "estimated_cost_usd": 4.467164
   },
   "per_question": [
     {
@@ -429,7 +429,7 @@
       "embed_estimated_tokens": 41,
       "generation_input_tokens": 21711,
       "generation_output_tokens": 960,
-      "latency_ms": 18965.0
+      "latency_ms": 18965
     },
     {
       "id": 10,
@@ -517,7 +517,7 @@
       "embed_estimated_tokens": 39,
       "generation_input_tokens": 25779,
       "generation_output_tokens": 1542,
-      "latency_ms": 32684.0
+      "latency_ms": 32684
     },
     {
       "id": 12,
@@ -654,7 +654,7 @@
       "embed_estimated_tokens": 33,
       "generation_input_tokens": 21249,
       "generation_output_tokens": 1208,
-      "latency_ms": 24940.0
+      "latency_ms": 24940
     },
     {
       "id": 15,
@@ -1251,7 +1251,7 @@
       "embed_estimated_tokens": 34,
       "generation_input_tokens": 23737,
       "generation_output_tokens": 854,
-      "latency_ms": 17883.0
+      "latency_ms": 17883
     },
     {
       "id": 28,
@@ -1310,7 +1310,7 @@
       "embed_estimated_tokens": 52,
       "generation_input_tokens": 35078,
       "generation_output_tokens": 1308,
-      "latency_ms": 25759.0
+      "latency_ms": 25759
     },
     {
       "id": 29,
@@ -1734,40 +1734,6 @@
       "generation_input_tokens": 23680,
       "generation_output_tokens": 707,
       "latency_ms": 16454.8
-    },
-    {
-      "id": 41,
-      "domain": "표시광고법",
-      "status": "answered",
-      "expected_status": "insufficient_evidence",
-      "status_matches_expected": false,
-      "citation_count": 3,
-      "limitations_count": 0,
-      "retrieval_hit_count": 8,
-      "answer": "아니요, '피부 노화가 되돌아간다'는 광고는 허용되기 어렵습니다.\n\n관련 법리에 따르면, 의료광고는 객관적인 사실에 기초하고 과장이 없어야 허용됩니다. 반면, 객관적 사실이 아니거나 근거가 없는, 또는 현대의학상 안전성 및 유효성이 과학적으로 검증되지 않은 내용을 통해 의료소비자에게 막연하거나 헛된 의학적 기대를 갖게 하는 광고는 허위 또는 과대광고로서 금지됩니다 [precedent-144207#summary-holding-001].\n\n또한 의료법 제56조 제2항은 '치료효과를 보장하는 등 소비자를 현혹할 우려가 있는 내용의 광고'를 금지하고 있으며 [precedent-143372#summary-headnote-000], 의료법 시행령 제23조에서도 '특정 의료기관·의료인의 기능 또는 진료 방법이 질병 치료에 반드시 효과가 있다고 표현하는 것'을 금지하고 있습니다 [doc-25595c1981014ca6c7df7e47#body-002].\n\n'피부 노화가 되돌아간다'는 표현은 치료 효과를 보장하거나 과장하는 내용으로 소비자를 현혹할 우려가 있는 광고에 해당할 가능성이 높으므로, 이러한 광고는 허용되지 않을 수 있습니다.",
-      "citations": [
-        {
-          "chunk_id": "precedent-144207#summary-holding-001",
-          "title": "보건범죄단속에관한특별조치법위반(부정의료업자)·약사법위반·의료법위반",
-          "excerpt": "의료광고가 객관적인 사실에 기인한 것으로서 의료소비자에게 해당 의료인의 의료기술이나 진료방법을 과장 없이 알려주는 것이라면, 이는 소비자의 합리적 선택에 도움을 주고, 의료인들 사이에 공정한 경쟁을 촉진시켜 공익을 증진시킬 수 있으므로 허용되어야 할 것이지만, 의료행위가 사람의 생명·신체에 직접적이고 중대한 영향을 미치는 것임에 비추어 객관적 사실이 아니거나 근거가 없는, 또는 현대의학상 안전성 및 유효성이 과학적으로 검증되지 않은 내용을 기재하여 의료서비스 소비자에게 막연하거나 헛된 의학적 기대를 갖게 하는 광고는 허위 또는 과대광고로서 금지되어야 한다."
-        },
-        {
-          "chunk_id": "precedent-143372#summary-headnote-000",
-          "title": "치과의사면허자격정지및경고처분취소",
-          "excerpt": "의료법 제56조 제2항 제2호가 ‘치료효과를 보장하는 등 소비자를 현혹할 우려가 있는 내용의 광고’를 금지하고 있는 취지"
-        },
-        {
-          "chunk_id": "doc-25595c1981014ca6c7df7e47#body-002",
-          "title": "의료법 시행령 제23조",
-          "excerpt": "2.\n2. 특정 의료기관ㆍ의료인의 기능 또는 진료 방법이 질병 치료에 반드시 효과가 있다고 표현하거나 환자의 치료경험담이나 6개월 이하의 임상경력을 광고하는 것"
-        }
-      ],
-      "grounding": "grounded",
-      "grounding_justification": "모든 주요 주장(허위·과대광고 금지 원칙, 치료효과 보장 광고 금지, 시행령상 반드시 효과 있다는 표현 금지)이 인용된 출처에서 직접 뒷받침됩니다.",
-      "embed_estimated_tokens": 33,
-      "generation_input_tokens": 10364,
-      "generation_output_tokens": 830,
-      "latency_ms": 13977.1
     },
     {
       "id": 42,
