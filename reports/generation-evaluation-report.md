@@ -60,7 +60,7 @@ set entirely (56 → 55 questions; `insufficient_evidence`: 9 → 8), not
 relabelled — full reasoning in
 `reports/decisions/2026-08-19-question-41-invalidation.md`.
 
-**2026-08-19, final update — reranking reverted.** With both direct fixes
+**2026-08-19, fourth update — reranking reverted.** With both direct fixes
 for the over-answering weakness having failed, and the weakness's own
 history tracing straight back to reranking's side effect, reranking itself
 was reconsidered against the one lever with *already-measured, zero-cost*
@@ -77,6 +77,20 @@ deleted); every number below is the real, already-measured pre-reranking
 run (2026-08-18, second update, above) with question 41 excluded, not a
 new pipeline run. Full reasoning:
 `reports/decisions/2026-08-19-revert-reranking.md`.
+
+**2026-08-19, fifth update (same day) — self-consistency voting tried and
+cleanly ruled out.** A seventh mechanism, structurally different from the
+first six (statistical instability across repeated sampling, rather than
+another self-judgment call), was piloted: the real pipeline run three
+times per question over the 8 `insufficient_evidence` questions plus a
+10-question control sample. Result: **zero disagreement across all 18
+questions' 3 runs each** — the same 4 known failures came back `answered`
+every time, with no exceptions. This is a clean negative result, not an
+inconclusive one: it rules out sampling instability as the mechanism,
+and is read as further evidence of a systematic bias rather than
+model uncertainty. Real cost: $1.282819 (54 real calls). No numbers below
+changed — this did not touch production code. Full account:
+"insufficient_evidence refusal accuracy" below, "A seventh attempt."
 
 ## Methodology, restated briefly
 
@@ -327,7 +341,7 @@ across every independent real run of this project (the original
 run that was later reverted). No prompt change is needed for that
 specific risk.
 
-**Mechanisms tried and reverted — six independent attempts across four
+**Mechanisms tried and reverted — seven independent attempts across five
 mechanism classes, all before landing on the current state.**
 
 `prompt-v3` added an explicit anti-analogy instruction; a real re-run
@@ -430,7 +444,7 @@ This evidence played no role in deciding to invalidate the question — it
 is noted only because it is a real, independent data point that happens
 to agree with that later, separately-reasoned conclusion.
 
-**The revert (2026-08-19, this report's current state).** Six mechanisms
+**The revert (2026-08-19).** At this point in the day, six mechanisms
 across four classes (in-call prompt/schema changes; a wider-net retrieval
 change; a lenient separate-call check; a strict separate-call check) had
 all either failed to improve `insufficient_evidence_refusal_accuracy`
@@ -450,28 +464,71 @@ including why this was judged the better trade specifically (not just a
 tie-breaker), is in
 `reports/decisions/2026-08-19-revert-reranking.md`.
 
+**A seventh attempt (2026-08-19, same day): self-consistency voting,
+tested and cleanly ruled out.** Every prior attempt asked the model to
+judge its own output, in one form or another. This one instead asked
+whether the model's *decision itself* is unstable -- running the real
+`LegalAgent.answer_sync` three times per question (real retrieval + real
+generation, no code change) over the 8 `insufficient_evidence` questions
+plus a 10-question correctly-answered control sample (one per domain,
+same sampling design as the `verify.py` pilots), and checking whether
+`status` ever disagreed across the three runs. If it had, an
+instability-based gate (majority vote, or "any disagreement forces
+`insufficient_evidence`") would have been a genuinely new mechanism class
+-- a statistical signal rather than another self-judgment call. It did
+not: **all 18 questions returned identical status on all 3 runs, with
+zero exceptions** -- the same 4 known failures (42, 44, 53, 55) came back
+`answered` every single time, and all 10 control questions came back
+`answered` every single time. Majority vote therefore scores identically
+to a single run (4/8 correct). This is read as evidence *against* the
+instability hypothesis specifically, not an inconclusive result: the
+model is not wavering on these questions in a way sampling can detect --
+it reaches the same conclusion by the same route every time, which
+argues for a systematic bias in how it weighs this specific class of
+evidence, not sampling noise. Real cost: 54 real calls (18 questions ×
+3), $1.282819 (see Work report Blocker log item 21 and "AWS use").
+
 **What remains unresolved.** Even after the revert, 4 of 8
 `insufficient_evidence` questions are still over-answered (50%, not
 100%). The revert recovers the score reranking cost, but does not itself
-fix the underlying mechanism -- six real, independent attempts at a direct
-fix have all failed. See the Work report's "What one additional week
-would allow" for what a genuinely different fix (a different,
-independently-verified model identity, or a human-reviewed check) that
-this project's own two-week, single-verified-model-id constraints ruled
-out attempting here would require.
+fix the underlying mechanism -- **seven** real, independent attempts
+across five mechanism classes (in-call prompt/schema changes; a
+wider-net retrieval change; a lenient separate-call check; a strict
+separate-call check; self-consistency sampling) have all failed, the last
+one returning a clean, unambiguous null result rather than an inconclusive
+one. See the Work report's "What one additional week would allow" for
+what a genuinely different fix (a different, independently-verified model
+identity, or a human-reviewed check) that this project's own two-week,
+single-verified-model-id constraints ruled out attempting here would
+require.
 
 ## False refusals
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct
 of running all 55 questions and reported here because it is a real,
 non-obvious finding. **`false_refusal_count: 1`** — question 8 is the one
-answerable question this run refuses despite the retrieval evaluation
-confirming it is answerable-in-principle; it also returns
-`citation_count: 0`, consistent with the "Citation integrity" section
-above (an honest refusal, not a caught fabrication attempt). Question 11
-and 22 (also `citation_count: 0`, `limitations_count: 0`) previously
-appeared in this bucket under different retrieval conditions but are
-correctly answered in this run.
+answerable question this run refuses.
+
+**Checked directly, not assumed: this is a genuine generation-layer
+failure, not a retrieval failure honestly reported.** The initial
+hypothesis (checked 2026-08-19) was that question 8 might have `recall_at_10:
+0` — retrieval never surfacing the gold chunk, making the refusal the
+honest, correct response. The real, committed data says the opposite:
+`retrieval_evaluation_results.json` records `recall_at_10: 1` for question
+8 (the gold chunk `precedent-141548#summary-holding-000` ranked 8th, well
+inside the top-10), and the same run's `generation_evaluation_results.json`
+confirms `retrieval_hit_count: 10` — the model received a full set of 10
+real candidates, including the one that actually resolves the question,
+and still returned `status: insufficient_evidence` with `citation_count: 0`
+rather than citing it. **This is the one case across this project's real
+runs where the model refused despite having the evidence it needed** — the
+opposite failure direction from the `insufficient_evidence` over-answering
+weakness discussed at length above, and disclosed with the same rigor:
+checking the hypothesis against real data changed the conclusion, and the
+corrected conclusion — not the more flattering original guess — is what is
+reported. Question 11 and 22 (also `citation_count: 0`,
+`limitations_count: 0`) previously appeared in this bucket under different
+retrieval conditions but are correctly answered in this run.
 
 ## out_of_scope refusal accuracy
 

@@ -355,6 +355,35 @@ fixed before being reported as final:**
     limitation, both disclosed. Full reasoning, including why this
     specific trade direction and not the reverse:
     `reports/decisions/2026-08-19-revert-reranking.md`.
+20. **2 more untracked-at-the-time Bedrock calls found on a submission-
+    readiness self-audit (2026-08-19), same class as item 8's 6-call
+    incident.** Prompted by re-checking this project's own "quiet failure"
+    checklist (README.en.md's Tier table, item 4: "time, tokens, and cost
+    not recorded as you go") against the day's work rather than assuming it
+    already held: the cosine-separation pilot (51 embedding calls,
+    ~$0.000246) and the document-level-Recall@10/ceiling pilot (42
+    embedding calls, ~$0.000202) had been run and reported on in
+    conversation, but their real cost was not yet in this report. Both
+    now added to "AWS use" above. Combined real cost: ~$0.000448 —
+    negligible in dollar terms, same as item 8, but the point of this
+    checklist item is completeness of the record, not materiality of the
+    amount, so it is disclosed here rather than treated as too small to
+    matter.
+21. **A seventh over-answering fix attempt: self-consistency voting,
+    tested and cleanly ruled out (2026-08-19).** Structurally different
+    from the six mechanisms already tried (statistical instability across
+    repeated sampling, rather than another self-judgment call): the real
+    `LegalAgent.answer_sync` was run 3 times per question over the 8
+    `insufficient_evidence` questions plus a 10-question correctly-answered
+    control sample. Result: zero disagreement across all 18 questions' 3
+    runs each — the same 4 known failures returned `answered` every time,
+    with no exceptions anywhere, including the control set. Majority vote
+    scores identically to a single run (4/8). Read as a clean negative
+    result (ruling out sampling instability as the mechanism) rather than
+    an inconclusive one. Real cost: **$1.282819**, 54 real calls
+    (`temp/pilot_self_consistency.py`, gitignored, not committed — no
+    production code touched). Full account: Generation evaluation report,
+    "insufficient_evidence refusal accuracy" → "A seventh attempt."
 
 ## Completed, incomplete, and deliberately deferred work
 
@@ -364,7 +393,7 @@ deliverables):
 1. Record-selection and document-kind decisions — done (`reports/decisions/`, record-selection policy).
 2. Normalization, chunking, deterministic identity rules — done (`norm-v1`, `chunk-v1`, statute and judgement chunkers).
 3. Versioned OpenSearch 3.5-compatible index, reproducibly — done (`index-v1`, built twice, byte-identical cost/count both times).
-4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25). A real Claude Sonnet reranking stage over a widened top-25 pool was added 2026-08-18 (Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final) and **reverted 2026-08-19** after it was found to measurably worsen `insufficient_evidence_refusal_accuracy` and six independent direct fixes for that weakness all failed (Blocker log item 19) — reranking is not part of the submitted pipeline.
+4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25). A real Claude Sonnet reranking stage over a widened top-25 pool was added 2026-08-18 (Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final) and **reverted 2026-08-19** after it was found to measurably worsen `insufficient_evidence_refusal_accuracy` and seven independent direct fixes for that weakness all failed (Blocker log items 19, 21) — reranking is not part of the submitted pipeline.
 5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
@@ -510,15 +539,27 @@ and shows a ~$0.0436 lower total ($4.51071→$4.467164) for that reason —
 the two figures are expected to differ, not a discrepancy.
 
 Plus, disclosed separately rather than folded into the total above
-(see Blocker log items 7–9, 12, 17): **~$0.00001** from 6 untracked pre-
+(see Blocker log items 7–9, 12, 17, 20, 21): **~$0.00001** from 6 untracked pre-
 instrumentation dev calls, **~$0.000315** from the 65 real embedding calls
 made by 2026-08-18's uninstrumented retrieval-miss diagnostic script,
 **$0.396321** from the 32 real calls made by 2026-08-19's `verify.py`
 pilot (two prompt variants tested against already-saved data, neither
-adopted), and an **unknown, likely small** amount of real partial spend
-from the 4 original failed Generation-evaluation attempts whose cost was
-zeroed by the since-fixed accounting bug (their real elapsed time, 19–31
-seconds each, is the only surviving evidence they made real calls at all).
+adopted), **~$0.000246** from the 51 real embedding calls made by
+2026-08-19's cosine-similarity-separation pilot (`temp/pilot_cosine_separation.py`,
+kNN top-1/top-5 score distributions checked as a candidate deterministic
+gate; not adopted -- the two groups' distributions overlapped too much to
+separate), **~$0.000202** from the 42 real embedding calls made by the
+same day's document-level-Recall@10/retrieval-ceiling pilot
+(`temp/pilot_document_level_and_ceiling.py`, adopted -- see the Retrieval
+evaluation report), **$1.282819** from the 54 real calls made by the same
+day's self-consistency-voting pilot (`temp/pilot_self_consistency.py`,
+three real full-pipeline runs each over 18 questions; not adopted -- zero
+disagreement observed, ruling out the mechanism cleanly), and an
+**unknown, likely small** amount of real
+partial spend from the 4 original failed Generation-evaluation attempts
+whose cost was zeroed by the since-fixed accounting bug (their real
+elapsed time, 19–31 seconds each, is the only surviving evidence they made
+real calls at all).
 
 **OpenSearch usage.** One versioned index
 (`legal-kit-assessment-jynlee-chunk-v1-index-v1`, `index-v1`), 7,887
@@ -539,30 +580,36 @@ OpenSearch domain was never actually queried this project (see
 
 In priority order, most valuable first:
 
-1. **Fix the over-answering failure the rest of the way — six mechanisms
-   tried, all failed; the current 50% is a recovered cost, not a fix.**
-   `prompt-v3` (blanket instruction), `prompt-v4` (contrastive example),
-   `prompt-v5` (a code-checked `source_directly_resolves` field inside the
-   same generation call), reranking (2026-08-18 — approved for a different
-   reason, Recall@10, but widened the candidate pool and measurably made
-   this exact failure mode worse, which is why it was reverted 2026-08-19,
-   `reports/decisions/2026-08-19-revert-reranking.md`), and two separate
+1. **Fix the over-answering failure the rest of the way — seven mechanisms
+   tried, all failed, the last one cleanly; the current 50% is a recovered
+   cost, not a fix.** `prompt-v3` (blanket instruction), `prompt-v4`
+   (contrastive example), `prompt-v5` (a code-checked
+   `source_directly_resolves` field inside the same generation call),
+   reranking (2026-08-18 — approved for a different reason, Recall@10, but
+   widened the candidate pool and measurably made this exact failure mode
+   worse, which is why it was reverted 2026-08-19,
+   `reports/decisions/2026-08-19-revert-reranking.md`), two separate
    self-verification call variants (`verify.py` v1/v2, 2026-08-19, piloted
    against 16 already-saved answers before touching production code: a
    lenient variant caught 0 of 6 known failures, a strict variant that hid
    the answer text caught 1 of 6; neither adopted, real pilot cost
-   $0.396321) have all been tried and failed to fix this without a larger
-   false-refusal cost. The fifth and sixth attempts specifically tested
-   this section's own prior recommendation — a narrowly-scoped, separate
-   Bedrock call, the same pattern `judge.py` uses — and both failed, on a
-   lenient and a strict prompt respectively. The pilots' own diagnostic
-   evidence (v1's verifier re-stated the original answer's analogical
-   reasoning back as if it were sufficient; v2's id 53 showed the
-   verifier's own justification text arguing "insufficient" while its
-   structured field said `true`) points at a **structural** limit, not a
-   remaining wording problem: the same model, asked to certify its own
-   style of reasoning, tends to confirm it even in an independent call
-   with no memory of the original one. Reverting reranking (item 4's
+   $0.396321), and self-consistency voting (2026-08-19, item 21 above: the
+   real pipeline run 3x per question over 18 questions; zero disagreement
+   observed anywhere, real cost $1.282819) have all been tried and failed
+   to fix this without a larger false-refusal cost. The fifth and sixth
+   attempts specifically tested this section's own prior recommendation —
+   a narrowly-scoped, separate Bedrock call, the same pattern `judge.py`
+   uses — and both failed, on a lenient and a strict prompt respectively.
+   The seventh tested a structurally different hypothesis (statistical
+   instability, not self-judgment) and returned a clean negative, not an
+   inconclusive one. The pilots' own diagnostic evidence (v1's verifier
+   re-stated the original answer's analogical reasoning back as if it
+   were sufficient; v2's id 53 showed the verifier's own justification
+   text arguing "insufficient" while its structured field said `true`;
+   the seventh attempt's 18/18 unanimous results) points at a
+   **structural, not stochastic** limit: the same model, asked in five
+   different ways to reconsider its own reasoning, reaches the same
+   confident conclusion every time. Reverting reranking (item 4's
    Blocker log entry 19) recovered `insufficient_evidence_refusal_accuracy`
    from 37.5% back to its pre-reranking **50.0%** — the best measured
    value across this project, but still means 4 of 8 questions in this

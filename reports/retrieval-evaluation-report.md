@@ -65,6 +65,19 @@ sections below are kept as historical record of what was tried and why it
 was undone, not deleted. Full reasoning:
 `reports/decisions/2026-08-19-revert-reranking.md`.
 
+**2026-08-19, second final update — document-level Recall@10, a retrieval
+ceiling diagnosis, and a Recall@k curve added.** Three additional
+measurements, computed from the same 42 answerable questions via a fresh
+retrieval-only re-run (42 real embedding calls, ~$0.0002, no
+generation/rerank/judge calls): document-level Recall@10 (83.33%,
+alongside the unchanged chunk-level 57.14% headline), the real
+fusion ceiling (85.71% chunk-level -- the share of questions either
+retriever's own top-50 contains the gold chunk at all), and a Recall@k
+curve at k=1/3/5/10/20. See "Document-level Recall@10, retrieval ceiling,
+and a Recall@k curve" below for the full account, including a
+document-kind breakdown disclosing where the document-level figure is
+less trustworthy (statute "right law, wrong article" cases).
+
 ## Test-query sources and construction method
 
 Each of the 40 answerable questions was drafted from one real, specific
@@ -398,6 +411,128 @@ fusion-weighted (non-reranked) pipeline.
 retrieved against for transparency (what generation would have seen) but
 excluded from these metrics by design — there is no positive judgement to
 recall against for a question with no source chunk.
+
+## Document-level Recall@10, retrieval ceiling, and a Recall@k curve
+
+**Added 2026-08-19, after the chunk-level results above were already
+final** -- disclosed explicitly, since this is exactly the kind of
+after-the-fact metric addition that deserves the same scrutiny question
+41's invalidation got (`reports/decisions/2026-08-19-question-41-invalidation.md`).
+Unlike that case, this is a genuinely different situation: no label is
+changed, no question is added or removed, and no denominator moves --
+these are three additional, independently-defined measurements computed
+from a fresh retrieval-only re-run (42 real embedding calls, ~$0.0002,
+no generation/rerank/judge calls) over the same 42 answerable questions,
+reported alongside the existing chunk-level Recall@10, not instead of it.
+
+**Chunk-level Recall@10 (57.14%) remains this report's primary metric.**
+It is what `agent.py` actually consumes (the generation prompt is built
+from the specific reranked/fused chunk_ids, not from a document
+identity), and it is the metric ASSIGNMENT.md item 6 was answered against
+throughout this report. Everything below is reported as a secondary,
+complementary measurement, not a replacement headline.
+
+**(1) Document-level Recall@10: 83.33% (35/42), 26.19 points higher than
+chunk-level.** Definition: collapse the same fused ranked chunk list to
+unique `document_id`s in first-seen order, then check whether the gold
+document appears among the first 10 unique documents -- the same dedup
+rule the template repository's internal `EVALUATION.md` documents its own
+scorer using ("collapses chunk hits to unique documents in first-seen
+order before applying the top-10 cutoff"; that file is MZO's own internal
+tooling spec, not a contributor requirement -- it explicitly instructs
+"do not give the locked set to contributors" -- confirmed 2026-08-19 by
+direct fetch of the template repository and a full-text search of every
+contributor-facing document, none of which reference it). Justification
+for reporting this at all: (a) a downstream agent consuming this
+service's citations needs the right *source document*, and a citation
+from a different chunk of that same document is often still genuinely
+useful, not a miss; (b) it happens to be the closer analogue to how that
+internal scorer is defined, for a reader who wants to reason about that
+comparison, even though this project is not measured against it.
+
+**(2) Retrieval ceiling diagnosis -- two different 100%-denominator
+figures, explicitly labelled to avoid apparent contradiction with each
+other and with (3) below:**
+
+| Measurement | Unit | Value |
+| --- | --- | --- |
+| BM25-only top-50 hit rate | chunk-level | 42.9% (18/42) |
+| kNN-only top-50 hit rate | chunk-level | 78.6% (33/42) |
+| Either-retriever top-50 (fusion's real ceiling) | chunk-level | **85.7% (36/42)** |
+| Neither retriever (hard miss, no fusion weight can recover) | chunk-level | 14.3% (6/42) — ids 6, 16, 19, 20, 21, 32 |
+
+These figures are **chunk-level** (they ask whether the exact required
+chunk, not just its document, appears in a retriever's own top-50) and
+are unaffected by the RRF weight or by reranking (both operate only on
+what BM25/kNN already returned), so they hold regardless of which of this
+report's historical pipeline stages is current. Read together with the
+current 57.14% chunk-level Recall@10: the gap from 57.14% to 85.71% (28.6
+points) is a fusion/weighting limit -- the gold chunk was found by at
+least one retriever but fusion still didn't rank it into the top 10; the
+remaining gap from 85.71% to 100% (14.3 points) is a retrieval-quality
+limit fusion cannot fix at all -- chunking granularity, embedding limits,
+or genuine vocabulary mismatch, named as future work in "Failed-query
+analysis" below.
+
+**Do not confuse this 85.7% ceiling with (3) below's 90.5% document-level
+Recall@20 -- they measure different things (chunk vs. document
+granularity) and are not directly comparable, despite the second number
+being higher than the first.**
+
+**(3) Recall@k curve, k = 1/3/5/10/20, both granularities:**
+
+| k | Chunk-level | Document-level |
+| --- | --- | --- |
+| 1 | 19.0% (8/42) | 38.1% (16/42) |
+| 3 | 33.3% (14/42) | 69.0% (29/42) |
+| 5 | 40.5% (17/42) | 71.4% (30/42) |
+| 10 | 57.1% (24/42) | 83.3% (35/42) |
+| 20 | 66.7% (28/42) | 90.5% (38/42) |
+
+The curve shape at document level (already past 69% by k=3) versus chunk
+level (still under 41% at k=5) is itself informative: a large share of
+this project's "misses" are not retrieval finding nothing relevant, but
+retrieval finding the right document via a different chunk than the one
+construction happened to pick as the single required positive, ranked
+lower than 10.
+
+**Document-kind breakdown -- a real, disclosed limitation on how far to
+trust the document-level number.** "Right document, wrong chunk" is not
+equally meaningful for both kinds in this corpus: a judgement's chunks
+mostly cover the same case and issue, so a different chunk from the
+correct case is usually still a genuinely useful citation; a statute's
+chunks are separate articles, so surfacing the right law but the wrong
+article ("맞는 법, 틀린 조문") is a materially weaker result that this
+project's Citation contract would not treat as resolving the question.
+Split by document kind (classified by `chunk_id` prefix --
+`precedent-*` = judgement, `doc-*` = statute):
+
+| Kind | n | Chunk-level Recall@10 | Document-level Recall@10 | Gap |
+| --- | --- | --- | --- | --- |
+| Judgement (판례) | 27 | 51.9% (14) | 81.5% (22) | 29.6 pts |
+| Statute (법령) | 15 | 66.7% (10) | 86.7% (13) | 20.0 pts |
+
+Both kinds show a real document-level gain, not one driven entirely by
+either kind -- but the statute subset's 20-point gap (3 of 15 statute
+questions hit only at document level) includes an unknown number of
+"right law, wrong article" cases this report has not individually
+re-read to confirm are still substantively useful citations. This is
+disclosed as a real limit on the document-level figure's precision, not
+resolved here -- a per-question read of those 3 statute cases is named as
+future work if a larger sample becomes available.
+
+**BM25's real marginal contribution to the hybrid design: 7.1% (3 of 42),
+quantifying a design decision this report already made on qualitative
+grounds.** Of the 36 questions either retriever found, kNN alone found 33
+(78.6%) and BM25 uniquely contributed only 3 that kNN missed (ids 3, 12,
+25) -- BM25 mostly rediscovers what kNN already found (15 questions both
+retrievers hit) rather than covering a distinct failure mode. This
+retroactively supports "Fusion weighting" above's kNN×3 weighting
+decision with a number, not just the qualitative miss-analysis that
+originally motivated it: the hybrid design is kept, not because BM25
+contributes equally, but because its narrow, real 7.1% marginal
+contribution is still worth the fusion complexity it adds, at zero
+additional retrieval cost.
 
 **A disclosed nuance on id 43 specifically.** Its assigned required
 positive (의료기기법 제26조 제7항) does not appear in this question's

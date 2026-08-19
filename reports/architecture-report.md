@@ -240,12 +240,30 @@ choice; it is reported here plainly as "no filtering applied," not framed
 as a considered-and-rejected alternative, since no design note frames it
 that way either.
 
-**Reranking.** None. ASSIGNMENT.md explicitly leaves reranking optional.
-An LLM-based reranking pass would cost a real Bedrock call per candidate
-for an unproven benefit over an already-fused, two-signal ranking at this
-corpus's small scale — treated as scope to revisit only if the retrieval
-evaluation's metrics later show a measured ranking weakness at the
-positions that matter, not something to build speculatively now.
+**Reranking.** None in the submitted pipeline — but this was a real,
+measured decision arrived at during the project, not the starting
+position kept unexamined throughout. ASSIGNMENT.md explicitly leaves
+reranking optional. A semantic reranking stage (a separate Claude Sonnet
+call selecting genuinely relevant candidates from a widened top-25 pool,
+the `judge.py` pattern applied before generation instead of after) was
+implemented and measured on 2026-08-18: it raised Recall@10 from 57.14%
+to 59.52%, at a real, permanent per-query cost (rerank call ~$0.076,
+median retrieval latency 525ms→4.5s) — but it also measurably worsened
+`insufficient_evidence_refusal_accuracy` (0.5556→0.3333 on that day's
+denominator), an unintended side effect: a wider, more semantically
+generous candidate pool gave the generation step more
+plausible-but-not-dispositive material to reason from. After six further
+independent attempts at fixing that weakness directly all failed
+(Generation evaluation report, "insufficient_evidence refusal accuracy"),
+reranking was reverted on 2026-08-19 as the one lever with
+already-measured, zero-additional-cost evidence for its effect —
+`insufficient_evidence_refusal_accuracy` recovered to 50.0%, the best
+value measured across this project, at the cost of giving back the
+Recall@10 gain. Full reasoning for the trade-off direction:
+`reports/decisions/2026-08-19-revert-reranking.md`. The code
+(`src/legal_agent_assessment/rerank.py`) was deleted with the revert, not
+kept dormant — this section describes real, since-removed work, not a
+design that was never built.
 
 **`insufficient_evidence` determination** sits across two layers: a
 mechanical retrieval-layer floor (zero fused results triggers an immediate
@@ -495,9 +513,12 @@ against directly rather than relied on retries to absorb.
    retrieval logic currently reads that tag differently from any other
    chunk. This is real, currently inert metadata, named here as future
    work rather than left undocumented.
-6. *No reranking, no query-time filtering by document kind or chunk
-   type.* Both are deliberate scope decisions made against this
-   corpus's small scale, not gaps discovered late (§3).
+6. *No query-time filtering by document kind or chunk type.* A
+   deliberate scope decision made against this corpus's small scale, not
+   a gap discovered late. Reranking is a different case, not a
+   never-attempted scope decision: it was implemented, measured, and
+   reverted after a real, unintended side effect on
+   `insufficient_evidence_refusal_accuracy` — see §3.
 7. *Managed-domain Nori availability is now permitted but still
    mechanically untested.* MZO's authorization removes the policy
    uncertainty; no index-creation call using a Nori analyzer has actually
