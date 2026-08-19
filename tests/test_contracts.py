@@ -20,7 +20,6 @@ def versions() -> RuntimeVersions:
         embedding_model="global.cohere.embed-v4:0",
         generation_model="global.anthropic.claude-sonnet-4-6",
         prompt="prompt-v1",
-        rerank="rerank-prompt-v1",
     )
 
 

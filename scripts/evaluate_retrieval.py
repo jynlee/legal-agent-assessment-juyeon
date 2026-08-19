@@ -43,52 +43,24 @@ from legal_agent_assessment.embedding import (
 )
 from legal_agent_assessment.eval import lexical_overlap_ratio
 from legal_agent_assessment.opensearch_index import index_name
-from legal_agent_assessment.rerank import (
-    RERANK_SYSTEM_PROMPT,
-    build_rerank_prompt,
-    parse_rerank_response,
-)
 from legal_agent_assessment.retrieval import (
     build_bm25_query,
     build_knn_query,
     reciprocal_rank_fusion,
-    source_to_citation,
 )
 
 _BM25_SIZE = 50
 _KNN_SIZE = 50
 _FUSED_TOP_N = 10
 _RRF_K = 60
-# Kept in sync with legal_agent_assessment.agent's constants by hand -- this
-# script measures retrieval standalone (no LegalAgent instance), so it
-# cannot import them from agent.py without importing agent.py's whole
-# Bedrock/OpenSearch-facing dependency graph into a pure-retrieval
-# evaluation. `_RERANK_POOL_SIZE` widens the pool the same way agent.py's
-# does as of 2026-08-18: this script now includes the real rerank call, not
-# just RRF fusion, so its Recall@10 matches what production actually does.
+# Kept in sync with legal_agent_assessment.agent's _RRF_KNN_WEIGHT by hand --
+# this script measures retrieval standalone (no LegalAgent instance), so it
+# cannot import the constant from agent.py without importing agent.py's
+# Bedrock/OpenSearch-facing dependencies into a pure-retrieval evaluation.
 _RRF_KNN_WEIGHT = 3.0
-_RERANK_POOL_SIZE = 25
-_RERANK_MAX_TOKENS = 1024
 
 # Same rate as scripts/index_chunks.py's COHERE_EMBED_V4_USD_PER_MILLION_TOKENS.
 _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS = 0.12
-# Same rates as scripts/serve_legal_agent.py's Claude Sonnet constants -- the
-# rerank call is a real Claude Sonnet call, priced the same way.
-_CLAUDE_SONNET_INPUT_USD_PER_MILLION_TOKENS = 3.00
-_CLAUDE_SONNET_OUTPUT_USD_PER_MILLION_TOKENS = 15.00
-
-
-def _estimated_cost_usd(
-    embed_estimated_tokens: int, rerank_input_tokens: int, rerank_output_tokens: int
-) -> float:
-    """Estimated USD: real rerank tokens (2026-08-18 addition), estimated embed tokens."""
-
-    return round(
-        embed_estimated_tokens / 1_000_000 * _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS
-        + rerank_input_tokens / 1_000_000 * _CLAUDE_SONNET_INPUT_USD_PER_MILLION_TOKENS
-        + rerank_output_tokens / 1_000_000 * _CLAUDE_SONNET_OUTPUT_USD_PER_MILLION_TOKENS,
-        6,
-    )
 
 
 def load_test_set(path: pathlib.Path) -> list[dict[str, Any]]:
@@ -114,22 +86,9 @@ def embed_query(bedrock_client: Any, question: str, model_id: str) -> tuple[floa
 
 
 def retrieve_fused_chunk_ids(
-    opensearch_client: Any,
-    bedrock_client: Any,
-    generation_model_id: str,
-    index: str,
-    question: str,
-    query_vector: tuple[float, ...],
-) -> tuple[list[str], int, int]:
-    """Run BM25 + k-NN + RRF fusion + real rerank for one question.
-
-    Returns (final chunk_ids in relevance order, up to `_FUSED_TOP_N`,
-    rerank_input_tokens, rerank_output_tokens) -- matching exactly what
-    `LegalAgent.answer_sync` does as of 2026-08-18 (agent.py's
-    `_RERANK_POOL_SIZE` widening + real rerank call), so this script's
-    Recall@10 measures the same pipeline production uses, not a stale
-    fusion-only approximation of it.
-    """
+    opensearch_client: Any, index: str, question: str, query_vector: tuple[float, ...]
+) -> list[str]:
+    """Run BM25 + k-NN + RRF fusion for one question; return fused chunk_ids, top-10."""
 
     bm25_response = opensearch_client.search(
         index=index, body=build_bm25_query(question, size=_BM25_SIZE)
@@ -137,41 +96,10 @@ def retrieve_fused_chunk_ids(
     knn_response = opensearch_client.search(
         index=index, body=build_knn_query(query_vector, size=_KNN_SIZE)
     )
-    sources_by_id = {
-        hit["_source"]["chunk_id"]: hit["_source"]
-        for hit in (*bm25_response["hits"]["hits"], *knn_response["hits"]["hits"])
-    }
     bm25_ids = [hit["_source"]["chunk_id"] for hit in bm25_response["hits"]["hits"]]
     knn_ids = [hit["_source"]["chunk_id"] for hit in knn_response["hits"]["hits"]]
-    fused_pool = reciprocal_rank_fusion(
-        [bm25_ids, knn_ids], k=_RRF_K, weights=(1.0, _RRF_KNN_WEIGHT)
-    )[:_RERANK_POOL_SIZE]
-
-    if not fused_pool:
-        return [], 0, 0
-
-    pool_citations = {
-        chunk_id: source_to_citation(sources_by_id[chunk_id]) for chunk_id, _score in fused_pool
-    }
-    rerank_prompt = build_rerank_prompt(question, tuple(pool_citations.values()))
-    request_body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": _RERANK_MAX_TOKENS,
-        "system": RERANK_SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": rerank_prompt}],
-    }
-    response = bedrock_client.invoke_model(
-        modelId=generation_model_id, body=json.dumps(request_body)
-    )
-    body = json.loads(response["body"].read())
-    usage = body.get("usage") or {}
-    rerank_input_tokens = int(usage.get("input_tokens", 0))
-    rerank_output_tokens = int(usage.get("output_tokens", 0))
-
-    reranked_ids = parse_rerank_response(
-        body["content"][0]["text"], candidate_ids=list(pool_citations)
-    ).chunk_ids
-    return list(reranked_ids), rerank_input_tokens, rerank_output_tokens
+    fused = reciprocal_rank_fusion([bm25_ids, knn_ids], k=_RRF_K, weights=(1.0, _RRF_KNN_WEIGHT))
+    return [chunk_id for chunk_id, _score in fused[:_FUSED_TOP_N]]
 
 
 def score_answerable_question(
@@ -224,7 +152,6 @@ def main() -> None:
     region = os.environ.get("AWS_REGION", "ap-northeast-2")
     bedrock_region = os.environ.get("BEDROCK_REGION", region)
     embedding_model_id = os.environ.get("EMBEDDING_MODEL_ID", "global.cohere.embed-v4:0")
-    generation_model_id = os.environ["BEDROCK_MODEL_ID_SONNET"]
     name = index_name(args.contributor)
 
     opensearch_client = build_client(
@@ -242,8 +169,6 @@ def main() -> None:
     started = time.perf_counter()
     embedding_calls = 0
     estimated_tokens = 0
-    rerank_input_tokens_total = 0
-    rerank_output_tokens_total = 0
     per_question_results: list[dict[str, Any]] = []
     per_domain: dict[str, list[int]] = {}
     per_domain_mrr: dict[str, list[float]] = {}
@@ -256,16 +181,9 @@ def main() -> None:
             embedding_calls += 1
             estimated_tokens += estimate_tokens(question_text)
 
-            fused_ids, rerank_input_tokens, rerank_output_tokens = retrieve_fused_chunk_ids(
-                opensearch_client,
-                bedrock_client,
-                generation_model_id,
-                name,
-                question_text,
-                query_vector,
+            fused_ids = retrieve_fused_chunk_ids(
+                opensearch_client, name, question_text, query_vector
             )
-            rerank_input_tokens_total += rerank_input_tokens
-            rerank_output_tokens_total += rerank_output_tokens
             question_latency_ms = (time.perf_counter() - question_start) * 1000
 
             result: dict[str, Any] = {
@@ -325,10 +243,8 @@ def main() -> None:
             "question_count": len(questions),
             "embedding_calls": embedding_calls,
             "estimated_tokens": estimated_tokens,
-            "rerank_input_tokens": rerank_input_tokens_total,
-            "rerank_output_tokens": rerank_output_tokens_total,
-            "estimated_cost_usd": _estimated_cost_usd(
-                estimated_tokens, rerank_input_tokens_total, rerank_output_tokens_total
+            "estimated_cost_usd": round(
+                estimated_tokens / 1_000_000 * _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS, 6
             ),
             "elapsed_seconds": round(elapsed, 2),
             "aggregate": aggregate,
@@ -341,10 +257,8 @@ def main() -> None:
             "question_count": len(questions),
             "embedding_calls": embedding_calls,
             "estimated_tokens": estimated_tokens,
-            "rerank_input_tokens": rerank_input_tokens_total,
-            "rerank_output_tokens": rerank_output_tokens_total,
-            "estimated_cost_usd": _estimated_cost_usd(
-                estimated_tokens, rerank_input_tokens_total, rerank_output_tokens_total
+            "estimated_cost_usd": round(
+                estimated_tokens / 1_000_000 * _COHERE_EMBED_V4_USD_PER_MILLION_TOKENS, 6
             ),
             "elapsed_seconds": round(elapsed, 2),
             "aggregate": None,

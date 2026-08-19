@@ -32,7 +32,6 @@ from legal_agent_assessment.contracts import GeneralLegalRequest, RuntimeVersion
 from legal_agent_assessment.embedding import estimate_tokens
 from legal_agent_assessment.generation import PROMPT_VERSION
 from legal_agent_assessment.opensearch_index import CHUNKING_VERSION, INDEX_VERSION, index_name
-from legal_agent_assessment.rerank import RERANK_PROMPT_VERSION
 
 # Cohere Embed v4 on Bedrock: $0.12 per 1,000,000 input tokens (AWS Bedrock
 # published pricing, confirmed 2026-08-13). Restated here rather than imported
@@ -107,7 +106,6 @@ def main() -> None:
         embedding_model=embedding_model_id,
         generation_model=generation_model_id,
         prompt=PROMPT_VERSION,
-        rerank=RERANK_PROMPT_VERSION,
     )
     agent = LegalAgent(
         opensearch_client=opensearch_client,

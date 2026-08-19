@@ -1,6 +1,5 @@
 import asyncio
 import json
-import re
 from typing import Any
 
 import pytest
@@ -17,7 +16,6 @@ from legal_agent_assessment.contracts import (
 )
 from legal_agent_assessment.embedding import EMBEDDING_DIMENSION
 from legal_agent_assessment.generation import PROMPT_VERSION
-from legal_agent_assessment.rerank import RERANK_PROMPT_VERSION
 
 _VERSIONS = RuntimeVersions(
     dataset="dataset-2026-08-11-v2.1",
@@ -27,7 +25,6 @@ _VERSIONS = RuntimeVersions(
     embedding_model="global.cohere.embed-v4:0",
     generation_model="global.anthropic.claude-sonnet-4-6",
     prompt=PROMPT_VERSION,
-    rerank=RERANK_PROMPT_VERSION,
 )
 
 
@@ -65,10 +62,7 @@ class _FakeOpenSearchClient:
 
 
 class _FakeBedrockClient:
-    """Routes `invoke_model` by `modelId` and, for the generation model, by
-    whether a `system` prompt is present -- only the rerank call sets one
-    (`agent.py`'s `_generate(..., system=RERANK_SYSTEM_PROMPT)`), so this is
-    how a rerank call is told apart from the real answer-generation call."""
+    """Routes `invoke_model` by `modelId`: embedding vs. generation."""
 
     def __init__(
         self,
@@ -77,35 +71,18 @@ class _FakeBedrockClient:
         generation_response_text: str,
         generation_stop_reason: str = "end_turn",
         generation_usage: dict[str, int] | None = None,
-        rerank_response_text: str | None = None,
     ) -> None:
         self._embedding_model_id = embedding_model_id
         self._generation_response_text = generation_response_text
         self._generation_stop_reason = generation_stop_reason
         self._generation_usage = generation_usage or {"input_tokens": 1200, "output_tokens": 90}
-        # None means "select every candidate offered" -- the pre-rerank
-        # behavior every existing test was written to expect, so tests that
-        # do not care about reranking specifically need no changes.
-        self._rerank_response_text = rerank_response_text
         self.invoke_calls: list[dict[str, Any]] = []
 
     def invoke_model(self, *, modelId: str, body: str) -> dict[str, Any]:
-        parsed_body = json.loads(body)
-        self.invoke_calls.append({"modelId": modelId, "body": parsed_body})
+        self.invoke_calls.append({"modelId": modelId, "body": json.loads(body)})
         payload: dict[str, Any]
         if modelId == self._embedding_model_id:
             payload = {"embeddings": [[0.1] * EMBEDDING_DIMENSION]}
-        elif "system" in parsed_body:
-            rerank_text = self._rerank_response_text
-            if rerank_text is None:
-                prompt = parsed_body["messages"][0]["content"]
-                offered_ids = re.findall(r"\[([^\]\s]+)\]", prompt)
-                rerank_text = json.dumps({"relevant_chunk_ids": offered_ids})
-            payload = {
-                "content": [{"type": "text", "text": rerank_text}],
-                "stop_reason": "end_turn",
-                "usage": {"input_tokens": 300, "output_tokens": 20},
-            }
         else:
             payload = {
                 "content": [{"type": "text", "text": self._generation_response_text}],
@@ -342,122 +319,6 @@ def test_answer_sends_search_query_input_type_never_search_document() -> None:
     assert embed_call["body"]["input_type"] == "search_query"
 
 
-def test_answer_excludes_a_candidate_the_reranker_did_not_select() -> None:
-    """Reranking (2026-08-18) narrows the fused pool before generation ever
-    sees it: a candidate the reranker leaves out must not be citable, even
-    though retrieval itself found it."""
-
-    bm25_hits = [
-        _hit("relevant", "doc1", text="약사법 제1조 본문"),
-        _hit("irrelevant", "doc2", text="화장품법 제2조 본문"),
-    ]
-    opensearch = _FakeOpenSearchClient(bm25_hits, [])
-    generation_text = json.dumps(
-        {
-            "status": "answered",
-            "answer": "약사법 제1조는 목적을 규정합니다.",
-            "cited_chunk_ids": ["relevant", "irrelevant"],
-        }
-    )
-    bedrock = _FakeBedrockClient(
-        embedding_model_id="embed-v4",
-        generation_response_text=generation_text,
-        # Only "relevant" is offered back -- the reranker dropped "irrelevant".
-        rerank_response_text=json.dumps({"relevant_chunk_ids": ["relevant"]}),
-    )
-    agent = LegalAgent(
-        opensearch_client=opensearch,
-        bedrock_client=bedrock,
-        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
-        embedding_model_id="embed-v4",
-        generation_model_id="claude-sonnet",
-        versions=_VERSIONS,
-    )
-
-    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
-
-    assert response.status is AnswerStatus.ANSWERED
-    assert [c.chunk_id for c in response.citations] == ["relevant"]
-    assert [h.chunk_id for h in response.retrieval_hits] == ["relevant"]
-    # The model tried to cite "irrelevant" too, but it was never offered as
-    # a candidate after reranking, so it is dropped like any other unknown
-    # id -- surfaced through `limitations`, not silently.
-    assert response.limitations == ("Model cited unknown chunk_id(s), dropped: irrelevant",)
-
-
-def test_answer_still_asks_generation_to_classify_when_the_reranker_selects_nothing() -> None:
-    """A real 2026-08-18 regression: an earlier version returned
-    INSUFFICIENT_EVIDENCE directly here, without ever calling the real
-    generation model -- which broke every out_of_scope question, since
-    out_of_scope classification is the generation model's own judgment
-    call on the question itself, not a function of what retrieval found
-    (see the out_of_scope test below for that specific case). The reranker
-    selecting nothing must still reach generation, with zero citations."""
-
-    bm25_hits = [_hit("c1", "doc1", text="화장품법 제1조 본문")]
-    opensearch = _FakeOpenSearchClient(bm25_hits, [])
-    generation_text = json.dumps(
-        {"status": "insufficient_evidence", "answer": None, "cited_chunk_ids": []}
-    )
-    bedrock = _FakeBedrockClient(
-        embedding_model_id="embed-v4",
-        generation_response_text=generation_text,
-        rerank_response_text=json.dumps({"relevant_chunk_ids": []}),
-    )
-    agent = LegalAgent(
-        opensearch_client=opensearch,
-        bedrock_client=bedrock,
-        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
-        embedding_model_id="embed-v4",
-        generation_model_id="claude-sonnet",
-        versions=_VERSIONS,
-    )
-
-    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="오늘 날씨 어때요?"))
-
-    assert response.status is AnswerStatus.INSUFFICIENT_EVIDENCE
-    assert response.answer is None
-    assert response.citations == ()
-    assert response.retrieval_hits == ()
-    # embed + rerank + generate -- the real generation call this test
-    # exists to prove is never skipped.
-    assert len(bedrock.invoke_calls) == 3
-
-
-def test_answer_returns_out_of_scope_even_when_the_reranker_selects_nothing() -> None:
-    """The exact real regression this whole change fixed: an off-topic
-    question retrieves only irrelevant candidates, the reranker correctly
-    rejects all of them, and the model must still get to say out_of_scope
-    -- not have that classification silently skipped in favor of a
-    retrieval-shaped refusal."""
-
-    bm25_hits: list[dict[str, Any]] = []
-    knn_hits = [_hit("c1", "doc1", text="약사법 제1조 본문")]
-    opensearch = _FakeOpenSearchClient(bm25_hits, knn_hits)
-    generation_text = json.dumps({"status": "out_of_scope", "answer": None, "cited_chunk_ids": []})
-    bedrock = _FakeBedrockClient(
-        embedding_model_id="embed-v4",
-        generation_response_text=generation_text,
-        rerank_response_text=json.dumps({"relevant_chunk_ids": []}),
-    )
-    agent = LegalAgent(
-        opensearch_client=opensearch,
-        bedrock_client=bedrock,
-        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
-        embedding_model_id="embed-v4",
-        generation_model_id="claude-sonnet",
-        versions=_VERSIONS,
-    )
-
-    response = agent.answer_sync(
-        GeneralLegalRequest(request_id="r1", question="저녁메뉴 추천해주세요")
-    )
-
-    assert response.status is AnswerStatus.OUT_OF_SCOPE
-    assert response.answer is None
-    assert response.citations == ()
-
-
 def test_answer_matches_citations_when_opensearch_ids_differ_from_chunk_ids() -> None:
     """The agent must key off `_source["chunk_id"]`, never OpenSearch's `_id`.
 
@@ -597,13 +458,9 @@ def test_answer_reports_embed_and_generation_usage_through_the_callback() -> Non
         on_usage=lambda step, values: reported.append((step, values)),
     )
 
-    # Two "generate" reports as of 2026-08-18: the rerank call, then the
-    # real answer-generation call -- both are real, paid Bedrock calls and
-    # both must be reported, in that order.
-    assert [step for step, _values in reported] == ["embed", "generate", "generate"]
+    assert [step for step, _values in reported] == ["embed", "generate"]
     assert reported[0][1]["estimated_tokens"] > 0
-    assert reported[1][1] == {"input_tokens": 300, "output_tokens": 20}
-    assert reported[2][1] == {"input_tokens": 4321, "output_tokens": 77}
+    assert reported[1][1] == {"input_tokens": 4321, "output_tokens": 77}
 
 
 def test_answer_reports_only_embed_usage_when_retrieval_is_empty() -> None:

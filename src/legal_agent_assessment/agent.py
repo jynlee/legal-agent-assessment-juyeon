@@ -33,11 +33,6 @@ from legal_agent_assessment.embedding import (
     parse_embed_response,
 )
 from legal_agent_assessment.generation import build_answer_prompt, parse_answer_response
-from legal_agent_assessment.rerank import (
-    RERANK_SYSTEM_PROMPT,
-    build_rerank_prompt,
-    parse_rerank_response,
-)
 from legal_agent_assessment.retrieval import (
     build_bm25_query,
     build_knn_query,
@@ -49,13 +44,6 @@ from legal_agent_assessment.retrieval import (
 _BM25_SIZE = 50
 _KNN_SIZE = 50
 _FUSED_TOP_N = 10
-# Widened from _FUSED_TOP_N on 2026-08-18 to give the reranker (below) a real
-# pool to select from -- RRF's own top-10 cutoff is what generation used to
-# receive directly; now it is only the reranker's input, and the reranker's
-# own output is capped at _FUSED_TOP_N (rerank.py's _MAX_RERANKED_IDS) before
-# generation ever sees it. Chosen as the same order of magnitude as the
-# earlier cost estimate this change was approved against, not tuned.
-_RERANK_POOL_SIZE = 25
 _RRF_K = 60
 # Weight on the kNN list relative to BM25 (implicit 1.0). Added 2026-08-18: a
 # real per-question diagnosis (Retrieval evaluation report, "Fusion
@@ -196,59 +184,29 @@ class LegalAgent:
         sources_by_id = {
             hit["_source"]["chunk_id"]: hit["_source"] for hit in (*bm25_hits, *knn_hits)
         }
-        fused_pool = reciprocal_rank_fusion(
+        fused = reciprocal_rank_fusion(
             [
                 [hit["_source"]["chunk_id"] for hit in bm25_hits],
                 [hit["_source"]["chunk_id"] for hit in knn_hits],
             ],
             k=_RRF_K,
             weights=(1.0, _RRF_KNN_WEIGHT),
-        )[:_RERANK_POOL_SIZE]
+        )[:_FUSED_TOP_N]
 
-        if not fused_pool:
+        if not fused:
             return GeneralLegalResponse(
                 request_id=request.request_id,
                 status=AnswerStatus.INSUFFICIENT_EVIDENCE,
                 versions=self._versions,
             )
 
-        pool_citations = {
-            chunk_id: source_to_citation(sources_by_id[chunk_id]) for chunk_id, _score in fused_pool
-        }
-        rerank_prompt = build_rerank_prompt(request.question, tuple(pool_citations.values()))
-        rerank_result = self._generate(rerank_prompt, system=RERANK_SYSTEM_PROMPT)
-        if on_usage is not None:
-            on_usage(
-                "generate",
-                {
-                    "input_tokens": int(rerank_result.usage.get("input_tokens", 0)),
-                    "output_tokens": int(rerank_result.usage.get("output_tokens", 0)),
-                },
-            )
-        reranked_ids = parse_rerank_response(
-            rerank_result.text, candidate_ids=list(pool_citations)
-        ).chunk_ids
-
-        # No early return when reranking selects nothing: build_answer_prompt
-        # handles zero citations fine (an empty "Sources:" section), and the
-        # generation prompt's own first instruction is "decide whether this
-        # is even a legal question ... regardless of what the sources above
-        # happen to contain" -- the model, not this method, is what tells
-        # out_of_scope apart from insufficient_evidence, exactly as it always
-        # did before reranking existed (a real 2026-08-18 regression: an
-        # earlier version of this method returned INSUFFICIENT_EVIDENCE here
-        # directly, which silently skipped that classification step and
-        # broke every out_of_scope question -- out_of_scope_refusal_accuracy
-        # 1.0 -> 0.0 in a real generation-evaluation run, caught immediately
-        # rather than shipped).
-        fused_scores = dict(fused_pool)
         retrieval_hits = tuple(
-            source_to_retrieval_hit(
-                sources_by_id[chunk_id], rank=rank, score=fused_scores[chunk_id]
-            )
-            for rank, chunk_id in enumerate(reranked_ids, start=1)
+            source_to_retrieval_hit(sources_by_id[chunk_id], rank=rank, score=score)
+            for rank, (chunk_id, score) in enumerate(fused, start=1)
         )
-        candidate_citations = {chunk_id: pool_citations[chunk_id] for chunk_id in reranked_ids}
+        candidate_citations = {
+            chunk_id: source_to_citation(sources_by_id[chunk_id]) for chunk_id, _score in fused
+        }
 
         prompt = build_answer_prompt(request.question, tuple(candidate_citations.values()))
         generation = self._generate(prompt)
@@ -357,19 +315,12 @@ class LegalAgent:
         hits: list[dict[str, Any]] = response["hits"]["hits"]
         return hits
 
-    def _generate(self, prompt: str, *, system: str | None = None) -> _GenerationResult:
-        request_body: dict[str, Any] = {
+    def _generate(self, prompt: str) -> _GenerationResult:
+        request_body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": _GENERATION_MAX_TOKENS,
             "messages": [{"role": "user", "content": prompt}],
         }
-        if system is not None:
-            # Used by the rerank call (rerank.RERANK_SYSTEM_PROMPT), the same
-            # lever judge.py uses for the same reason: this model/endpoint
-            # rejects assistant-turn prefill outright, so a system prompt is
-            # the strongest available way to force raw-JSON-only output.
-            # The answer-generation call never sets this.
-            request_body["system"] = system
         response = self._bedrock.invoke_model(
             modelId=self._generation_model_id, body=json.dumps(request_body)
         )

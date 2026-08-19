@@ -328,6 +328,33 @@ fixed before being reported as final:**
     unaffected — question 41 was never in that denominator).
     `scripts/evaluate_generation.py` and `scripts/evaluate_retrieval.py`
     hardcoded question-count assertions updated 56→55.
+19. **Reranking reverted after six failed attempts to fix the weakness it
+    worsened (2026-08-19).** Reranking (added 2026-08-18, item 4 above)
+    measurably worsened `insufficient_evidence_refusal_accuracy`
+    (0.5556→0.3333 on that day's denominator). Between then and
+    2026-08-19, three prompt/schema changes (`prompt-v3`/`v4`/`v5`) and two
+    separate-verification-call pilots (`verify.py` v1/v2, item 17 above)
+    all failed to fix this directly. Reverting reranking itself was the
+    only lever with already-measured, zero-additional-cost evidence for
+    its effect — the pre-reranking pipeline had already been run for real
+    before reranking was added on top of it, so no new Bedrock spend was
+    needed to evaluate this option. Reverted: `git checkout` to the
+    pre-reranking state for `agent.py`, `contracts.py`
+    (`RuntimeVersions.rerank` removed), and their tests;
+    `src/legal_agent_assessment/rerank.py` and `tests/test_rerank.py`
+    deleted; `scripts/evaluate_retrieval.py` and
+    `scripts/evaluate_generation.py` reverted then had item 18's unrelated
+    fixes reapplied. Full quality gate re-verified clean (ruff/mypy/pytest,
+    233 tests) after the revert. Effect (question 41 excluded from both
+    sides of the comparison): Recall@10 59.52%→57.14%,
+    `insufficient_evidence_refusal_accuracy` 37.5%→**50.0%**, combined
+    non-answer-classification 61.5%→**69.2%**, `false_refusal_count`
+    0→1 (id 8). Judged the better trade for this project's stated
+    mission — an honest refusal is a smaller failure than a confident
+    wrong answer — not a free win: real limitation traded for real
+    limitation, both disclosed. Full reasoning, including why this
+    specific trade direction and not the reverse:
+    `reports/decisions/2026-08-19-revert-reranking.md`.
 
 ## Completed, incomplete, and deliberately deferred work
 
@@ -337,7 +364,7 @@ deliverables):
 1. Record-selection and document-kind decisions — done (`reports/decisions/`, record-selection policy).
 2. Normalization, chunking, deterministic identity rules — done (`norm-v1`, `chunk-v1`, statute and judgement chunkers).
 3. Versioned OpenSearch 3.5-compatible index, reproducibly — done (`index-v1`, built twice, byte-identical cost/count both times).
-4. Query embedding, retrieval, fusion, reranking — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25; a real Claude Sonnet reranking stage over a widened top-25 pool added 2026-08-18 — see Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final).
+4. Query embedding, retrieval, fusion — done (BM25 + exact k-NN + client-side RRF, `k=60`, k-NN weighted 3x BM25). A real Claude Sonnet reranking stage over a widened top-25 pool was added 2026-08-18 (Blocker log items 11 and 14-16, including a real regression caught and fixed before being reported as final) and **reverted 2026-08-19** after it was found to measurably worsen `insufficient_evidence_refusal_accuracy` and six independent direct fixes for that weakness all failed (Blocker log item 19) — reranking is not part of the submitted pipeline.
 5. Test set and relevance judgements — done (56 questions, `reports/eval/retrieval_test_set.json`, leakage-checked; grew from 50 to 56 on 2026-08-18, see the Blocker log and "Incomplete / found but not fixed" below for the 2 gold-label corrections made along the way).
 6. Quantitative retrieval metrics — done (Recall@10, MRR; nDCG deliberately not computed, justified in the Retrieval evaluation report).
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
@@ -459,7 +486,11 @@ discarded first run that shipped with the out_of_scope regression still
 live, then the real clean re-run after the fix) — Blocker log items 11–16
 cover this in full. Every real call is recorded from the first one onward
 per this section's requirement, confirmation-only, crashed, and discarded
-calls included.
+calls included. **Reranking was reverted on 2026-08-19 (Blocker log item
+19), but its real cost while it was in production is not removed from the
+totals below** — the same principle already applied to `prompt-v3`/`v4`/`v5`
+above: a real dollar spent stays counted regardless of whether the code
+that spent it later ships.
 
 | Category | Runs | Embed tokens (est.) | Generation input tokens | Generation output tokens | Cost |
 | --- | --- | --- | --- | --- | --- |
@@ -508,33 +539,35 @@ OpenSearch domain was never actually queried this project (see
 
 In priority order, most valuable first:
 
-1. **Fix the over-answering failure — five mechanisms tried, all failed;
-   the next one needs a different model identity or a human, not another
-   prompt.** `prompt-v3` (blanket instruction), `prompt-v4` (contrastive
-   example), `prompt-v5` (a code-checked `source_directly_resolves` field
-   inside the same generation call), **reranking** (2026-08-18 — approved
-   for a different reason, Recall@10, but widened the candidate pool and
-   measurably made this exact failure mode worse:
-   `insufficient_evidence_refusal_accuracy` 0.5556→0.3333,
-   `insufficient_evidence_misclassified_as_answered` 4→6), and now a
-   **separate self-verification call** (2026-08-19 — `verify.py`, piloted
-   in two variants against 16 already-saved answers before touching
-   production code, per this section's own prior recommendation to try
-   exactly this: a lenient variant caught 0 of 6 known failures, a strict
-   variant that hid the answer text caught 1 of 6; neither adopted, real
-   pilot cost $0.396321) have all been tried and failed to fix this
-   without a larger false-refusal cost. The fifth attempt specifically
-   tested this section's own prior recommendation — a narrowly-scoped,
-   separate Bedrock call, the same pattern `judge.py` uses — and it still
-   failed, on both a lenient and a strict prompt. The pilot's own
-   diagnostic evidence (v1's verifier re-stated the original answer's
-   analogical reasoning back as if it were sufficient; v2's id 53 showed
-   the verifier's own justification text arguing "insufficient" while its
+1. **Fix the over-answering failure the rest of the way — six mechanisms
+   tried, all failed; the current 50% is a recovered cost, not a fix.**
+   `prompt-v3` (blanket instruction), `prompt-v4` (contrastive example),
+   `prompt-v5` (a code-checked `source_directly_resolves` field inside the
+   same generation call), reranking (2026-08-18 — approved for a different
+   reason, Recall@10, but widened the candidate pool and measurably made
+   this exact failure mode worse, which is why it was reverted 2026-08-19,
+   `reports/decisions/2026-08-19-revert-reranking.md`), and two separate
+   self-verification call variants (`verify.py` v1/v2, 2026-08-19, piloted
+   against 16 already-saved answers before touching production code: a
+   lenient variant caught 0 of 6 known failures, a strict variant that hid
+   the answer text caught 1 of 6; neither adopted, real pilot cost
+   $0.396321) have all been tried and failed to fix this without a larger
+   false-refusal cost. The fifth and sixth attempts specifically tested
+   this section's own prior recommendation — a narrowly-scoped, separate
+   Bedrock call, the same pattern `judge.py` uses — and both failed, on a
+   lenient and a strict prompt respectively. The pilots' own diagnostic
+   evidence (v1's verifier re-stated the original answer's analogical
+   reasoning back as if it were sufficient; v2's id 53 showed the
+   verifier's own justification text arguing "insufficient" while its
    structured field said `true`) points at a **structural** limit, not a
    remaining wording problem: the same model, asked to certify its own
    style of reasoning, tends to confirm it even in an independent call
-   with no memory of the original one. What one more week would need to
-   try instead is a genuinely different check — either a second,
+   with no memory of the original one. Reverting reranking (item 4's
+   Blocker log entry 19) recovered `insufficient_evidence_refusal_accuracy`
+   from 37.5% back to its pre-reranking **50.0%** — the best measured
+   value across this project, but still means 4 of 8 questions in this
+   category are over-answered, not fixed. What one more week would need to
+   try is a genuinely different check — either a second,
    independently-sourced-and-verified model identity (this project's
    `.env.example` names only one verified Sonnet id; sourcing and
    verifying a second was out of scope here per the Fixed-constraints
@@ -544,7 +577,7 @@ In priority order, most valuable first:
 2. **A second, independent grounding check** — either a genuinely
    different judge model (would require sourcing and verifying a second
    Kit-approved model id) or a human-reviewed spot-check of a sample of
-   the 44 judged answers, to test whether the single-model,
+   the 45 judged answers, to test whether the single-model,
    single-pass judge's `partially_grounded` calls hold up under
    independent review. (The `agent.py` citation-integrity gap named in
    an earlier version of this list has since been fixed within this

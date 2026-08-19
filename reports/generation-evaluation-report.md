@@ -18,63 +18,65 @@ generation_evaluation_results.json`). Method is fixed by
 the original 5 `insufficient_evidence` questions (ids 43, 54) were found
 to have incorrect gold labels on real re-verification — both are directly
 resolved by a real statute provision the original construction pass's
-search terms missed — and were relabelled `answered`. All numbers below
-are from the real re-run against the corrected 56-question set. See
-"insufficient_evidence refusal accuracy" below for the full story and why
-it changes this report's central finding.
+search terms missed — and were relabelled `answered`.
 
 **2026-08-18, second update (same day).** Two real fixes landed after the
 update above: a retrieval fusion-weight fix (Retrieval evaluation report's
 "Fusion weighting") and a JSON-parsing robustness fix for a real crash hit
-mid-re-verification (Work report's Blocker log item 13). Every number below
-is from the real re-run made after both fixes. Net effect versus the first
+mid-re-verification (Work report's Blocker log item 13). Versus the first
 2026-08-18 update: `answered_status_match_rate` 0.9524→0.9762,
 `false_refusal_count` 2→1 (now just id 8), grounding mix shifted slightly
-(`grounded` 16→14, `partially_grounded` 28→31) as expected from a real
-retrieval change altering which chunks generation sees;
-`insufficient_evidence_refusal_accuracy` is unchanged at 0.5556 — the
+as expected from a real retrieval change altering which chunks generation
+sees; `insufficient_evidence_refusal_accuracy` unchanged at 0.5556 — the
 over-answering root cause (see below) is independent of retrieval quality.
+**This is the state every number below now reflects again**, after the
+reranking stage described in the next two updates was added, evaluated,
+and reverted.
 
-**2026-08-18, third update (same day).** A semantic reranking stage was
-added to retrieval (Retrieval evaluation report's "Reranking"), raising
-Recall@10 further (0.5714→0.5952). Every number below is from the real
-re-run made after reranking, and after a real regression it introduced
-(every `out_of_scope` question started failing; found, root-caused, and
-fixed via TDD before this run) was fixed. This update's net effect is
-mixed, not uniformly positive, and is reported as such:
-`answered_status_match_rate` reached a perfect 1.0 and `false_refusal_count`
-dropped to 0, but `insufficient_evidence_refusal_accuracy` *fell* from
-0.5556 to **0.3333** and `insufficient_evidence_misclassified_as_answered`
-*rose* from 4 to **6** — reranking, by successfully surfacing more
-topically-relevant candidates from a wider pool, appears to have handed the
-model *more* plausible-but-not-dispositive evidence for exactly the
-insufficient_evidence questions where this project's already-documented
-over-answering bug (see "insufficient_evidence refusal accuracy" below)
-gets triggered, making that specific weakness worse rather than better.
-This was not the intended effect and is disclosed plainly rather than
-buried under the improved headline numbers.
+**2026-08-18, third update (same day) — semantic reranking added.** A
+reranking stage (Retrieval evaluation report's "Reranking") was added on
+top of the fusion-weight fix, raising Recall@10 further (0.5714→0.5952).
+Its net effect was mixed: `answered_status_match_rate` reached a perfect
+1.0 and `false_refusal_count` dropped to 0, but
+`insufficient_evidence_refusal_accuracy` *fell* from 0.5556 to 0.3333 and
+`insufficient_evidence_misclassified_as_answered` *rose* from 4 to 6 —
+reranking, by successfully surfacing more topically-relevant candidates
+from a wider pool, handed the model *more* plausible-but-not-dispositive
+evidence for exactly the questions where this project's over-answering
+weakness gets triggered, making that specific weakness worse.
 
-**2026-08-19 update.** No numbers below changed -- this was an
-investigation, not a pipeline run. A fifth mechanism for the
-`insufficient_evidence` over-answering failure (see that section) was
-piloted cheaply against already-saved data, in two variants, and both
-failed to clear the bar set before starting. See "insufficient_evidence
-refusal accuracy" below, "A fifth mechanism was tried" subsection, for the
-full account.
+**2026-08-19 — two mechanisms piloted to fix the over-answering weakness
+directly, both failed** (full account preserved below, "insufficient_evidence
+refusal accuracy" → "Mechanisms tried and reverted"): a lenient and a
+strict variant of a separate self-verification Bedrock call (`verify.py`,
+never committed) caught 0 of 6 and 1 of 6 known failures respectively.
 
-**2026-08-19, second update (same day).** Question 41 was found, on direct
-review of its own cited sources, to be an invalid `insufficient_evidence`
-example — not answered wrong, but constructed wrong (see
-`reports/decisions/2026-08-19-question-41-invalidation.md`). It is removed
-from the test set (56 → 55 questions), not relabelled, and could not be
-relabelled `answered` either: it was never drafted from a specific source
-chunk, so assigning one now (from what the model itself cited) would make
-its `Recall@10` contribution true by construction — the same
-self-grading risk this report's own generation-side findings warn about,
-recurring on the retrieval side. All numbers below are recomputed from the
-already-stored per-question results with question 41 excluded, not a
-pipeline re-run — see "insufficient_evidence refusal accuracy" below for
-the full before/after and the disclosed incentive check.
+**2026-08-19 — question 41 invalidated, not relabelled.** Reviewing those
+6 failures' cited sources by hand (the same standard already applied to
+ids 43/54) found question 41 was an invalid `insufficient_evidence`
+example — its cited source states a general principle that resolves the
+claim on its face, not by analogy like the other 5. Removed from the test
+set entirely (56 → 55 questions; `insufficient_evidence`: 9 → 8), not
+relabelled — full reasoning in
+`reports/decisions/2026-08-19-question-41-invalidation.md`.
+
+**2026-08-19, final update — reranking reverted.** With both direct fixes
+for the over-answering weakness having failed, and the weakness's own
+history tracing straight back to reranking's side effect, reranking itself
+was reconsidered against the one lever with *already-measured, zero-cost*
+evidence: removing it. Recall@10 gives up 2.38 points (59.52%→57.14%) and
+`false_refusal_count` goes back to 1 (id 8), but
+`insufficient_evidence_refusal_accuracy` recovers from 37.5% to **50.0%**
+and the combined non-answer-classification figure
+(`insufficient_evidence` + `out_of_scope`) recovers from 61.5% to **69.2%**
+— judged the better trade for this project's stated mission (an honest
+"I don't have enough evidence" is a materially smaller failure than a
+confident, plausible-sounding wrong answer). `rerank.py` and its wiring
+into `agent.py` were reverted (`src/legal_agent_assessment/rerank.py`
+deleted); every number below is the real, already-measured pre-reranking
+run (2026-08-18, second update, above) with question 41 excluded, not a
+new pipeline run. Full reasoning:
+`reports/decisions/2026-08-19-revert-reranking.md`.
 
 ## Methodology, restated briefly
 
@@ -93,30 +95,28 @@ practice showed.
 
 ## Grounding
 
-Of the 47 responses that came back `answered` (all 42
-`expected_status: "answered"` questions, since `false_refusal_count` is now
-0 — see "False refusals" below — plus 5 questions expected
-`insufficient_evidence` that were over-answered instead — see
-"insufficient_evidence refusal accuracy" below; a 6th, question 41, is
-excluded from this count entirely, see that section's "A test-set
-construction defect" subsection), the judge classified:
+Of the 45 responses that came back `answered` (41 of the 42
+`expected_status: "answered"` questions — see "False refusals" below for
+the one exception, id 8 — plus 4 questions expected `insufficient_evidence`
+that were over-answered instead — see "insufficient_evidence refusal
+accuracy" below), the judge classified:
 
 | Verdict | Count | Share of judged answers |
 | --- | --- | --- |
-| `grounded` | 11 | 23.4% |
-| `partially_grounded` | 36 | 76.6% |
+| `grounded` | 14 | 31.1% |
+| `partially_grounded` | 31 | 68.9% |
 | `unsupported` | 0 | 0.0% |
 | `judge_parse_error` | 0 | — |
 
 **Zero `unsupported` answers** — the judge never classified an answer as
-making claims the cited excerpts do not support at all, across all three
-real runs so far. But
-**`partially_grounded` is the large majority (75.0%), not the exception** —
-this is disclosed as the headline finding here, not smoothed over by the
-absence of outright `unsupported` verdicts. Reading the judge's
-justification text for the `partially_grounded` cases shows a consistent
-pattern: not fabrication, but overreach on a specific sub-claim inside an
-otherwise well-supported answer. Two real examples:
+making claims the cited excerpts do not support at all, across every real
+run of this evaluation. But **`partially_grounded` is still the large
+majority (68.9%), not the exception** — this is disclosed as the headline
+finding here, not smoothed over by the absence of outright `unsupported`
+verdicts. Reading the judge's justification text for the
+`partially_grounded` cases shows a consistent pattern: not fabrication,
+but overreach on a specific sub-claim inside an otherwise well-supported
+answer. Two real examples:
 
 - Question 1 (약사법, packaging/repackaging cosmetics as unlicensed
   manufacture): the judge flagged that the answer characterized one cited
@@ -144,54 +144,26 @@ confirmed:
 | 공중위생법 | 3 | 2 | 0 | 5 |
 | 미용법 | 3 | 2 | 0 | 5 |
 | 안마사법 | 3 | 2 | 0 | 5 |
-| 의료법 | 1 | 3 | 0 | 4 |
-| 약사법 | 1 | 4 | 0 | 5 |
+| 의료법 | 2 | 1 | 0 | 3 |
+| 약사법 | 2 | 2 | 0 | 4 |
+| 표시광고법 | 1 | 4 | 0 | 5 |
 | 개인정보보호법 | 0 | 4 | 0 | 4 |
 | 무면허의료행위 | 0 | 4 | 0 | 4 |
 | 의료기기법 | 0 | 5 | 0 | 5 |
-| 표시광고법 | 0 | 5 | 0 | 5 |
 | 화장품법 | 0 | 5 | 0 | 5 |
 
-**2026-08-19 addendum, after question 41's invalidation.** 표시광고법 moves
-into the zero-`grounded` group in this table: question 41 (removed, see
-"insufficient_evidence refusal accuracy" below) was 표시광고법's only fully
-`grounded` answer among the domain's 6 judged responses. With it excluded,
-표시광고법 is 0 grounded / 5 partially_grounded / n=5, the same shape as
-the other zero-grounded domains. This is not a coincidence to read past:
-question 41 was found invalid *because* its answer was unusually
-well-grounded for a supposedly-unanswerable question (that is exactly what
-prompted the review, see the section below) — its removal mechanically
-pulls its domain's one clean `grounded` result out of this table too. The
-number below is corrected for this.
-
-No domain has every answer fully `grounded` this run; **five domains**
-(개인정보보호법, 무면허의료행위, 의료기기법, 표시광고법, 화장품법) had zero
-fully `grounded` answers — every one of their answered questions drew at
-least one judge-flagged overreach. This is the *third* different
-zero-grounded domain set across this project's real, officially-reported
-full runs (an earlier 4-domain set: 의료법, 표시광고법, 화장품법,
-개인정보보호법; then a 3-domain set: 의료기기법, 화장품법, 개인정보보호법;
-now this run's 5-domain set, after the question-41 correction above) —
-consistent with this section's own point that per-domain grounding is
-disclosed as each run's real result, not asserted as a stable property
-without a larger sample (see "future work" below). 화장품법, 의료기기법,
-and 개인정보보호법 now appear as zero-grounded across all three reported
-runs; 무면허의료행위 newly joins this run, and 표시광고법 (zero-grounded in
-the first of the two earlier runs) rejoins it here once its one
-grounded answer is correctly excluded; 의료법 (zero-grounded in the
-earlier runs) still has exactly 1 fully-grounded answer — consistent with
-sampling noise on a 4-6-question-per-domain sample rather than a stable
-domain-specific defect, though the persistence of 화장품법/의료기기법/
-개인정보보호법 (zero-grounded in every run) and now 표시광고법 across most
-runs is worth treating as a real signal, not purely noise, if a larger
-sample becomes available. 공중위생법's own count includes id 53
+No domain has every answer fully `grounded` this run; four domains
+(개인정보보호법, 무면허의료행위, 의료기기법, 화장품법) had zero fully
+`grounded` answers — every one of their answered questions drew at least
+one judge-flagged overreach. This is disclosed as this run's real result,
+not asserted as a stable per-domain property without a larger sample (see
+"future work" below) — the specific zero-grounded set has shifted across
+this project's earlier reported runs too, consistent with sampling noise
+on a 3-5-question-per-domain sample. 공중위생법's own count includes id 53
 (the insufficient_evidence question this domain over-answered — judged
 `grounded` even though the status itself was wrong, since the judge only
 checks whether prose matches citations, not whether refusal was the
-correct status). This is disclosed as a real, domain-correlated pattern in
-this run, not investigated further here (a larger sample per domain, or a
-second judge pass, would be needed to say whether it is a stable
-per-domain property or this run's noise — named as future work below).
+correct status).
 
 **Method limitation, disclosed plainly.** This is a single-model,
 single-pass, automated classification (`reports/decisions/2026-08-14-
@@ -231,20 +203,17 @@ downgraded because zero cited ids were real) always carries exactly one
 **This closed a real, previously-disclosed unknown, not just a
 hypothetical one.** Questions 11 and 22 (see "False refusals" below) both
 came back `insufficient_evidence` with `citation_count: 0` in every real
-run of this evaluation, including this one, and the fix now makes their
-nature provable rather than merely likely: both have `limitations_count:
-0` in this run's committed data — **honest refusals, not caught
-fabrication attempts.** `limitations_fired_count: 0` across all 55
-questions confirms no total-fabrication case occurred anywhere in this
-run either. The retrieval-evaluation-informed guess in the prior version
-of this report (that the honest-refusal reading was "more likely") is
-now a measured fact rather than an inference.
+run of this evaluation, and the fix makes their nature provable rather
+than merely likely: both have `limitations_count: 0` in this run's
+committed data — **honest refusals, not caught fabrication attempts.**
+`limitations_fired_count: 0` across all 55 questions confirms no
+total-fabrication case occurred anywhere in this run either.
 
 ## Unsupported citation / hallucination
 
 Read together with "Grounding" above: **zero answers were classified
 `unsupported`** — the judge never found an answer making a claim the cited
-excerpts do not support at all. The 32 `partially_grounded` answers are
+excerpts do not support at all. The 31 `partially_grounded` answers are
 the more accurate place to look for hallucination-adjacent risk in this
 run: every one of them has at least one claim the judge could not trace to
 its citations, even though none crossed into wholesale unsupported
@@ -257,22 +226,17 @@ its cited excerpts specifically say.
 
 ## insufficient_evidence refusal accuracy
 
-**0.375 (3 of 8 correct) after reranking and question 41's invalidation,
-worse than 0.5556 before reranking.** The category grew from 5 to 9
-questions on 2026-08-18 (see the Retrieval evaluation report's
-"Composition" and "Test-query sources and construction method" for the 6
-new questions' construction and domain-coverage rationale), 2 of the
-original 5 (ids 43, 54) were found to be mislabelled and moved out of this
-category on 2026-08-18 (see "Two gold-label errors found and corrected"
-below), and 1 of the 6 new questions (id 41) was found to be an invalid
-example and removed from the test set entirely on 2026-08-19 (see "A
-test-set construction defect: question 41" below) — the category now holds
-8 questions, not 9. Read together, this is a full accounting of every
-change to this category's denominator across this project, not just the
-most recent one. The table below is the current, post-invalidation run;
-see "Reranking made this worse, not better" at the end of this section for
-the pre-reranking comparison (0.5556, 5/9, before either correction) and
-why.
+**0.5 (4 of 8 correct) after reranking was reverted and question 41 was
+invalidated — the best measured value across this project's real runs.**
+The category grew from 5 to 9 questions on 2026-08-18 (see the Retrieval
+evaluation report's "Composition" and "Test-query sources and construction
+method" for the 6 new questions' construction and domain-coverage
+rationale), 2 of the original 5 (ids 43, 54) were found to be mislabelled
+and moved out of this category on 2026-08-18 (see "Two gold-label errors
+found and corrected" below), and 1 of the 6 new questions (id 41) was
+found to be an invalid example and removed from the test set entirely on
+2026-08-19 (see "A test-set construction defect: question 41" below) — the
+category now holds 8 questions.
 
 | id | domain | question | actual status | correct? |
 | --- | --- | --- | --- | --- |
@@ -283,11 +247,16 @@ why.
 | 52 | 무면허의료행위 | 바늘 없는 속눈썹 펌도 무면허의료행위인가요? | `insufficient_evidence` | ✅ |
 | 53 | 공중위생법 | 개인 유튜브 촬영을 위한 출장 시술도 되나요? | `answered` | ❌ |
 | 55 | 안마사법 | 무자격 직원의 발마사지 시술도 되나요? | `answered` | ❌ |
-| 56 | 약사법 | SNS 체험단 무상 증정도 '판매'로 규제받나요? | `answered` | ❌ |
+| 56 | 약사법 | SNS 체험단 무상 증정도 '판매'로 규제받나요? | `insufficient_evidence` | ✅ |
+
+Note id 56: correctly refused in this (reranking-reverted) run, unlike the
+reranking-era run reported earlier this same day — see "Mechanisms tried
+and reverted" below for why reranking specifically flipped this one from
+correct to incorrect.
 
 **A test-set construction defect: question 41 invalidated, not relabelled
 (2026-08-19).** Question 41 ("피부 노화가 되돌아간다"고 광고해도 되나요?")
-was reviewed as part of reading all 6 confirmed-genuine failures' cited
+was reviewed as part of reading all 6 then-confirmed failures' cited
 sources line by line (below), the same standard already applied to ids
 43/54. Unlike the other 5, its cited source
 (`precedent-144207#summary-holding-001`) states a *general* principle —
@@ -300,25 +269,14 @@ which were independently traced to a specific missed statute provision —
 question 41 was never drafted from a specific source chunk
 (`source_chunk_id: null` from construction). Assigning one now from what
 the model itself cited would make its `Recall@10` contribution true by
-construction (the model can only cite what retrieval already ranked in
-its top-10), the same self-grading concern raised throughout this section
-applied to the retrieval metric instead. With no valid category left, it
-is removed from the test set entirely (56 → 55 questions). Full reasoning,
-including the pre-registered review criterion applied identically to all
-6 cases and why question 44 — the case structurally closest to 41, and
-carrying the same score-improving temptation — was reviewed and *not*
-reclassified, is in `reports/decisions/2026-08-19-question-41-invalidation.md`.
-
-**Both denominators are reported, not just the higher one.** The
-project-wide non-answer-classification figure (`insufficient_evidence` +
-`out_of_scope` combined) is **8/13 = 61.5%** with
-question 41 excluded, versus **8/14 = 57.1%** counting it as a failure the
-way it was scored before this review. This correction was known to move
-the number upward before it was made — see the decision note's "Disclosed
-incentive" section for the four points supporting that this was not why
-41 was invalidated, foremost among them that question 44, the case
-carrying the same temptation, was reviewed under an identical criterion
-and kept as a genuine failure.
+construction, the same self-grading concern raised throughout this
+section applied to the retrieval metric instead. With no valid category
+left, it is removed from the test set entirely (56 → 55 questions). Full
+reasoning, including the pre-registered review criterion applied
+identically to all 6 cases and why question 44 — the case structurally
+closest to 41, and carrying the same score-improving temptation — was
+reviewed and *not* reclassified, is in
+`reports/decisions/2026-08-19-question-41-invalidation.md`.
 
 **Two gold-label errors found and corrected, disclosed in full rather than
 quietly fixed.** Ids 43 and 54 were originally built into this test set
@@ -343,27 +301,20 @@ throughout (see the Work report's blocker log) — a bad gold label is a
 defect in the evaluation, not a defect in the model, and treating the two
 differently is exactly the discipline "measure, don't assume" requires.
 
-**The failure mode, on the 5 confirmed-genuine failures (42, 44, 53, 55,
-56) after reranking and question 41's invalidation (was 4: 42, 44, 53, 55,
-before reranking; was 6 including 41 before its invalidation, above). All
-5 questions retrieved real, reranker-selected candidates — not a retrieval
-gap, and the reranker did its own job correctly (selecting genuinely
-topical candidates). The mechanism is the same one already identified
-before reranking existed: several reason by analogy from a real but
-not-dispositive source (a general prohibition, a related precedent about a
-different specific phrase or service), and id 53 remains the clearest
-direct evidence of it: the model's own answer text states **"'방송 등의
-촬영'이 개인 유튜브 채널 촬영을 포함하는지 여부는 제공된 자료만으로는
-명확히 판단하기 어렵습니다... 불분명합니다"** — the model explicitly
-recognizes the gap in its own reasoning — and then still returns `status:
-"answered"` anyway. This means the failure is not primarily that the model
-fails to notice insufficient evidence; id 53 shows it can notice and say
-so in prose. The failure is a **disconnect between the model's own stated
-uncertainty and its final status decision**.
-`insufficient_evidence_misclassified_as_answered: 5` in the committed
-aggregate records the confirmed count (was 6 before question 41's
-invalidation removed it from this count entirely, rather than counting it
-as either a hit or a miss).
+**The failure mode, on the 4 confirmed-genuine failures (42, 44, 53,
+55).** Reading the model's own answer text for each: several reason by
+analogy from a real but not-dispositive source (a general prohibition, a
+related precedent about a different specific phrase or service), and id
+53 remains the clearest direct evidence of it: the model's own answer text
+states **"'방송 등의 촬영'이 개인 유튜브 채널 촬영을 포함하는지 여부는
+제공된 자료만으로는 명확히 판단하기 어렵습니다... 불분명합니다"** — the
+model explicitly recognizes the gap in its own reasoning — and then still
+returns `status: "answered"` anyway. This means the failure is not
+primarily that the model fails to notice insufficient evidence; id 53
+shows it can notice and say so in prose. The failure is a **disconnect
+between the model's own stated uncertainty and its final status
+decision**. `insufficient_evidence_misclassified_as_answered: 4` in the
+committed aggregate records the confirmed count.
 
 **Separately, `insufficient_evidence_misclassified_as_out_of_scope: 0`.**
 This is the deferred risk from item 7/8's final review (the concern that
@@ -371,114 +322,85 @@ the `out_of_scope` prompt instruction, having no explicit domain list,
 might misclassify a genuinely in-scope-but-unanswerable question as
 `out_of_scope` instead). This evaluation is the first real, empirical
 check of that risk, and it did not materialize — confirmed identically
-across four independent real runs now (the original `fd810f1`/`ff85ab8`
-runs, the 2026-08-18 fusion-weight-fix run, and this reranking run against
-a larger and corrected question set). No prompt change is needed for that
+across every independent real run of this project (the original
+`fd810f1`/`ff85ab8` runs, this fusion-weight-fix run, and the reranking
+run that was later reverted). No prompt change is needed for that
 specific risk.
 
-**Three revisions were tried and reverted, using three different
-mechanisms.** `prompt-v3` added an explicit anti-analogy instruction; a
-real re-run showed `insufficient_evidence_misclassified_as_answered`
-improve from 3 to 2 but `false_refusal_count` worsen from 2 to 8 (net
-status errors 5→10). `prompt-v4` replaced that with a contrastive worked
-example in an unrelated hypothetical domain; no improvement on the target
-metric (stayed at 3), `false_refusal_count` 2→6. **Caveat on v3/v4:** both
-were measured against the original 5-question `insufficient_evidence`
-set, which included the 2 now-corrected mislabels (43, 54) — their "3
-misclassified" baseline was partly inflated by bad labels, not purely
-model error; neither was rerun against the corrected set, so their exact
-counts should be read against the uncorrected baseline, not the current
-one.
+**Mechanisms tried and reverted — six independent attempts across four
+mechanism classes, all before landing on the current state.**
 
-`prompt-v5` (2026-08-18, against the corrected 9-question set, so its
-counts are directly comparable to this report's other numbers) tried a
+`prompt-v3` added an explicit anti-analogy instruction; a real re-run
+showed `insufficient_evidence_misclassified_as_answered` improve from 3 to
+2 but `false_refusal_count` worsen from 2 to 8 (net status errors 5→10).
+`prompt-v4` replaced that with a contrastive worked example in an
+unrelated hypothetical domain; no improvement on the target metric
+(stayed at 3), `false_refusal_count` 2→6. **Caveat on v3/v4:** both were
+measured against the original 5-question `insufficient_evidence` set,
+which included the 2 now-corrected mislabels (43, 54) — their "3
+misclassified" baseline was partly inflated by bad labels, not purely
+model error.
+
+`prompt-v5` (2026-08-18, against the corrected 9-question set) tried a
 structural mechanism instead of a wording change: an explicit
 `source_directly_resolves: true | false` field the model must commit to
 before `status`, with `parse_answer_response` overriding `status` to
-`insufficient_evidence` whenever that field is not `true` — regardless of
-what `status` itself claimed. This directly targeted id 53's disconnect
-between stated reasoning and final status. Its first real run crashed
-instead of completing: on id 53 itself, the model emitted one complete
-JSON object (`source_directly_resolves: false`, correctly refusing), then
-"Wait, let me reconsider...", then a second, contradictory JSON object
-(`source_directly_resolves: true`, answering) — `json.loads` raised on the
-trailing content and the run stopped at question 53 of 56. Fixed two ways
-before retrying: `parse_answer_response` now parses only the first JSON
-value in the text (`json.JSONDecoder.raw_decode`) rather than raising on
-trailing content, and the prompt's closing instruction was strengthened to
-explicitly forbid "reasoning, commentary, reconsideration" after the JSON
-object. The repaired v5 completed a full real run:
+`insufficient_evidence` whenever that field is not `true`. This directly
+targeted id 53's disconnect between stated reasoning and final status.
+Its first real run crashed instead of completing: on id 53 itself, the
+model emitted one complete JSON object (`source_directly_resolves: false`,
+correctly refusing), then "Wait, let me reconsider...", then a second,
+contradictory JSON object (`source_directly_resolves: true`, answering) —
+`json.loads` raised on the trailing content and the run stopped mid-set.
+Fixed two ways before retrying: `parse_answer_response` now parses only
+the first JSON value in the text (`json.JSONDecoder.raw_decode`) rather
+than raising on trailing content, and the prompt's closing instruction was
+strengthened to explicitly forbid "reasoning, commentary, reconsideration"
+after the JSON object. The repaired v5 completed a full real run:
 `insufficient_evidence_misclassified_as_answered` stayed at 4 (no
 improvement — id 53 itself was answered incorrectly again, this time
 without crashing) and `false_refusal_count` rose to 6. Reverted against
 the same pre-registered bar as v3/v4; `prompt-v2` remains in production.
 
-**Conclusion after three independent attempts.** A blanket instruction, a
-contrastive example, and a structural code-checked field are three
-meaningfully different mechanisms, and all three produced the same
-trade-off: any intervention that reduces over-answering increases false
-refusals by more than it fixes, with no net improvement. This is read as
-evidence that the fix this specific failure mode needs is not at the
-prompt-wording or response-schema level at all — three attempts is enough
-to stop, per this project's own "measure, don't assume" discipline, rather
-than iterate a fourth variation on the same mechanism class. A genuinely
-different category of fix (see the Work report's "What one additional
-week would allow") would need to stop asking the same generation call to
-both answer and self-certify; the existing `judge.py` post-hoc grounding
-check already demonstrates this project's own pattern for that: a
-separate, narrowly-scoped Bedrock call, in its own context, asked only
-whether a specific source resolves a specific question — not bundled into
+**Conclusion after these three (in-call) attempts.** A blanket
+instruction, a contrastive example, and a structural code-checked field
+are three meaningfully different mechanisms, and all three produced the
+same trade-off: any intervention that reduces over-answering increases
+false refusals by more than it fixes. This pointed at a fix outside the
+single generation call: a separate, narrowly-scoped Bedrock call, the same
+pattern `judge.py` already uses for post-hoc grounding — asked only
+whether a specific source resolves a specific question, not bundled into
 the same call already committed to producing an answer.
 
-**Reranking made this worse, not better (2026-08-18, same day as the three
-attempts above).** A semantic reranking stage (Retrieval evaluation
-report's "Reranking") was added afterward for a different reason entirely
--- raising Recall@10 -- and was not intended to touch this failure mode at
-all. Before reranking:
-`insufficient_evidence_refusal_accuracy` was 0.5556 (5/9),
-`insufficient_evidence_misclassified_as_answered` was 4 (ids 42, 44, 53,
-55). After: 0.3333 (3/9), misclassified count 6 (ids 41, 42, 44, 53, 55,
-56) -- two new failures (41, 56) that were answered correctly before.
-(Denominators here are as they stood on 2026-08-18, before question 41's
-2026-08-19 invalidation dropped the category to 8 questions and this
-count to 5 -- see "A test-set construction defect" above; this
-9-question comparison is preserved as the accurate historical record of
-what reranking's own effect was.) This
-is read as the over-answering mechanism being fed by a wider net, not a
-new mechanism: reranking's whole design pulls in more genuinely
+**A fourth attempt (reranking, 2026-08-18) took a different approach to
+the same idea and made things measurably worse, not better.** Reranking
+was added for a different reason entirely -- raising Recall@10 -- but its
+own real result mechanically fed the over-answering weakness a wider net
+of plausible-but-not-dispositive material:
+`insufficient_evidence_refusal_accuracy` fell from 0.5556 to 0.3333 (and,
+after question 41's later invalidation, the pre/post-reranking comparison
+on the corrected 8-question denominator is 0.5 vs. 0.375),
+`insufficient_evidence_misclassified_as_answered` rose 4→5. This is read
+as the over-answering mechanism being fed by a wider net, not a new
+mechanism: reranking's whole design pulls in more genuinely
 *topically*-relevant candidates from a widened top-25 pool instead of the
 old top-10, which is exactly more raw material for "reason by analogy from
-a real but not-dispositive source" to work with. This was not anticipated
-before implementing reranking and is disclosed here rather than only in
-the top-of-report update block, since a reader focused specifically on
-this failure mode needs the connection made explicit: **the fourth attempt
-this project made at fixing over-answering (reranking, aimed at a
-different problem) made it measurably worse, joining the first three
-(v3/v4/v5) as evidence this failure mode needs the judge.py-style
-separate-call fix named above, not further changes to what generation
-retrieves.**
+a real but not-dispositive source" to work with.
 
-**A fifth mechanism was tried (2026-08-19) and also failed — the exact
-separate-call approach this section's own conclusion predicted would be
-needed, tested cheaply before touching production code.** The "Conclusion"
-above named `judge.py`'s pattern -- a separate, narrowly-scoped Bedrock
-call, not bundled into the same call already committed to producing an
-answer -- as the untried category of fix. Before spending a full real
-pipeline run on it, two prompt variants for a new `verify.py` module
-(never committed; see "AWS use" in the Work report) were piloted against
-16 already-saved answers from this file (6 of the confirmed-genuine
-failures above, plus 10 correctly-answered questions, one per domain) --
-no pipeline re-run, no production code change, real Bedrock calls only
-against data already on disk:
+**A fifth and sixth attempt (2026-08-19) tested the judge.py-style
+separate-call idea directly, and both failed too.** Two prompt variants
+for a new `verify.py` module (never committed) were piloted against 16
+already-saved answers -- no pipeline re-run, no production code change,
+real Bedrock calls only against data already on disk:
 
 - **v1** showed the verifier the model's own answer text and asked a
-  lenient sufficiency question ("does the cited evidence give a genuine
-  basis for this answer"). Result: **0 of 6** known failures caught, 10 of
-  10 correct answers correctly kept as sufficient. Every one of the 6 was
-  "justified" by the verifier re-stating the original answer's own
-  analogical reasoning as if it were sufficient evidence -- the verifier
-  anchored on the answer it was shown rather than independently judging
-  the sources.
+  lenient sufficiency question. Result: **0 of 6** known failures caught
+  (against the 6 confirmed-genuine failures known at the time, before
+  question 41's invalidation), 10 of 10 correct answers correctly kept.
+  Every one of the 6 was "justified" by the verifier re-stating the
+  original answer's own analogical reasoning as if it were sufficient
+  evidence -- the verifier anchored on the answer it was shown rather than
+  independently judging the sources.
 - **v2** removed the answer text entirely and asked the verifier to decide
   sufficiency from the question and citations alone, explicitly instructed
   to flag a well-reasoned analogical extension as insufficient even when
@@ -489,8 +411,7 @@ against data already on disk:
   while its structured `sufficient` field still returned `true` -- the
   same disconnect between stated reasoning and a committed decision this
   report already documented in the base model itself (id 53, above),
-  reproducing on a second, independently-designed call rather than being
-  specific to the first prompt's wording.
+  reproducing on a second, independently-designed call.
 
 Neither variant cleared the pre-registered bar (>=4 of 6 known failures
 caught, without losing any of the 10 correct answers) set before running
@@ -502,66 +423,72 @@ Work report Blocker log item 17 and "AWS use").
 later invalidation, independently.** Neither v1 nor v2 ever flagged
 question 41 as insufficient (`sufficient: true` in both runs) — at the
 time this read as 2 more misses for the verifier. After the 2026-08-19
-human review above found question 41's cited source genuinely does
-resolve it on its face, this is better read the other way: the verifier
-was *correct* both times, on a case that was not actually a failure to
-catch. This evidence was not available when the pilot ran (it only became
-legible after reading the source text directly, which is what prompted
-the invalidation review in the first place) and played no role in
-deciding to invalidate the question — it is noted here only because it is
-a real, independent data point that happens to agree with that later,
-separately-reasoned conclusion.
+human review found question 41's cited source genuinely does resolve it
+on its face, this is better read the other way: the verifier was
+*correct* both times, on a case that was not actually a failure to catch.
+This evidence played no role in deciding to invalidate the question — it
+is noted only because it is a real, independent data point that happens
+to agree with that later, separately-reasoned conclusion.
 
-This makes five independent mechanisms across two different failure
-classes (in-call: v3/v4/v5; out-of-call: reranking's side effect, and now
-a genuine separate-call verifier) that have all failed to fix
-over-answering without a larger false-refusal cost, and the separate-call
-category specifically -- the one category none of the first four
-mechanisms tested -- failed too, on both a lenient and a strict variant of
-its prompt. Read together with the anchoring/self-consistency evidence
-above (v1 quoting the answer's own reasoning back; v2's id 53
-inconsistency), this points at a structural limit of asking the same
-model, even in a separate call with a separate prompt, to certify its own
-kind of reasoning -- not a remaining prompt-wording problem. See the Work
-report's "What one additional week would allow" for what a genuinely
-different fix (a different model identity, or a human-reviewed check) that
-this project's own constraints ruled out attempting would require.
+**The revert (2026-08-19, this report's current state).** Six mechanisms
+across four classes (in-call prompt/schema changes; a wider-net retrieval
+change; a lenient separate-call check; a strict separate-call check) had
+all either failed to improve `insufficient_evidence_refusal_accuracy`
+without a larger false-refusal cost, or -- reranking's case -- actively
+worsened it as an unintended side effect of a change made for a different
+reason. Of these, reranking was the only one with a *known, reversible*
+root cause and *already-measured* data for what reverting it would look
+like -- no new real cost was needed to evaluate this option, unlike every
+other mechanism tried. `insufficient_evidence_refusal_accuracy` recovering
+from 0.375 to **0.5**, and the combined non-answer-classification figure
+from 61.5% to **69.2%**, at the cost of Recall@10 (59.52%→57.14%) and
+`false_refusal_count` (0→1), was judged the better trade for this
+project's stated mission: an honest refusal is a materially smaller
+failure than a confident, plausible-sounding wrong answer built on
+evidence that does not actually decide the question. Full reasoning,
+including why this was judged the better trade specifically (not just a
+tie-breaker), is in
+`reports/decisions/2026-08-19-revert-reranking.md`.
+
+**What remains unresolved.** Even after the revert, 4 of 8
+`insufficient_evidence` questions are still over-answered (50%, not
+100%). The revert recovers the score reranking cost, but does not itself
+fix the underlying mechanism -- six real, independent attempts at a direct
+fix have all failed. See the Work report's "What one additional week
+would allow" for what a genuinely different fix (a different,
+independently-verified model identity, or a human-reviewed check) that
+this project's own two-week, single-verified-model-id constraints ruled
+out attempting here would require.
 
 ## False refusals
 
 Not part of SUBMISSION.md's named bullet list, but visible as a byproduct
 of running all 55 questions and reported here because it is a real,
-non-obvious finding. **2026-08-18 update, after reranking:**
-`false_refusal_count: 0` — every one of the 42 answerable questions is now
-correctly answered, improved from 1 (id 8) after the fusion-weight/
-JSON-parsing fixes and 2 before those. Unlike the insufficient_evidence
-regression above, reranking helped this specific metric: a wider,
-reranked candidate pool means fewer answerable questions land with weak or
-borderline retrieval support, so generation has less reason to
-under-refuse. No table is shown here since there is nothing left to list.
+non-obvious finding. **`false_refusal_count: 1`** — question 8 is the one
+answerable question this run refuses despite the retrieval evaluation
+confirming it is answerable-in-principle; it also returns
+`citation_count: 0`, consistent with the "Citation integrity" section
+above (an honest refusal, not a caught fabrication attempt). Question 11
+and 22 (also `citation_count: 0`, `limitations_count: 0`) previously
+appeared in this bucket under different retrieval conditions but are
+correctly answered in this run.
 
 ## out_of_scope refusal accuracy
 
-**1.0 (5 of 5 correct)**, confirmed on this real run after a real
-regression was caught and fixed the same day. Reranking's first real
-56-question run scored **0.0 (0 of 5)** — every out_of_scope question
-failed. Root cause (full story in the Retrieval evaluation report's
-"Reranking"): the implementation returned `INSUFFICIENT_EVIDENCE` directly
-whenever the reranker selected zero candidates, which skipped the real
-generation call entirely for every out_of_scope question (the reranker
-correctly finds nothing relevant for an off-topic question, since nothing
-retrieved *is* relevant) — but out_of_scope classification is that
-generation call's own judgment on the question itself, independent of
-retrieval, and skipping the call meant the model was never asked. Fixed
-via TDD, confirmed by this real re-run: all 5 non-legal/meta questions
-(ids 46-50) correctly returned `out_of_scope` again, with no false
-positives among the answerable or insufficient_evidence questions either
+**1.0 (5 of 5 correct)** — all 5 non-legal/meta questions (ids 46-50)
+correctly returned `out_of_scope`, with no false positives among the
+answerable or insufficient_evidence questions either
 (`insufficient_evidence_misclassified_as_out_of_scope: 0`, and no
-answerable question returned `out_of_scope` in this run's data). Included
-here rather than only in the Retrieval evaluation report because this
-metric is this report's own named bullet, and a reader checking only this
-report for out_of_scope accuracy should not have to cross-reference to
-learn it briefly regressed to zero.
+answerable question returned `out_of_scope` in this run's data). This
+metric was briefly regressed to 0.0 during the reranking experiment (an
+empty reranker selection short-circuited straight to
+`INSUFFICIENT_EVIDENCE`, skipping the real generation call that alone
+decides `out_of_scope`) — found, root-caused, and fixed via TDD before
+that regression was ever reported as final; moot now that reranking itself
+has been reverted, but the underlying lesson (out_of_scope classification
+is generation's own judgment on the question, independent of what
+retrieval found) remains a real, disclosed finding — full story in the
+Retrieval evaluation report's "Reranking" (historical) section.
 
 ## Latency
 
@@ -571,43 +498,23 @@ own response latency, but this evaluation's per-question `latency_ms` is
 measured around the whole loop iteration including it, so the two
 `answered`-path numbers below are judge-inclusive):
 
-**After reranking** (adds a real Bedrock round-trip to every question,
-refusal or not, unlike before):
-
 | | n | min | median | max |
 | --- | --- | --- | --- | --- |
-| All 55 questions | 55 | 2,661.1 ms | 18,811.4 ms | 32,684.0 ms |
-| `answered` only | 47 | 8,164.5 ms | 19,567.2 ms | 32,684.0 ms |
-| Refusal (`insufficient_evidence`/`out_of_scope`) | 8 | 2,661.1 ms | 3,074.6 ms | 5,325.6 ms |
+| All 55 questions | 55 | 1,388.4 ms | 14,375.0 ms | 22,344.7 ms |
+| `answered` only | 45 | 7,917.2 ms | 15,179.4 ms | 22,344.7 ms |
+| Refusal (`insufficient_evidence`/`out_of_scope`) | 10 | 1,388.4 ms | 1,803.8 ms | 2,493.9 ms |
 
-**2026-08-19 note on question 41's invalidation.** Question 41's own row is
-excluded from the table above (n 56→55, 48→47) after its removal from the
-test set. Its min/median/max are confirmed unchanged by direct
-recomputation against the row-level data (question 41 was neither the
-minimum nor the maximum of either bucket it appeared in, and the refusal
-bucket never included it at all). The p50/p95/p99 percentile table below
-is **left as originally reported (56-question basis)**: the exact
-percentile-interpolation method used to produce it was not preserved in
-committed code, and re-deriving new p95/p99 figures from a guessed method
-risks introducing a fresh inconsistency rather than fixing the one
-question's exclusion — a secondary, non-gating metric where that trade-off
-favors disclosure over a recomputed-but-unverifiable number.
-
-| Percentile (all 56, pre-invalidation basis — see note above) | Latency |
-| --- | --- |
-| p50 | 18,811.4 ms |
-| p95 | 25,509.5 ms |
-| p99 | 26,553.7 ms |
-
-Median latency for a refusal rose from ~1.4-1.9s (before reranking) to
-~3.1s — still fast, but no longer near-instant, since even a refusal now
-makes a real rerank call before generation can decide there is nothing to
-answer from. `answered` responses rose from a median ~14.5s to ~19.6s,
-still dominated by the judge call stacked on top of generation, now with
-the rerank call added before both. The deliverable's own single-call
-latency (generation only, no judge) is not separately isolated in this
-run's instrumentation and would need a small follow-up measurement to
-report precisely.
+**Recomputed 2026-08-19 from the real, already-stored per-question
+`latency_ms` values** (question 41 excluded) — not a new pipeline run.
+Reranking's own added round-trip (median refusal latency ~1.4-1.9s→~3.1s,
+`answered` median ~14.5s→~19.6s while it was in production) no longer
+applies now that `rerank.py` has been reverted: every number in this table
+is real, measured time from the pre-reranking pipeline, which is what
+production now runs. A p50/p95/p99 percentile breakdown is not reported
+here (the exact interpolation method used for the reranking-era table was
+not preserved in committed code, and this project's convention has been to
+disclose that gap rather than guess at a method) — min/median/max above
+are exact, direct computations from the committed per-question data.
 
 ## Token use and cost
 
@@ -620,42 +527,31 @@ returns — not reconstructed afterward).
 | | Value |
 | --- | --- |
 | Embed tokens (estimated, query embedding only) | 2,115 |
-| Generation input tokens (real, rerank + answer + judge calls) | 1,262,740 |
-| Generation output tokens (real, rerank + answer + judge calls) | 45,246 |
-| **Estimated cost** | **$4.467164** |
-| Wall-clock elapsed (full 55-question run) | 968.04 s (~16.1 min, unchanged — see note) |
+| Generation input tokens (real, answer + judge calls) | 499,762 |
+| Generation output tokens (real, answer + judge calls) | 35,016 |
+| **Estimated cost** | **$2.02478** |
 
-Numbers above are from the 2026-08-18 run made after reranking (Retrieval
-evaluation report's "Reranking") and its out_of_scope regression fix (Work
-report's Blocker log), **recomputed 2026-08-19 with question 41 excluded**
-(`reports/decisions/2026-08-19-question-41-invalidation.md`) from the
-already-stored per-question data — not a pipeline re-run. Cost more than
-doubled versus the pre-reranking run ($2.032707 → $4.467164) and
-wall-clock time grew ~35% (714.53s → 968.04s) — the rerank call's own
-prompt is large (full candidate excerpts, up to 25 per question), a real
-and permanent cost/latency increase for every future real query, not a
-one-time evaluation expense. Wall-clock elapsed is left at its originally
-measured 968.04s: that number describes real time actually elapsed during
-the run, including question 41's real retrieval+generation+judge calls,
-and is not a per-row-summable quantity the way token counts are — the Work
-report's "AWS use" reconciles the ~$0.0436 cost difference between this
-table's total and the project's actual real spend, which still includes
-every dollar spent on question 41 regardless of its later exclusion from
-this evaluation's own metrics. A discarded first attempt at this run
-(before the out_of_scope fix) cost a real, separately-disclosed $4.574664
-producing numbers that were never reported as final — see the Work
-report's "AWS use." An earlier crashed attempt (the JSON-parsing bug,
-before reranking existed) cost a real, separately-disclosed $0.395997
-before failing — also in "AWS use."
+Numbers above are the real 2026-08-18 pre-reranking run (fusion-weight and
+JSON-parsing fixes applied), recomputed 2026-08-19 with question 41
+excluded from the already-stored per-question data — not a pipeline
+re-run. This is the real, permanent cost this pipeline now runs at going
+forward: reranking's own added cost (more than doubling this figure to
+$4.467164, per its own now-historical measurement) no longer applies,
+since `rerank.py` was reverted. Per-question token counts are recorded in
+the committed results file (`reports/eval/generation_evaluation_results.json`,
+`embed_estimated_tokens` / `generation_input_tokens` /
+`generation_output_tokens` on every entry) — their sum reproduces the
+aggregate exactly, a property checked directly against this run's data
+before writing this report. Rates: Cohere Embed v4 $0.12/M tokens, Claude
+Sonnet input $3.00/M tokens, output $15.00/M tokens (same rates as
+`scripts/serve_legal_agent.py` and the index-build cost already reported
+in the Retrieval evaluation report).
 
-Per-question token counts are recorded in the committed results file
-(`reports/eval/generation_evaluation_results.json`, `embed_estimated_tokens`
-/ `generation_input_tokens` / `generation_output_tokens` on every entry) —
-their sum reproduces the aggregate exactly, a property checked directly
-against this run's data before writing this report. Rates: Cohere Embed v4
-$0.12/M tokens, Claude Sonnet input $3.00/M tokens, output $15.00/M tokens
-(same rates as `scripts/serve_legal_agent.py` and the index-build cost
-already reported in the Retrieval evaluation report).
+**Historical cost record, not erased.** Reranking's own real costs while
+it was in production remain part of this project's real spend and are
+reported in the Work report's "AWS use," including a discarded buggy first
+run ($4.574664) and an earlier crashed JSON-parsing attempt ($0.395997) —
+disclosed there in full regardless of what the current pipeline costs now.
 
 ## Reproducibility
 
@@ -678,16 +574,16 @@ future work.
 **2026-08-18 addendum.** The above compares two runs against the original
 50-question set, before the fusion-weight fix. The current committed run
 (after the fusion-weight and JSON-parsing fixes, against the now-56-question
-set) has a *different* mismatch set — false refusal: id 8 only (was 11, 22);
-misclassified as answered: ids 42, 44, 53, 55 (was 42, 43, 44; 43 was
-separately relabelled `answered` on 2026-08-18, so it can no longer appear
-in this category by construction). This is expected, not a regression: a
-real retrieval change shifts which questions have full retrieval success in
-the first place, which is a precondition for either failure mode, so the
-specific ids composing a 4-5-question mismatch set are not expected to stay
-fixed across a real pipeline change — the aggregate counts (misclassified
-count still 4; false refusals improved 2→1) are the load-bearing numbers,
-not id-level identity.
+set as it stood that day) has a *different* mismatch set — false refusal:
+id 8 only (was 11, 22); misclassified as answered: ids 42, 44, 53, 55 (was
+42, 43, 44; 43 was separately relabelled `answered` on 2026-08-18, so it
+can no longer appear in this category by construction). This is expected,
+not a regression: a real retrieval change shifts which questions have full
+retrieval success in the first place, which is a precondition for either
+failure mode, so the specific ids composing a 4-5-question mismatch set
+are not expected to stay fixed across a real pipeline change — the
+aggregate counts (misclassified count still 4; false refusals improved
+2→1) are the load-bearing numbers, not id-level identity.
 
 ## Versions
 
@@ -709,7 +605,8 @@ bumps: `prompt-v2` reflects item 7/8's out_of_scope/insufficient_evidence
 fix (a `system`-field JSON-only instruction) that took the judge's own
 JSON parse-failure rate from 57.5% to 0% during this evaluation's
 development (see the SDD ledger for the full real-cost troubleshooting
-history).
+history). There is no reranking row: `rerank.py` and `RuntimeVersions.rerank`
+were reverted 2026-08-19 (see the update block at the top of this report).
 
 ## Storage and reproduction
 
@@ -725,6 +622,6 @@ uv run python scripts/evaluate_generation.py --contributor <your-contributor-id>
 ```
 
 against a rebuilt index (see the Retrieval evaluation report's index-build
-instructions) — this is a real-cost script (~$2.06 per full run), not
+instructions) — this is a real-cost script (~$2.02 per full run), not
 exercised by the automated test suite, matching `scripts/evaluate_retrieval.py`'s
 own convention.

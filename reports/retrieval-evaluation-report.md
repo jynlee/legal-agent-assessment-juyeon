@@ -40,15 +40,30 @@ before being shipped — full story, also in "Reranking" below.
 **2026-08-19 update.** Question 41 was found invalid on direct review of
 its cited sources (Generation evaluation report, "A test-set construction
 defect: question 41") and removed from the test set (56 → 55 questions;
-`insufficient_evidence`: 9 → 8). **This report's own numbers are
-unaffected**: question 41 was an `insufficient_evidence` question and was
-never part of the Recall@10/MRR denominator (only `expected_status:
-"answered"` questions are scored — see "Methodology" below) — Recall@10
-(0.5952) and MRR (0.3355) are identical before and after. Full reasoning,
-including why the question could not simply be relabelled `answered`
-(it would make its own `Recall@10` contribution true by construction,
-since no independently-identified required-positive chunk exists for it),
-is in `reports/decisions/2026-08-19-question-41-invalidation.md`.
+`insufficient_evidence`: 9 → 8). **This report's own numbers were
+unaffected by that change alone**: question 41 was an `insufficient_evidence`
+question and was never part of the Recall@10/MRR denominator (only
+`expected_status: "answered"` questions are scored — see "Methodology"
+below). Full reasoning, including why the question could not simply be
+relabelled `answered` (it would make its own `Recall@10` contribution true
+by construction, since no independently-identified required-positive
+chunk exists for it), is in
+`reports/decisions/2026-08-19-question-41-invalidation.md`.
+
+**2026-08-19, final update — reranking reverted.** Separately from the
+question-41 correction above, reranking itself (the third update below)
+was reverted the same day: it measurably worsened the Generation
+evaluation report's `insufficient_evidence_refusal_accuracy`, and after
+six independent attempts at a direct fix all failed, removing reranking
+was the one lever with already-measured, zero-cost evidence for what
+reverting would look like. **Every Recall@10/MRR number in this report now
+reflects the pre-reranking, fusion-weight-fixed pipeline** — Recall@10
+0.5952→**0.5714**, MRR 0.3355→**0.2809** (identical to the "second update"
+figures below, since reranking's own gain over that state is exactly what
+was reverted). The "Reranking" and post-reranking "Failed-query analysis"
+sections below are kept as historical record of what was tried and why it
+was undone, not deleted. Full reasoning:
+`reports/decisions/2026-08-19-revert-reranking.md`.
 
 ## Test-query sources and construction method
 
@@ -283,7 +298,19 @@ against a larger sample if one becomes available.
 No reindex was needed -- this changes only how the two already-computed
 rankings are combined, not the chunks, embeddings, or index themselves.
 
-## Reranking
+## Reranking (2026-08-18, tried; reverted 2026-08-19 — historical record)
+
+**This entire section describes a stage that is no longer in production.**
+It is kept in full, not deleted, per this project's disclosure norm for
+tried-and-reverted work (the same pattern already applied to
+`prompt-v3`/`v4`/`v5` in the Generation evaluation report). Reranking's own
+real numbers below (Recall@10 0.5952, MRR 0.3355) are **not** this report's
+current headline figures — see "Aggregate and per-domain results" above
+for the current, non-reranked numbers, and
+`reports/decisions/2026-08-19-revert-reranking.md` for why it was reverted
+(it measurably worsened the Generation evaluation report's
+`insufficient_evidence_refusal_accuracy`, and no direct fix for that
+weakness succeeded after six independent attempts).
 
 **Design.** `retrieval.py`'s existing fused top-10 became a top-25 *pool*
 (`agent.py`'s `_RERANK_POOL_SIZE`); a new module, `rerank.py`, builds a
@@ -339,35 +366,38 @@ estimate, once a real run exists.
 ## Aggregate and per-domain results
 
 Real run, 2026-08-18, against the unchanged production index (7,887
-chunks, 182 judgements + 1,625 statutes), 56-question corrected test set.
-**Three stages, same run day:**
+chunks, 182 judgements + 1,625 statutes). **Two stages, same run day** (a
+third stage, reranking, was added the same day and later reverted
+2026-08-19 -- see the update block at the top of this report and
+"Reranking" below for its own, now-historical numbers):
 
-| Metric | Baseline (equal-weight RRF) | + Fusion weight (kNN×3) | + Reranking |
-| --- | --- | --- | --- |
-| Recall@10 (42 answerable) | 0.4524 | 0.5714 | **0.5952** |
-| MRR (42 answerable) | 0.2437 | 0.2809 | **0.3355** |
+| Metric | Baseline (equal-weight RRF) | + Fusion weight (kNN×3) — **current** |
+| --- | --- | --- |
+| Recall@10 (42 answerable) | 0.4524 | **0.5714** |
+| MRR (42 answerable) | 0.2437 | **0.2809** |
 
-All numbers below and in the rest of this report are from the final,
-reranked pipeline.
+All numbers below and in the rest of this report are from the current,
+fusion-weighted (non-reranked) pipeline.
 
 | Domain | Recall@10 | MRR | n |
 | --- | --- | --- | --- |
-| 안마사법 | 1.00 | 0.688 | 4 |
-| 미용법 | 0.80 | 0.507 | 5 |
-| 약사법 | 0.75 | 0.271 | 4 |
-| 의료기기법 | 0.60 | 0.317 | 5 |
-| 의료법 | 0.50 | 0.250 | 4 |
-| 개인정보보호법 | 0.50 | 0.286 | 4 |
-| 화장품법 | 0.50 | 0.167 | 4 |
-| 무면허의료행위 | 0.50 | 0.333 | 4 |
-| 공중위생법 | 0.50 | 0.375 | 4 |
-| **표시광고법** | **0.25** | **0.125** | 4 |
+| 안마사법 | 1.00 | 0.561 | 4 |
+| 미용법 | 0.80 | 0.367 | 5 |
+| 공중위생법 | 0.75 | 0.417 | 4 |
+| 개인정보보호법 | 0.75 | 0.361 | 4 |
+| 약사법 | 0.75 | 0.134 | 4 |
+| 무면허의료행위 | 0.50 | 0.500 | 4 |
+| 화장품법 | 0.50 | 0.375 | 4 |
+| 의료법 | 0.25 | 0.036 | 4 |
+| 표시광고법 | 0.25 | 0.025 | 4 |
+| **의료기기법** | **0.20** | **0.067** | 5 |
 
-표시광고법 is now the weakest domain (was 의료기기법 before reranking).
-The 14 unanswerable/out-of-scope questions are retrieved against for
-transparency (what generation would have seen) but excluded from these
-metrics by design — there is no positive judgement to recall against for a
-question with no source chunk.
+의료기기법 is the weakest domain in this current, non-reranked state
+(표시광고법 was weakest only during reranking's brief window -- see
+"Reranking" below). The 13 unanswerable/out-of-scope questions are
+retrieved against for transparency (what generation would have seen) but
+excluded from these metrics by design — there is no positive judgement to
+recall against for a question with no source chunk.
 
 **A disclosed nuance on id 43 specifically.** Its assigned required
 positive (의료기기법 제26조 제7항) does not appear in this question's
@@ -445,22 +475,23 @@ weight — id 14 in particular (kNN rank 9, same rank id 8 held before it
 flipped to a hit) shows the outcome depends on the competing chunks' own
 scores in each specific question, not the gold chunk's rank alone.
 
-**2026-08-18, after reranking: 17 misses (down from 18), a smaller
-reduction than reranking's design intent would suggest.** id 43 now hits
-(reranking recovered it; it was one of the "present but too deep" fusion
-cases above), and ids 11 and 30 newly miss where they previously hit --
-consistent with the same "real regression, found and fixed" story in
-"Reranking" above and this project's disclosed norm that a real pipeline
-change is not expected to only ever improve individual questions. The 6
-"neither retriever" questions from the fusion-stage analysis (ids 6, 16,
-19, 20, 21, 32) are unchanged and still miss: reranking selects among
-retrieved candidates, so it structurally cannot recover a chunk neither
-retriever found in the first place.
+**2026-08-18, after reranking (historical, reverted 2026-08-19): 17 misses
+(down from 18).** While reranking was in production it recovered id 43
+(one of the "present but too deep" fusion cases above) but newly missed
+ids 11 and 30 where they previously hit. **This no longer describes the
+current pipeline** — with reranking reverted, id 43 is a miss again (its
+required positive is not in the fusion-only top-10), and the 18-miss count
+above is the current, accurate figure. The 6 "neither retriever" questions
+(ids 6, 16, 19, 20, 21, 32) were unaffected by reranking either way and
+remain misses now: no fusion or reranking strategy can recover a chunk
+neither retriever found in its own top-50 to begin with.
 
 ## Latency percentiles, index size, index build time, and rebuild count
 
-**Per-question retrieval latency, before reranking** (embed + BM25 search +
-k-NN search, wall-clock, all 56 questions, the fusion-weight-fix run):
+**Per-question retrieval latency — current** (embed + BM25 search +
+k-NN search, wall-clock, all 55 questions, the fusion-weight-fix run;
+reranking's own added round-trip below no longer applies, reverted
+2026-08-19):
 
 | Percentile | Latency |
 | --- | --- |
@@ -478,8 +509,8 @@ the rest of that same domain, is in the 300–1200ms range consistent with
 the pre-fix run's percentiles. Weighting two already-fetched rank lists is
 O(n) over at most 100 ids and adds no measurable latency on its own.
 
-**Per-question retrieval latency, after reranking** (adds one real Bedrock
-round-trip per question -- no longer free):
+**Per-question retrieval latency, with reranking (historical, reverted
+2026-08-19)** — kept for the record, not the current pipeline:
 
 | Percentile | Latency |
 | --- | --- |
@@ -489,14 +520,12 @@ round-trip per question -- no longer free):
 | p99 | 7,353.5 ms |
 | max | 8,227.4 ms |
 
-Median latency rose roughly 8.5x (525ms → 4.5s) — a real, permanent cost
-of reranking on every future real query, not an artifact. This is the same
-trade-off named before implementation: reranking was approved knowing it
-would add real per-query latency in exchange for higher Recall@10.
-
-No single outlier dominates this run — the tightest of the three real
-retrieval-eval runs so far, consistent with a warm, stable local
-container.
+While reranking was in production, median latency rose roughly 8.5x
+(525ms → 4.5s) — a real, permanent per-query cost, which is one of the two
+real costs (alongside `insufficient_evidence_refusal_accuracy`) weighed in
+the decision to revert it
+(`reports/decisions/2026-08-19-revert-reranking.md`). The current pipeline
+(table above) does not carry this cost.
 
 **Index size.** Raw store size in bytes was attempted (`_stats/store,docs`
 against the local index) but not obtained this session — the local

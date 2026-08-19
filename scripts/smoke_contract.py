@@ -24,7 +24,6 @@ def main() -> None:
             embedding_model="global.cohere.embed-v4:0",
             generation_model="global.anthropic.claude-sonnet-4-6",
             prompt="unimplemented",
-            rerank="unimplemented",
         ),
     )
     print(response.model_dump_json(indent=2))
