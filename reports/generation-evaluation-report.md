@@ -517,8 +517,9 @@ hypothesis (checked 2026-08-19) was that question 8 might have `recall_at_10:
 0` — retrieval never surfacing the gold chunk, making the refusal the
 honest, correct response. The real, committed data says the opposite:
 `retrieval_evaluation_results.json` records `recall_at_10: 1` for question
-8 (the gold chunk `precedent-141548#summary-holding-000` ranked 8th, well
-inside the top-10), and the same run's `generation_evaluation_results.json`
+8 (the gold chunk `precedent-141548#summary-holding-000` ranked 7th
+[`reciprocal_rank: 0.142857`], well inside the top-10), and the same
+run's `generation_evaluation_results.json`
 confirms `retrieval_hit_count: 10` — the model received a full set of 10
 real candidates, including the one that actually resolves the question,
 and still returned `status: insufficient_evidence` with `citation_count: 0`
