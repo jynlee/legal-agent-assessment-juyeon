@@ -23,7 +23,7 @@ def build_embed_request(
     """Bedrock Cohere Embed v4 invoke_model request body.
 
     ASSIGNMENT.md's Fixed constraints: ingest text uses "search_document",
-    query text (out of scope for this plan) uses "search_query" -- sending
+    query text uses "search_query" (`agent.py`'s `_embed_query`) -- sending
     both sides the same input_type is a defect, not a shortcut.
 
     Always requests `output_dimension` (default `EMBEDDING_DIMENSION`, 1536).

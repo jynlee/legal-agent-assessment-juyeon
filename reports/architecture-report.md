@@ -449,9 +449,11 @@ described above is exactly where that work would land, by design.
 `pydantic`; development dependencies are `mypy`, `pytest`, and `ruff`. An
 optional dependency group used only by MZO's own release-building tooling
 is excluded from the default install. The Python version is pinned exactly
-by the dependency lock regardless of the host's system Python. No
-dependency was added beyond the template's starting set over the course
-of this project.
+by the dependency lock regardless of the host's system Python. One
+runtime dependency was added to the template's starting set (`boto3`,
+`pydantic`): `opensearch-py`, required by ASSIGNMENT.md item 3's
+OpenSearch indexing work and used only from `scripts/` (`58b1c21`,
+2026-08-13). No other dependency was added.
 
 **Licences.** The dataset schema's admission field governs what may be
 indexed at all — a record marked both restricted and index-eligible
