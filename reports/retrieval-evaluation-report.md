@@ -78,6 +78,18 @@ and a Recall@k curve" below for the full account, including a
 document-kind breakdown disclosing where the document-level figure is
 less trustworthy (statute "right law, wrong article" cases).
 
+**2026-08-20 update — re-run against `chunk-v2`/`index-v2` after a full
+reindex.** `Chunk` gained `record_limitations` (a data-quality-caveat
+field consumed only by generation's `response.limitations`, never by
+retrieval), requiring a real reindex (7,887/7,887 chunks, $0.8738 total
+— see Work report's "AWS use" for a failed first attempt). Recall@10
+reproduced exactly: **57.14% (24/42)**, unchanged. MRR: 0.2808 (versus
+0.2809 above) — a ±0.0004 difference attributable to one question's
+kNN rank oscillating by one position across otherwise-identical real
+OpenSearch calls, not a retrieval or reindex regression. Investigated
+in conversation, not detailed further here by the project owner's own
+choice; Recall@10 (the headline metric) is unaffected either way.
+
 ## Test-query sources and construction method
 
 Each of the original 40 answerable questions (42 after the 2026-08-18
@@ -761,10 +773,10 @@ under, threaded through the code rather than restated by hand:
 | --- | --- |
 | Dataset | `dataset-2026-08-11-v2.1` |
 | Normalization | `norm-v1` |
-| Chunking | `chunk-v1` |
-| Index | `index-v1` |
+| Chunking | `chunk-v2` |
+| Index | `index-v2` |
 | Embedding model | `global.cohere.embed-v4:0` (1536 dimensions, `input_type="search_query"` for every query in this evaluation) |
-| Index name | `legal-kit-assessment-jynlee-chunk-v1-index-v1` |
+| Index name | `legal-kit-assessment-jynlee-chunk-v2-index-v2` |
 
 No generation model or prompt version applies to this report — this
 evaluation makes no generation call by design (see "Exact metric

@@ -92,6 +92,34 @@ model uncertainty. Real cost: $1.282819 (54 real calls). No numbers below
 changed — this did not touch production code. Full account:
 "insufficient_evidence refusal accuracy" below, "A seventh attempt."
 
+**2026-08-20 update — re-run against `chunk-v2`/`index-v2` after
+`Chunk` gained `record_limitations`.** Full re-run, real cost $2.065001
+(55 questions, real generation + judge calls). Refusal accuracy and
+citation-integrity numbers are unchanged: `insufficient_evidence_
+refusal_accuracy` 50.0%, `out_of_scope_refusal_accuracy` 100.0%,
+`false_refusal_count` 1 (id 8), `answered_status_match_rate` 97.6%
+(41/42), `insufficient_evidence_misclassified_as_answered` 4 — all
+identical to the numbers this report already carries, confirming the
+schema change did not alter retrieval ranking or what the generation
+model sees (its prompt never includes `record_limitations`; the field
+is applied to `response.limitations` after generation, based on which
+chunks were actually cited).
+
+Two real, expected changes: **`limitations_fired_count` 0 → 15** — the
+new caveat surfaces on cited chunks from the 60 judgement records
+self-declaring "body only" (or similar) data-quality notes; spot-checked
+directly (id 2: 4 real caveats, all "판시사항·판결요지·참조조문·
+참조판례가 모두 비어 있어 본문만 제공된다" against two different
+cited judgements) and confirmed working as designed, not a new
+fabrication or citation problem. And **`grounded_count`/
+`partially_grounded_count` 14/31 → 12/33** (`unsupported_count` stays
+0) — a 2-question shift with no code path connecting the new field to
+the judge's grounding classification; read as the same run-to-run
+judge/retrieval non-determinism this report and the Retrieval evaluation
+report already document elsewhere (e.g. this report's own "Reproducibility"
+section, and the Retrieval evaluation report's OpenSearch kNN
+tie-breaking note), not a regression from this change.
+
 ## Methodology, restated briefly
 
 Every one of the 55 questions runs through the real, production
@@ -656,13 +684,13 @@ aggregate counts (misclassified count still 4; false refusals improved
 | --- | --- |
 | Dataset | `dataset-2026-08-11-v2.1` |
 | Normalization | `norm-v1` |
-| Chunking | `chunk-v1` |
-| Index | `index-v1` |
+| Chunking | `chunk-v2` |
+| Index | `index-v2` |
 | Embedding model | `global.cohere.embed-v4:0` |
 | Generation model | `global.anthropic.claude-sonnet-4-6` |
 | Answer prompt | `prompt-v2` |
 | Judge prompt | `judge-prompt-v2` |
-| Index name | `legal-kit-assessment-jynlee-chunk-v1-index-v1` |
+| Index name | `legal-kit-assessment-jynlee-chunk-v2-index-v2` |
 
 `prompt-v2` and `judge-prompt-v2` are both real, committed-history version
 bumps: `prompt-v2` reflects item 7/8's out_of_scope/insufficient_evidence
