@@ -512,12 +512,17 @@ lower than 10.
 trust the document-level number.** "Right document, wrong chunk" is not
 equally meaningful for both kinds in this corpus: a judgement's chunks
 mostly cover the same case and issue, so a different chunk from the
-correct case is usually still a genuinely useful citation; a statute's
-chunks are separate articles, so surfacing the right law but the wrong
-article ("맞는 법, 틀린 조문") is a materially weaker result that this
-project's Citation contract would not treat as resolving the question.
-Split by document kind (classified by `chunk_id` prefix --
-`precedent-*` = judgement, `doc-*` = statute):
+correct case is usually still a genuinely useful citation. For statutes,
+`document_id` is generated per article or per appendix
+(`collection.py:40` `law_document_id`), so for the 91.8% of statute
+records that stay a single chunk (statute chunking design Decision 1), a
+document-level hit already *is* the exact correct article -- there is no
+"right law, wrong article" gap to worry about there. The real risk is
+narrower and specific to the minority of statute records long enough to
+be split into many chunks: large administrative-penalty appendix tables
+(별표), which enumerate dozens of distinct, unrelated violation/penalty
+rows under one `document_id`. Split by document kind (classified by
+`chunk_id` prefix -- `precedent-*` = judgement, `doc-*` = statute):
 
 | Kind | n | Chunk-level Recall@10 | Document-level Recall@10 | Gap |
 | --- | --- | --- | --- | --- |
@@ -526,12 +531,49 @@ Split by document kind (classified by `chunk_id` prefix --
 
 Both kinds show a real document-level gain, not one driven entirely by
 either kind -- but the statute subset's 20-point gap (3 of 15 statute
-questions hit only at document level) includes an unknown number of
-"right law, wrong article" cases this report has not individually
-re-read to confirm are still substantively useful citations. This is
-disclosed as a real limit on the document-level figure's precision, not
-resolved here -- a per-question read of those 3 statute cases is named as
-future work if a larger sample becomes available.
+questions hit only at document level) was individually re-read
+(2026-08-20) rather than left as future work, and the result is worse
+than the original "right law, wrong article" framing assumed. All three
+are large 별표 tables (91/22/37 chunks respectively), and in every case
+the document-level "hit" is a genuinely unrelated row of the same table,
+not a near-miss on the right provision:
+
+- **id 16** (의료기기법 시행규칙 별표8, 91 chunks, "무허가 의료기기
+  판매 시 영업정지?"): gold chunk (조각 1/91, the table's own title) never
+  appears in either retriever's top-50. The three chunks from this
+  document that do land in the fused top-10 (조각 90/91, 55/91, 77/91)
+  cover insurance-amount non-compliance, promotional-agent reporting
+  violations, and foreign-material reporting failures -- none related to
+  unlicensed sale. Rank 1 overall is `의료기기법 제36조` itself (the
+  statute article this appendix implements), a different `document_id`
+  entirely and arguably a more useful citation than any appendix row, but
+  it cannot register as a hit against a gold label fixed to the appendix.
+- **id 36** (공중위생관리법 시행규칙 별표7, 37 chunks, "네일아트 전문
+  매장도 미용업에 해당하나요?"): gold chunk is a business-type
+  classification entry ("4. 미용업"). The chunk from this document that
+  lands in the fused list (unique-document rank 8, raw rank 11) covers
+  off-site business reporting and inspection-obstruction penalties -- an
+  unrelated classification-vs-penalty mismatch.
+- **id 23** (화장품법 시행규칙 별표7, 22 chunks, "화장품법을 위반하면
+  영업정지 같은 행정처분을 받을 수 있나요?"): the three document-hit
+  chunks (조각 22/22, 15/22, 19/22) are each a different specific
+  cosmetics-law violation with its own penalty tier. Because the question
+  itself is generic ("can violating the Cosmetics Act lead to business
+  suspension?") rather than about one specific act, each of these is
+  still a valid supporting example -- this case is qualitatively
+  different from id 16/36 and does not show the same failure.
+
+Net: for large 별표 tables, "document-level hit" ranges from still-useful
+(id 23, a generic question) to pure noise (id 16, 36, a specific-act
+question against a table with dozens of unrelated rows) -- the 83.33%
+headline should not be read as "the system found the right provision" for
+these cases, only "some chunk from the right table surfaced somewhere in
+the top 10." Verification basis: `temp/pilot_document_level_and_ceiling.py`
+re-run (2026-08-20, 42 real embedding calls, ~$0.0002) reproduced the
+headline chunk-level (57.14%) and document-level (83.33%) figures exactly;
+the three id-level breakdowns above came from a follow-up live query
+against each question with the fused top-10 (or top-unique-10) chunk text
+read directly from the index.
 
 **BM25's real marginal contribution to the hybrid design: 7.1% (3 of 42),
 quantifying a design decision this report already made on qualitative
