@@ -120,6 +120,28 @@ report already document elsewhere (e.g. this report's own "Reproducibility"
 section, and the Retrieval evaluation report's OpenSearch kNN
 tie-breaking note), not a regression from this change.
 
+**2026-08-20, second same-day update — re-run after the current-law-basis
+notice (knownGaps[0]) was added; the previous update above is now stale
+for one number.** `agent.py` gained a second, unconditional notice: any
+answer citing at least one statute chunk gets a fixed
+`limitations` entry, added in a later commit than the re-run reported
+just above. That commit did not touch `reports/eval/
+generation_evaluation_results.json` -- caught on review, since a
+committed evaluation artifact silently describing an earlier version of
+the code is exactly the kind of gap ASSIGNMENT.md's "MZO rebuilds and
+reruns each submission" would expose. Re-run for real ($2.047385, 55
+questions): refusal accuracy and citation-integrity numbers are again
+unchanged (`insufficient_evidence_refusal_accuracy` 50.0%,
+`out_of_scope_refusal_accuracy` 100.0%, `false_refusal_count` 1,
+`answered_status_match_rate` 97.6%), `grounded_count`/
+`partially_grounded_count` 13/32 (within the same ±1-2 run-to-run judge
+variance as the update above -- still 0 `unsupported`). **`limitations_
+fired_count` 15 → 35** -- the number the stale artifact was actually
+about, now correct: 20 additional answers cite at least one statute
+chunk and carry the new notice, on top of the 15 body-only-judgement
+caveats already counted. This is the number a fresh MZO rerun would
+reproduce as of the current commit.
+
 ## Methodology, restated briefly
 
 Every one of the 55 questions runs through the real, production
@@ -223,9 +245,17 @@ was attempted here.
 `agent.py`'s existing logic already discards any cited `chunk_id` that was
 not actually retrieved in that call, surfacing the discard through the
 response's `limitations` field rather than silently dropping or
-fabricating one. Across all 55 real calls this run, **`limitations_fired_count:
-0`** — the guard never had to intervene on a *partial* fabrication (some
-cited ids real, some not).
+fabricating one. As of the original 2026-08-18 measurement,
+`limitations_fired_count: 0` across all 55 real calls that run — the
+guard never had to intervene on a *partial* fabrication (some cited ids
+real, some not). **`limitations_fired_count` is no longer 0 as a
+headline number** (see the 2026-08-20 updates above: 35, for two later,
+unrelated reasons — cited-record data-quality caveats and the
+current-law-basis notice, neither a fabrication signal). Whether a
+partial-fabrication case has occurred since was not re-isolated in
+those later runs; the specific fabrication guard described in this
+section has not changed, only what else now also writes to the same
+field.
 
 **Gap found during an earlier evaluation's final code review, closed on
 2026-08-18.** `agent.py` used to have a second, separate fabricated-citation
