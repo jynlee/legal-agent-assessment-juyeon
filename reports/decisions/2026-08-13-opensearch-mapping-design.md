@@ -277,3 +277,21 @@ closing it by picking an engine now.
 This is a design decision, not yet implementation — no index has been
 created and no mapping JSON has been applied against either the local
 container or the managed domain as of this note.
+
+## Addendum (2026-08-20): `record_limitations` field, mapping bumped to index-v2
+
+A gap found the same day: `SourceRecord.limitations` (66 judgement
+records' self-declared data-quality caveats, e.g. "headnote/holding
+empty, body only") was carried nowhere past the dataset layer — no
+`Chunk` field, no index field, so a cited chunk's known caveat could
+never reach a response. `Chunk` gains `record_limitations: tuple[str,
+...]` (always empty for statute chunks; no statute record in this
+release carries `limitations`); the mapping here gains a matching
+`record_limitations: keyword` field, omitted from a document when empty
+(same sparsity rule as `source_uri`/`official_number`). `chunking.py`'s
+`CHUNKING_VERSION` moved `chunk-v1` → `chunk-v2` and this module's
+`INDEX_VERSION` moved `index-v1` → `index-v2` together, since this is a
+real `Chunk` schema change, not a text-normalization-rule change,
+requiring a full re-index under this project's own versioning
+discipline. See `agent.py` for how a cited chunk's `record_limitations`
+surfaces in `GeneralLegalResponse.limitations`.

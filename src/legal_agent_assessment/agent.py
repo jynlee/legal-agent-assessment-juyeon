@@ -283,11 +283,31 @@ class LegalAgent:
         dropped_ids = sorted(
             {chunk_id for chunk_id in parsed.cited_chunk_ids if chunk_id not in candidate_citations}
         )
-        limitations = (
+        limitations: tuple[str, ...] = (
             (f"Model cited unknown chunk_id(s), dropped: {', '.join(dropped_ids)}",)
             if dropped_ids
             else ()
         )
+
+        # Data-quality caveats MZO already declared on a cited record
+        # (`record_limitations`, e.g. "headnote/holding empty, body only")
+        # -- surfaced only for chunks actually cited in this answer, not
+        # every retrieved candidate, per DATASET.md's "represent the
+        # limitation in evaluation and runtime behavior". Deduplicated by
+        # exact (chunk_id, text) pair but order-preserving across citations.
+        seen_record_limitations: set[tuple[str, str]] = set()
+        record_limitation_notes: list[str] = []
+        for chunk_id in parsed.cited_chunk_ids:
+            source = sources_by_id.get(chunk_id)
+            if source is None:
+                continue
+            for note in source.get("record_limitations", ()):
+                key = (chunk_id, note)
+                if key in seen_record_limitations:
+                    continue
+                seen_record_limitations.add(key)
+                record_limitation_notes.append(f"Citation {chunk_id}: {note}")
+        limitations = limitations + tuple(record_limitation_notes)
 
         return GeneralLegalResponse(
             request_id=request.request_id,

@@ -30,7 +30,11 @@ from legal_agent_assessment.dataset_validation import content_hash
 _BOX_DRAWING_RE = re.compile(r"[┌┬┐│└┴┘├┤┼─━]")
 
 NORMALIZATION_VERSION = "norm-v1"
-CHUNKING_VERSION = "chunk-v1"
+# v1 -> v2, 2026-08-20: Chunk gained `record_limitations`, a real schema
+# change (see Chunk's docstring), not a text-normalization-rule change --
+# bumped so a re-index is required and detectable, per this project's own
+# versioning discipline.
+CHUNKING_VERSION = "chunk-v2"
 
 # Soft target only: packing fills a chunk until the next paragraph would
 # exceed this, then closes it. There is no enforced minimum — a short
@@ -495,6 +499,14 @@ class Chunk:
     a `contracts.Citation` can be built from a `Chunk` alone, without
     re-opening the source `SourceRecord` (see
     reports/decisions/2026-08-12-statute-chunking-design.md, Decision 4).
+
+    `record_limitations` carries the originating `SourceRecord.limitations`
+    forward unchanged (e.g. "headnote/holding empty, body only") -- added
+    2026-08-20 so a data-quality caveat MZO already declared on the record
+    can be surfaced when a chunk built from that record is actually cited,
+    per DATASET.md's "represent the limitation in evaluation and runtime
+    behavior". Always empty for statute chunks (no statute record in this
+    release carries `limitations`).
     """
 
     chunk_id: str
@@ -513,6 +525,7 @@ class Chunk:
     locator: str
     linked_laws: tuple[LawLinkage, ...]
     kind_fields: JudgementChunkFields | StatuteChunkFields
+    record_limitations: tuple[str, ...] = ()
 
 
 def _digit_group_key(section_name: str, locator: str) -> str:
@@ -606,6 +619,7 @@ def chunk_body(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk, ..
                     decided_on=None if identity.has_sentinel_date else identity.decided_on,
                     case_number=identity.case_number,
                 ),
+                record_limitations=record.limitations,
             )
         )
     return tuple(chunks)
@@ -669,6 +683,7 @@ def chunk_summary(record: SourceRecord, *, dataset_version: str) -> tuple[Chunk,
                         referenced_precedents=precedents.get(issue_number, ""),
                         issue_ordinal=issue_number,
                     ),
+                    record_limitations=record.limitations,
                 )
             )
     return tuple(chunks)

@@ -77,6 +77,7 @@ def test_build_index_body_declares_every_kind_specific_field() -> None:
         "appendix_number",
         "status",
         "layout",
+        "record_limitations",
     ):
         assert field in properties, f"missing mapping field: {field}"
 
@@ -160,6 +161,24 @@ def test_chunk_to_document_carries_common_fields_and_embedding() -> None:
     assert document["chunk_type"] == "body"
     assert document["embedding"] == list(_EMBEDDING)
     assert len(document["embedding"]) == 1536
+
+
+def test_chunk_to_document_omits_record_limitations_when_absent() -> None:
+    document = chunk_to_document(_judgement_chunk(), _EMBEDDING)
+
+    assert "record_limitations" not in document
+
+
+def test_chunk_to_document_carries_record_limitations_when_present() -> None:
+    chunk = _judgement_chunk(
+        record_limitations=("판시사항·판결요지·참조조문·참조판례가 모두 비어 있어 본문만 제공된다",)
+    )
+
+    document = chunk_to_document(chunk, _EMBEDDING)
+
+    assert document["record_limitations"] == [
+        "판시사항·판결요지·참조조문·참조판례가 모두 비어 있어 본문만 제공된다"
+    ]
 
 
 def test_chunk_to_document_splits_linked_laws_by_strength() -> None:

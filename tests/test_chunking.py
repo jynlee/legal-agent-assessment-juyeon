@@ -651,6 +651,7 @@ def _judgement_record(
     referenced_provisions: str = "",
     referenced_precedents: str = "",
     decided_on: str = "20990101",
+    limitations: tuple[str, ...] = (),
 ) -> SourceRecord:
     identity = JudgementIdentity(
         case_serial=document_id,
@@ -683,6 +684,7 @@ def _judgement_record(
         attribution="법제처 국가법령정보 공동활용",
         usage=UsageDisposition.INDEX_ELIGIBLE,
         linked_laws=(LawLinkage(law_name="의료법", strength=LinkageStrength.CORE),),
+        limitations=limitations,
     )
 
 
@@ -711,6 +713,23 @@ def test_chunk_body_produces_chunks_with_deterministic_ids_and_lineage() -> None
     assert first.kind_fields.decided_on == "20990101"
     assert first.content_hash == content_hash(first.text)
     assert [chunk.ordinal for chunk in chunks] == list(range(len(chunks)))
+    assert first.record_limitations == ()
+
+
+def test_chunk_body_carries_record_limitations_forward() -> None:
+    record = _judgement_record(
+        text="【이    유】 상고이유를 판단한다.",
+        limitations=("판시사항·판결요지·참조조문·참조판례가 모두 비어 있어 본문만 제공된다",),
+    )
+
+    chunks = chunk_body(record, dataset_version="dataset-2026-08-09")
+
+    assert len(chunks) >= 1
+    assert all(
+        chunk.record_limitations
+        == ("판시사항·판결요지·참조조문·참조판례가 모두 비어 있어 본문만 제공된다",)
+        for chunk in chunks
+    )
 
 
 def test_chunk_body_stores_no_decided_on_for_a_sentinel_date() -> None:
@@ -823,6 +842,23 @@ def test_chunk_summary_is_empty_for_a_body_only_record() -> None:
     record = _judgement_record(text="본문", headnote="", holding="")
 
     assert chunk_summary(record, dataset_version="dataset-2026-08-09") == ()
+
+
+def test_chunk_summary_carries_record_limitations_forward() -> None:
+    record = _judgement_record(
+        text="본문",
+        headnote="[1] 쟁점",
+        holding="[1] 판단",
+        limitations=("선고일자가 자리표시자 00010101이며 실제 선고일이 아니다.",),
+    )
+
+    chunks = chunk_summary(record, dataset_version="dataset-2026-08-09")
+
+    assert len(chunks) >= 1
+    assert all(
+        chunk.record_limitations == ("선고일자가 자리표시자 00010101이며 실제 선고일이 아니다.",)
+        for chunk in chunks
+    )
 
 
 def test_chunk_summary_stores_no_decided_on_for_a_sentinel_date() -> None:

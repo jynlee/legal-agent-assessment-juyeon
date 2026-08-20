@@ -28,23 +28,34 @@ _VERSIONS = RuntimeVersions(
 )
 
 
-def _hit(chunk_id: str, document_id: str, *, text: str = "본문") -> dict[str, Any]:
+def _hit(
+    chunk_id: str,
+    document_id: str,
+    *,
+    text: str = "본문",
+    record_limitations: tuple[str, ...] = (),
+) -> dict[str, Any]:
     """One OpenSearch hit whose `_id` deliberately differs from `chunk_id`.
 
     scripts/index_chunks.py happens to set `_id = chunk.chunk_id` today, but
     the agent must not depend on that indexing-side choice: keying off `_id`
     would make any re-index with auto-generated ids silently return
-    insufficient_evidence for every query.
+    insufficient_evidence for every query. `record_limitations` mirrors a
+    judgement chunk's data-quality caveats carried forward from
+    `SourceRecord.limitations` (e.g. "headnote/holding empty, body only").
     """
 
+    source: dict[str, Any] = {
+        "chunk_id": chunk_id,
+        "document_id": document_id,
+        "title": "제목",
+        "text": text,
+    }
+    if record_limitations:
+        source["record_limitations"] = list(record_limitations)
     return {
         "_id": f"opensearch-internal-{chunk_id}",
-        "_source": {
-            "chunk_id": chunk_id,
-            "document_id": document_id,
-            "title": "제목",
-            "text": text,
-        },
+        "_source": source,
     }
 
 
@@ -200,6 +211,81 @@ def test_answer_returns_answered_with_citations_when_generation_grounds_the_resp
     assert "multi_match" in bm25_call["body"]["query"]
     assert "script_score" in knn_call["body"]["query"]
     assert knn_call["body"]["query"]["script_score"]["script"]["source"] == "knn_score"
+
+
+def test_answer_surfaces_a_cited_chunks_record_limitations() -> None:
+    bm25_hits = [
+        _hit(
+            "c1",
+            "doc1",
+            text="약사법 제1조 본문",
+            record_limitations=("판시사항·판결요지가 모두 비어 있어 본문만 제공된다",),
+        )
+    ]
+    opensearch = _FakeOpenSearchClient(bm25_hits, [])
+    generation_text = json.dumps(
+        {
+            "status": "answered",
+            "answer": "약사법 제1조는 목적을 규정합니다.",
+            "cited_chunk_ids": ["c1"],
+        }
+    )
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="약사법 제1조는?"))
+
+    assert response.status is AnswerStatus.ANSWERED
+    assert response.limitations == (
+        "Citation c1: 판시사항·판결요지가 모두 비어 있어 본문만 제공된다",
+    )
+
+
+def test_answer_does_not_surface_an_uncited_chunks_record_limitations() -> None:
+    # c1 is cited (no limitations); c2 is retrieved but never cited by the
+    # model, and carries a limitation -- only what the answer actually rests
+    # on should be surfaced, not every retrieved candidate.
+    bm25_hits = [
+        _hit("c1", "doc1", text="약사법 제1조 본문"),
+        _hit(
+            "c2",
+            "doc2",
+            text="약사법 제2조 본문",
+            record_limitations=("선고일자가 자리표시자다.",),
+        ),
+    ]
+    opensearch = _FakeOpenSearchClient(bm25_hits, [])
+    generation_text = json.dumps(
+        {
+            "status": "answered",
+            "answer": "약사법 제1조는 목적을 규정합니다.",
+            "cited_chunk_ids": ["c1"],
+        }
+    )
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="약사법 제1조는?"))
+
+    assert response.limitations == ()
 
 
 def test_answer_returns_insufficient_evidence_when_generation_declines_despite_hits() -> None:

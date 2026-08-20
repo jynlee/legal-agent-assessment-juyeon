@@ -93,7 +93,20 @@ MZO's setup instructions:**
    subsequently launched directly by the controller rather than through
    an intermediate subagent, after two separate cases where a dispatched
    subagent claimed to be "waiting for completion" of a long-running real
-   call without actually blocking on it.
+   call without actually blocking on it. **Recurred 2026-08-20**, after
+   Docker Desktop's Resource Saver (a plausible idle-suspend cause) was
+   found enabled and disabled: the container still died mid-run during
+   the `chunk-v2`/`index-v2` reindex, this time under ~15 minutes of
+   sustained CPU load (real embedding calls in progress), not idleness —
+   ruling out Resource Saver as the sole cause. Real-cost impact this
+   time: $0.4369 spent on a full embedding pass (247 calls, 7,887
+   chunks) whose bulk-write then failed entirely (0 documents indexed)
+   when the container died at that exact step. Mitigated by restarting
+   the container and re-running the full pipeline once more (see "AWS
+   use" below for the combined cost); genuinely unresolved as of this
+   report — the underlying trigger (Windows sleep/power policy under
+   sustained WSL2 load, most likely, but not confirmed) was not
+   root-caused within the time remaining before submission.
 4. **`.env`'s CRLF line endings broke `bash source` outright.** Discovered
    2026-08-14 while re-running the Generation evaluation after a code fix
    round: sourcing `.env` in a fresh WSL bash session failed on every
@@ -579,20 +592,38 @@ whose cost was zeroed by the since-fixed accounting bug (their real
 elapsed time, 19–31 seconds each, is the only surviving evidence they made
 real calls at all).
 
-**OpenSearch usage.** One versioned index
-(`legal-kit-assessment-jynlee-chunk-v1-index-v1`, `index-v1`), 7,887
-chunks per build (7,463 `body` + 424 `summary`), 1 shard / 0 replicas
-locally. **Rebuild count: 2** — the original 2026-08-13 production build,
-and one full rebuild on 2026-08-14 after the environment failures in
-Blocker log items 2–3 made the local container's index unreachable; the
-rebuild reproduced the original exactly on every cost/count dimension
-(247 embedding calls, 3,640,423 estimated tokens, $0.4369, 0 bulk-index
-errors both times), confirming the indexing pipeline is deterministic
-given the same corpus and chunking rules. Every real evaluation and demo
-run in this submission queried the local container (port 9201, a
-personal-machine workaround — see Blocker log item 2); the managed
-OpenSearch domain was never actually queried this project (see
-"Deliberately deferred" above).
+**OpenSearch usage.** Two versioned indexes across this project's life,
+7,887 chunks per build (7,463 `body` + 424 `summary`) in both, 1 shard /
+0 replicas locally. **`chunk-v1`/`index-v1` rebuild count: 2** — the
+original 2026-08-13 production build, and one full rebuild on 2026-08-14
+after the environment failures in Blocker log items 2–3 made the local
+container's index unreachable; both reproduced exactly on every
+cost/count dimension (247 embedding calls, 3,640,423 estimated tokens,
+$0.4369, 0 bulk-index errors both times).
+
+**`chunk-v2`/`index-v2` rebuild count: 2** (2026-08-20, after `Chunk`
+gained `record_limitations` — see architecture-report.md's "Cited-record
+data-quality caveats" and the opensearch-mapping-design decision's
+2026-08-20 addendum). The first attempt embedded all 7,887 chunks
+successfully (247 calls, 3,640,423 tokens, $0.4369, 934.4s) but the
+local container died (SIGTERM, same personal-machine instability as
+Blocker log item 2 — recurring even after disabling Docker Desktop's
+Resource Saver, this time under sustained ~15-minute load rather than
+idle) at the final bulk-write step, indexing 0 of 7,887 documents
+despite the embedding spend already being real. The container was
+restarted and the run repeated in full (a second $0.4369, 247 calls,
+934.4s) and succeeded (7,887/7,887 indexed, confirmed by `_count`).
+**Combined chunk-v2 cost: $0.8738** — the failed attempt's spend is real
+and not recoverable, disclosed rather than only reporting the
+successful run's number. Re-running `evaluate_retrieval.py` against the
+new index reproduced Recall@10 exactly (57.14%) and MRR within this
+project's already-documented OpenSearch kNN scoring non-determinism
+(0.2808 vs. the `chunk-v1` baseline's 0.2805–0.2809 range).
+
+Every real evaluation and demo run in this submission queried the local
+container (port 9201, a personal-machine workaround — see Blocker log
+item 2); the managed OpenSearch domain was never actually queried this
+project (see "Deliberately deferred" above).
 
 ## What one additional week would allow
 

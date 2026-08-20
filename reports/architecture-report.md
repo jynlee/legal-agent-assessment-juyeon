@@ -359,6 +359,26 @@ rather than fabricating a citation. If some cited ids are real and others
 are not, the answer stands on its real citations, and the invented ones
 are surfaced through a `limitations` field rather than silently dropped.
 
+**Cited-record data-quality caveats (added 2026-08-20).** 66 judgement
+records in this release self-declare a data-quality caveat via
+`SourceRecord.limitations` — 60 with headnote/holding/references empty
+(body text only), and 6 with a sentinel placeholder value for `decidedOn`
+or `judgementType`. This is a real gap found while auditing how MZO's own
+declared corpus caveats (`data/release-manifest.json`'s `knownGaps`, and
+this per-record field) reach runtime behavior: neither did, until now.
+`Chunk` carries the originating record's `limitations` forward
+(`record_limitations`, chunk-v2); when a chunk actually cited in an
+answer has one, its text is appended to that response's `limitations`
+(`Citation <chunk_id>: <caveat text>`) — surfaced only for chunks the
+answer actually rests on, not every retrieved candidate. This closes one
+of the four `knownGaps` items only in part: the other three (current-law-
+vs-judgment-date drift, LLM-reviewed precedents' incorporation policy,
+and the corpus's scope exclusions for interpretive rulings/notices/
+circulars/directives) are either satisfied by construction (the excluded
+document kinds are simply never indexed, so there is nothing for runtime
+code to filter) or remain unaddressed — named here rather than left
+undocumented.
+
 **Refusal paths.** `insufficient_evidence` is reached by any of three
 routes converging on the same status: the mechanical zero-hit floor, the
 generation-layer judgement described in §3, or the answered-but-nothing-

@@ -18,7 +18,9 @@ from legal_agent_assessment.chunking import (
 from legal_agent_assessment.dataset import LinkageStrength
 from legal_agent_assessment.embedding import EMBEDDING_DIMENSION
 
-INDEX_VERSION = "index-v1"
+# v1 -> v2, 2026-08-20: mapping gained `record_limitations`, matching
+# chunking.py's CHUNKING_VERSION bump to chunk-v2 for the same reason.
+INDEX_VERSION = "index-v2"
 
 _TEXT_WITH_KEYWORD: dict[str, Any] = {
     "type": "text",
@@ -42,6 +44,7 @@ INDEX_MAPPING_PROPERTIES: dict[str, Any] = {
     "source_uri": {"type": "keyword"},
     "official_number": {"type": "keyword"},
     "locator": {"type": "keyword"},
+    "record_limitations": {"type": "keyword"},
     "embedding": {"type": "knn_vector", "dimension": EMBEDDING_DIMENSION},
     # linked_laws, split by LinkageStrength (Decision 3, amended 2026-08-13).
     "linked_law_names_core": {"type": "keyword"},
@@ -130,6 +133,8 @@ def chunk_to_document(chunk: Chunk, embedding: Sequence[float]) -> dict[str, Any
         document["source_uri"] = chunk.source_uri
     if chunk.official_number is not None:
         document["official_number"] = chunk.official_number
+    if chunk.record_limitations:
+        document["record_limitations"] = list(chunk.record_limitations)
 
     core: list[str] = []
     candidate: list[str] = []
