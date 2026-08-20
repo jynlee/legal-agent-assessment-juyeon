@@ -370,14 +370,33 @@ this per-record field) reach runtime behavior: neither did, until now.
 (`record_limitations`, chunk-v2); when a chunk actually cited in an
 answer has one, its text is appended to that response's `limitations`
 (`Citation <chunk_id>: <caveat text>`) — surfaced only for chunks the
-answer actually rests on, not every retrieved candidate. This closes one
-of the four `knownGaps` items only in part: the other three (current-law-
-vs-judgment-date drift, LLM-reviewed precedents' incorporation policy,
-and the corpus's scope exclusions for interpretive rulings/notices/
-circulars/directives) are either satisfied by construction (the excluded
-document kinds are simply never indexed, so there is nothing for runtime
-code to filter) or remain unaddressed — named here rather than left
-undocumented.
+answer actually rests on, not every retrieved candidate.
+
+Checked against all four `knownGaps` in this same audit:
+- **Current-law-vs-judgment-date drift** (knownGaps[0]): closed the same
+  day as the paragraph above, deterministically rather than via a prompt
+  instruction — this project has already measured the generation model
+  not reliably following instructions it disagrees with (see
+  "insufficient_evidence refusal accuracy" in the Generation evaluation
+  report). Any answer citing at least one statute chunk gets a fixed
+  notice appended to `limitations` regardless of what the model's own
+  prose says.
+- **LLM-reviewed precedents' incorporation policy** (knownGaps[1]) and
+  **excluded document kinds — interpretive rulings, notices, circulars,
+  directives** (part of knownGaps[2]): verified satisfied by
+  construction, not merely assumed — every one of the 182 delivered
+  judgement records carries `usage: "index_eligible"` (no other value
+  present) and non-empty `text` (0 records with missing full text,
+  closing knownGaps[3] the same way), so there is no under-review or
+  no-full-text material for runtime code to filter in the first place.
+- **Official guides, part of knownGaps[2]**: covered separately above
+  (withdrawn on licence grounds, §7) — the remaining named exclusions
+  (법령해석례/고시/예규/훈령) are simply never supplied in this release,
+  same reasoning as the other two.
+
+All four `knownGaps` are therefore addressed as of 2026-08-20: one by a
+deterministic runtime notice, three by a verified absence of anything to
+filter.
 
 **Refusal paths.** `insufficient_evidence` is reached by any of three
 routes converging on the same status: the mechanical zero-hit floor, the

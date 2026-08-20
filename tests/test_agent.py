@@ -34,6 +34,7 @@ def _hit(
     *,
     text: str = "본문",
     record_limitations: tuple[str, ...] = (),
+    document_kind: str = "judgement",
 ) -> dict[str, Any]:
     """One OpenSearch hit whose `_id` deliberately differs from `chunk_id`.
 
@@ -43,6 +44,8 @@ def _hit(
     insufficient_evidence for every query. `record_limitations` mirrors a
     judgement chunk's data-quality caveats carried forward from
     `SourceRecord.limitations` (e.g. "headnote/holding empty, body only").
+    `document_kind` defaults to "judgement"; pass "statute" to test the
+    current-law-basis notice.
     """
 
     source: dict[str, Any] = {
@@ -50,6 +53,7 @@ def _hit(
         "document_id": document_id,
         "title": "제목",
         "text": text,
+        "document_kind": document_kind,
     }
     if record_limitations:
         source["record_limitations"] = list(record_limitations)
@@ -284,6 +288,58 @@ def test_answer_does_not_surface_an_uncited_chunks_record_limitations() -> None:
     )
 
     response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="약사법 제1조는?"))
+
+    assert response.limitations == ()
+
+
+def test_answer_notes_the_current_law_basis_when_citing_a_statute() -> None:
+    bm25_hits = [_hit("c1", "doc1", text="약사법 제1조 본문", document_kind="statute")]
+    opensearch = _FakeOpenSearchClient(bm25_hits, [])
+    generation_text = json.dumps(
+        {
+            "status": "answered",
+            "answer": "약사법 제1조는 목적을 규정합니다.",
+            "cited_chunk_ids": ["c1"],
+        }
+    )
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="약사법 제1조는?"))
+
+    assert any("currently in force" in note for note in response.limitations)
+
+
+def test_answer_omits_the_current_law_basis_when_citing_no_statute() -> None:
+    # Only a judgement is cited (the default document_kind) -- the notice is
+    # about statute citations specifically and must not fire otherwise.
+    bm25_hits = [_hit("c1", "doc1", text="본문")]
+    opensearch = _FakeOpenSearchClient(bm25_hits, [])
+    generation_text = json.dumps(
+        {"status": "answered", "answer": "답변", "cited_chunk_ids": ["c1"]}
+    )
+    bedrock = _FakeBedrockClient(
+        embedding_model_id="embed-v4", generation_response_text=generation_text
+    )
+    agent = LegalAgent(
+        opensearch_client=opensearch,
+        bedrock_client=bedrock,
+        index_name="legal-kit-assessment-jynlee-chunk-v1-index-v1",
+        embedding_model_id="embed-v4",
+        generation_model_id="claude-sonnet",
+        versions=_VERSIONS,
+    )
+
+    response = agent.answer_sync(GeneralLegalRequest(request_id="r1", question="질문"))
 
     assert response.limitations == ()
 

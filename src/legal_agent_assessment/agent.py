@@ -63,6 +63,18 @@ _RRF_KNN_WEIGHT = 3.0
 # truncated JSON fragment. This is a generous ceiling, not a target --
 # Bedrock only bills tokens actually used, so short answers are unaffected.
 _GENERATION_MAX_TOKENS = 4096
+# knownGaps[0] in data/release-manifest.json: "현행 법령만 제공하므로 판례
+# 선고 당시 적용된 과거 조문과 다를 수 있다" -- MZO's own declared corpus
+# limitation. Rather than a prompt instruction (unreliable -- this project
+# has already measured the generation model not reliably following
+# instructions it disagrees with, e.g. insufficient_evidence over-answering),
+# this is applied deterministically: any answer citing at least one statute
+# chunk gets this notice, regardless of what the model itself says.
+_CURRENT_LAW_BASIS_NOTICE = (
+    "Statute citations reflect the law as currently in force, which may "
+    "differ from the provisions in effect at the time a cited judgement "
+    "was decided."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,6 +320,13 @@ class LegalAgent:
                 seen_record_limitations.add(key)
                 record_limitation_notes.append(f"Citation {chunk_id}: {note}")
         limitations = limitations + tuple(record_limitation_notes)
+
+        cites_a_statute = any(
+            sources_by_id.get(chunk_id, {}).get("document_kind") == "statute"
+            for chunk_id in parsed.cited_chunk_ids
+        )
+        if cites_a_statute:
+            limitations = (*limitations, _CURRENT_LAW_BASIS_NOTICE)
 
         return GeneralLegalResponse(
             request_id=request.request_id,
