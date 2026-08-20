@@ -598,3 +598,47 @@ provenance is recoverable from the response itself rather than from
 contributor memory, IDE state, or an untracked notebook. The one caveat to
 this claim is limitation 1 above; disclosing the WSL2 workaround honestly
 is itself part of satisfying this requirement, not a threat to it.
+
+## 8. MZO's Tier quiet-failure checklist, CI, and CONTRACT.md compliance
+
+README.en.md's "Development cautions: Tier" table names five silent
+failures that "invalidate otherwise unrelated work" and asks for a cheap
+detector for each, built before the full pipeline. The evidence for each
+already exists elsewhere in this report and the Retrieval evaluation
+report; collected here in one place, against MZO's own wording:
+
+| MZO's named mistake | What it invalidates | This project's detector |
+| --- | --- | --- |
+| Indexing evaluation queries, expected answers, or relevance labels | Every retrieval metric | Structural, not a runtime check: `index_chunks.py` and `chunking.py` only ever read `data/judgements.jsonl`/`data/statutes.jsonl` — no code path reads `reports/eval/` (where test queries and gold labels live) at all, so there is nothing to accidentally index |
+| Presenting a source-derived near-copy test as real-user quality | The entire retrieval evaluation report | Measured, not asserted: every answerable question's character-bigram overlap against its own source chunk is computed and disclosed (Retrieval evaluation report, "Leakage controls, including source-derived queries" — 8 of 42 flagged and individually reviewed, not hidden) |
+| Missing chunk lineage | Every answer — without provenance, `answered` is not reachable | 7 of `Chunk`'s 17 fields are lineage: `chunk_id`, `document_id`, `content_hash`, `dataset_version`, `normalization_version`, `chunking_version`, `locator` (§2 above); `contracts.py`'s `validate_grounding_state` makes an `answered` response with no citation impossible to construct at all, not just discouraged |
+| Time, tokens, and cost not recorded as you go | The work report; the shared IAM user makes it unattributable afterwards | Every real Bedrock call is instrumented at the call site itself (`agent.py`'s `on_usage` callback fires immediately after each embed/generate call returns; `scripts/index_chunks.py`'s `on_batch_complete` does the same for indexing) — not reconstructed after the fact |
+| Developing against the managed domain without SigV4 | Every OpenSearch call — unsigned requests pass locally and on staging today | `scripts/opensearch_client.py` builds every client through `AWSV4SignerAuth`; no unsigned OpenSearch client exists anywhere in this codebase |
+
+README.en.md's own closing line on this table — "A green CI run is not
+proof that these conditions hold" — is echoed by what CI in this
+repository actually checks and does not check. `.github/workflows/ci.yml`
+runs on every push and pull request: `uv sync --locked` (fails on any
+lockfile drift, closing the "works on my machine" gap), `ruff check`,
+`ruff format --check`, `mypy src`, and `pytest`. That is code correctness
+and style — none of it can see whether an evaluation label leaked into
+the index or a call went unsigned, which is exactly MZO's point in
+naming this table separately. The five detectors above are the actual
+answer to "how are these five failures prevented"; CI is a
+different, narrower guarantee (that the code compiles, type-checks, and
+its own test suite still passes) sitting alongside it.
+
+**CONTRACT.md's seven service properties, checked individually.** §6
+above establishes this boundary in prose; restated here as a direct,
+one-to-one checklist against CONTRACT.md's own list, for anyone
+verifying compliance property by property rather than by reading prose:
+
+| CONTRACT.md requirement | Satisfied by |
+| --- | --- |
+| Single-turn: one independent question per call | `GeneralLegalRequest` carries one `question`; `answer()`/`answer_sync()` take one request and return one response, with no multi-turn or follow-up parameter anywhere in the signature |
+| Stateless: no conversational memory required between calls | `LegalAgent` holds only its injected clients and static config (index name, model IDs, versions) as instance state — no per-request or cross-request memory of any kind |
+| Database-free at the public boundary | The contract module (`contracts.py`) imports nothing beyond Pydantic and the standard library; no ORM, session, or database handle appears in any public type |
+| Async and suitable for timeout/cancellation by its caller | `async def answer()` is the Protocol-required entry point; the synchronous core (`answer_sync`) it delegates through is I/O-bound, not CPU-bound, so it never blocks the event loop in a way a caller's timeout/cancellation could not interrupt |
+| Typed and JSON-serializable | Every public type (`GeneralLegalRequest`, `GeneralLegalResponse`, `Citation`, `RetrievalHit`, `RuntimeVersions`) is a Pydantic model — typed by construction and JSON-serializable via Pydantic's own `.model_dump_json()`/schema, with no bespoke serialization code |
+| Independent of Peitho, FastAPI, an ORM, dependency injection, and `ITool` | No import of any of these five exists anywhere in the core package (`src/legal_agent_assessment/`) — checked repeatedly over this project's course, not only at submission |
+| Backed by replaceable OpenSearch and Bedrock adapters | `LegalAgent.__init__` takes `opensearch_client`/`bedrock_client` as constructor parameters, never builds them itself — the literal mechanism tests exercise with fake clients and no real network call |
