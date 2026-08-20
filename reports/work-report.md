@@ -93,20 +93,12 @@ MZO's setup instructions:**
    subsequently launched directly by the controller rather than through
    an intermediate subagent, after two separate cases where a dispatched
    subagent claimed to be "waiting for completion" of a long-running real
-   call without actually blocking on it. **Recurred 2026-08-20**, after
-   Docker Desktop's Resource Saver (a plausible idle-suspend cause) was
-   found enabled and disabled: the container still died mid-run during
-   the `chunk-v2`/`index-v2` reindex, this time under ~15 minutes of
-   sustained CPU load (real embedding calls in progress), not idleness —
-   ruling out Resource Saver as the sole cause. Real-cost impact this
-   time: $0.4369 spent on a full embedding pass (247 calls, 7,887
-   chunks) whose bulk-write then failed entirely (0 documents indexed)
-   when the container died at that exact step. Mitigated by restarting
-   the container and re-running the full pipeline once more (see "AWS
-   use" below for the combined cost); genuinely unresolved as of this
-   report — the underlying trigger (Windows sleep/power policy under
-   sustained WSL2 load, most likely, but not confirmed) was not
-   root-caused within the time remaining before submission.
+   call without actually blocking on it. **Recurred 2026-08-20** during
+   the `chunk-v2`/`index-v2` reindex, even after disabling Docker
+   Desktop's Resource Saver — ruling that out as the sole cause. Cost:
+   $0.4369 spent embedding all 7,887 chunks before the container died at
+   the bulk-write step, indexing 0. Mitigated by restarting and
+   re-running (see "AWS use"); root cause still unconfirmed.
 4. **`.env`'s CRLF line endings broke `bash source` outright.** Discovered
    2026-08-14 while re-running the Generation evaluation after a code fix
    round: sourcing `.env` in a fresh WSL bash session failed on every
