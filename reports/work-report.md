@@ -404,7 +404,7 @@ deliverables):
 7. Grounded answers via the fixed Bedrock Claude model policy — done (`LegalAgent`, `prompt-v2`).
 8. Verifiable citations, `insufficient_evidence`, `out_of_scope`, `dependency_unavailable` — done, all 4 response states implemented and covered by both unit tests and the real Generation evaluation run. A citation-integrity blind spot found during the Generation evaluation's final code review (total-fabrication citations were indistinguishable from an honest refusal) was closed on 2026-08-18 — see "Incomplete / found but not fixed" below for what changed and how it was verified.
 9. Single-turn, stateless application-service contract — done (`GeneralLegalRequest`/`GeneralLegalResponse`, `async def answer`).
-10. Tests, reproducible commands, architecture decisions, limitations, effort/time/cost evidence — done: 233 tests passing (reverified 2026-08-19 after the reranking revert; see Blocker log item 19); non-interactive `verify_release.py`, `index_chunks.py`, `evaluate_retrieval.py`, `evaluate_generation.py`, `serve_legal_agent.py`; Architecture, Retrieval evaluation, and Generation evaluation reports committed; this Work report.
+10. Tests, reproducible commands, architecture decisions, limitations, effort/time/cost evidence — done: 241 tests passing (233 after the 2026-08-19 reranking revert, see Blocker log item 19; grew to 241 with the statute-notice and per-chunk data-quality-caveat work that followed); non-interactive `verify_release.py`, `index_chunks.py`, `evaluate_retrieval.py`, `evaluate_generation.py`, `serve_legal_agent.py`; Architecture, Retrieval evaluation, and Generation evaluation reports committed; this Work report.
 
 **Deliberately deferred** (named explicitly in the relevant report, not
 silently skipped):
